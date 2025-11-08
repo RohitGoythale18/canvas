@@ -108,6 +108,11 @@ export default function Home() {
     img.src = imageUrl;
   };
 
+  const handleImageUsed = () => {
+    setUploadedImageUrl(null);
+    setLoadedImage(null);
+  };
+
   const handleCanvasBackgroundChange = (color: { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }, panelId: string = 'default') => {
     setCanvasBackground(prev => ({
       ...prev,
@@ -201,6 +206,7 @@ export default function Home() {
         onTextToggle={handleTextToggle}
         textActive={textActive}
         onImageUpload={handleImageUpload}
+        onImageUsed={handleImageUsed}
         onCanvasBackgroundChange={handleCanvasBackgroundChange}
         selectedPanel={selectedPanel}
         onBorderToggle={handleBorderToggle}
@@ -233,6 +239,7 @@ export default function Home() {
           textActive={textActive}
           uploadedImageUrl={uploadedImageUrl}
           loadedImage={loadedImage}
+          onImageUsed={handleImageUsed}
           backgroundColor={canvasBackground}
           onPanelSelect={handlePanelSelect}
           borderActive={borderActive}
