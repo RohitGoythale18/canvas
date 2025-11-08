@@ -6,9 +6,10 @@ import ImageIcon from '@mui/icons-material/Image';
 interface UploadImageButtonProps {
     active?: boolean;
     onImageUpload?: (imageUrl: string) => void;
+    onImageUsed?: () => void;
 }
 
-const UploadImageButton = ({ onImageUpload }: UploadImageButtonProps) => {
+const UploadImageButton = ({ onImageUpload, onImageUsed }: UploadImageButtonProps) => {
     const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 

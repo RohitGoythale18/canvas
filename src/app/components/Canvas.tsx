@@ -23,6 +23,7 @@ interface CanvasProps {
     textActive?: boolean;
     uploadedImageUrl?: string | null;
     loadedImage?: HTMLImageElement | null;
+    onImageUsed?: () => void;
     backgroundColor?: Record<string, string | { start: string; end: string }>;
     onPanelSelect?: (panelId: string) => void;
     borderActive?: boolean;
@@ -41,7 +42,7 @@ interface CanvasProps {
     onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
 }
 
-const Canvas = ({ splitMode = "none", pencilActive = false, fillActive = false, fillColor = "#ff0000", eraserActive = false, eraserSize = 10, selectedShape, onShapeSelect, textActive = false, uploadedImageUrl, loadedImage, backgroundColor = { default: "#ffffff" }, onPanelSelect, borderActive = false, borderType = 'solid', borderSize = 2, borderColor = '#000000', currentFontFeatures = { fontFamily: "Arial, sans-serif", fontSize: 16, fontStyles: {}, alignment: 'left' as 'left' | 'center' | 'right' | 'justify', listType: 'none' as 'bullet' | 'number' | 'none', textColor: "#000000" } }: CanvasProps) => {
+const Canvas = ({ splitMode = "none", pencilActive = false, fillActive = false, fillColor = "#ff0000", eraserActive = false, eraserSize = 10, selectedShape, onShapeSelect, textActive = false, uploadedImageUrl, loadedImage, onImageUsed, backgroundColor = { default: "#ffffff" }, onPanelSelect, borderActive = false, borderType = 'solid', borderSize = 2, borderColor = '#000000', currentFontFeatures = { fontFamily: "Arial, sans-serif", fontSize: 16, fontStyles: {}, alignment: 'left' as 'left' | 'center' | 'right' | 'justify', listType: 'none' as 'bullet' | 'number' | 'none', textColor: "#000000" } }: CanvasProps) => {
     const [zoomLevel, setZoomLevel] = useState(1);
     const [shapes, setShapes] = useState<Shape[]>([]);
     const [dragging, setDragging] = useState(false);
@@ -454,6 +455,10 @@ const Canvas = ({ splitMode = "none", pencilActive = false, fillActive = false, 
                     };
                     setShapes(prev => [...prev, newShape]);
                     onShapeSelect(null as never);
+                    // Clear the uploaded image after using it for the shape
+                    if (uploadedImageUrl) {
+                        onImageUsed?.();
+                    }
                     return;
                 }
 

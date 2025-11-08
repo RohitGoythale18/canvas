@@ -42,6 +42,7 @@ interface MenuBarProps {
     onTextToggle?: (enabled: boolean) => void;
     textActive?: boolean;
     onImageUpload?: (imageUrl: string) => void;
+    onImageUsed?: () => void;
     onCanvasBackgroundChange?: (color: { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }, panelId?: string) => void;
     selectedPanel?: string;
     onBorderToggle?: (enabled: boolean) => void;
@@ -61,7 +62,7 @@ interface MenuBarProps {
     onTextColorChange?: (color: string | { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }) => void;
 }
 
-const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onPencilToggle, onFillToggle, onColorChange, onEraserToggle, onEraserSizeChange, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange }: MenuBarProps) => {
+const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onPencilToggle, onFillToggle, onColorChange, onEraserToggle, onEraserSizeChange, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, onImageUsed, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange }: MenuBarProps) => {
     const [pencilMenuAnchor, setPencilMenuAnchor] = useState<null | HTMLElement>(null);
 
     return (
@@ -136,7 +137,7 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
                     <List sx={{ p: 1, display: "flex", flexWrap: "wrap", gap: 1 }}>
                         <ShapeButton onShapeSelect={onShapeSelect} />
                         <TextButton active={textActive} onToggle={onTextToggle} />
-                        <UploadImageButton onImageUpload={onImageUpload} />
+                        <UploadImageButton onImageUpload={onImageUpload} onImageUsed={onImageUsed} />
                     </List>
                 </Box>
 
