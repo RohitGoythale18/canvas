@@ -45,6 +45,8 @@ interface CanvasProps {
 const Canvas = ({ splitMode = "none", pencilActive = false, fillActive = false, fillColor = "#ff0000", eraserActive = false, eraserSize = 10, selectedShape, onShapeSelect, textActive = false, uploadedImageUrl, loadedImage, onImageUsed, backgroundColor = { default: "#ffffff" }, onPanelSelect, borderActive = false, borderType = 'solid', borderSize = 2, borderColor = '#000000', currentFontFeatures = { fontFamily: "Arial, sans-serif", fontSize: 16, fontStyles: {}, alignment: 'left' as 'left' | 'center' | 'right' | 'justify', listType: 'none' as 'bullet' | 'number' | 'none', textColor: "#000000" } }: CanvasProps) => {
     const [zoomLevel, setZoomLevel] = useState(1);
     const [shapes, setShapes] = useState<Shape[]>([]);
+    const [drawings, setDrawings] = useState<{panelId: string, paths: Array<{points: {x:number,y:number}[], tool: 'pencil'|'eraser', color?:string, size?:number}>}[]>([]);
+    const [filledImages, setFilledImages] = useState<{panelId: string, imageData: ImageData}[]>([]);
     const [dragging, setDragging] = useState(false);
     const [resizing, setResizing] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -88,36 +90,35 @@ const Canvas = ({ splitMode = "none", pencilActive = false, fillActive = false, 
             const startDraw = (e: MouseEvent) => {
                 if (!(pencilActive || eraserActive)) return;
                 drawing = true;
-                ctx.beginPath();
+                const panelId = canvas.getAttribute("data-panel-id") || "default";
                 const { x, y } = getPos(e);
-                ctx.moveTo(x, y);
+                const newPath = { points: [{x, y}], tool: pencilActive ? 'pencil' as const : 'eraser' as const, color: pencilActive ? "#000" : undefined, size: eraserActive ? eraserSize : 2 };
+                setDrawings(prev => {
+                    const existing = prev.find(d => d.panelId === panelId);
+                    if (existing) {
+                        return prev.map(d => d.panelId === panelId ? { ...d, paths: [...d.paths, newPath] } : d);
+                    } else {
+                        return [...prev, { panelId, paths: [newPath] }];
+                    }
+                });
             };
 
             const draw = (e: MouseEvent) => {
                 if (!drawing) return;
+                const panelId = canvas.getAttribute("data-panel-id") || "default";
                 const { x, y } = getPos(e);
-
-                if (eraserActive) {
-                    ctx.globalCompositeOperation = "destination-out";
-                    ctx.lineWidth = eraserSize || 10;
-                    ctx.lineCap = "round";
-                    ctx.lineTo(x, y);
-                    ctx.stroke();
-                } else if (pencilActive) {
-                    ctx.globalCompositeOperation = "source-over";
-                    ctx.lineWidth = 2;
-                    ctx.lineCap = "round";
-                    ctx.strokeStyle = "#000";
-                    ctx.lineTo(x, y);
-                    ctx.stroke();
-                }
+                setDrawings(prev => prev.map(d => {
+                    if (d.panelId === panelId && d.paths.length > 0) {
+                        const lastPath = d.paths[d.paths.length - 1];
+                        return { ...d, paths: [...d.paths.slice(0, -1), { ...lastPath, points: [...lastPath.points, {x, y}] }] };
+                    }
+                    return d;
+                }));
             };
 
             const endDraw = () => {
                 if (drawing) {
                     drawing = false;
-                    ctx.closePath();
-                    ctx.globalCompositeOperation = "source-over";
                 }
             };
 
@@ -240,6 +241,17 @@ const Canvas = ({ splitMode = "none", pencilActive = false, fillActive = false, 
                     if (y > 0) stack.push([x, y - 1]);
                     if (y < canvas.height - 1) stack.push([x, y + 1]);
                 }
+
+                // Store the filled image data
+                const panelId = canvas.getAttribute("data-panel-id") || "default";
+                setFilledImages(prev => {
+                    const existing = prev.find(f => f.panelId === panelId);
+                    if (existing) {
+                        return prev.map(f => f.panelId === panelId ? { ...f, imageData } : f);
+                    } else {
+                        return [...prev, { panelId, imageData }];
+                    }
+                });
 
                 // Apply all changes at once for better performance
                 ctx.putImageData(imageData, 0, 0);
@@ -419,6 +431,17 @@ const Canvas = ({ splitMode = "none", pencilActive = false, fillActive = false, 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [shapes]);
+
+    // Clear drawings and filled images when new canvas is created
+    useEffect(() => {
+        if (selectedShape) {
+            // Don't clear drawings when placing shapes
+            return;
+        }
+        // Clear drawings and filled images on new canvas or when switching modes, but keep shapes
+        setDrawings([]);
+        setFilledImages([]);
+    }, [splitMode]);
 
     // Shape placement and interaction logic
     useEffect(() => {
@@ -623,7 +646,7 @@ const Canvas = ({ splitMode = "none", pencilActive = false, fillActive = false, 
         return () => {
             cleanupFns.forEach(fn => fn());
         };
-    }, [selectedShape, splitMode, onShapeSelect, shapes, dragging, resizing, resizeHandle, dragOffset, pencilActive, eraserActive, fillActive, textActive, uploadedImageUrl, loadedImage, borderActive, borderColor, borderSize, borderType, zoomLevel]);
+    }, [selectedShape, splitMode, onShapeSelect, shapes, drawings, dragging, resizing, resizeHandle, dragOffset, pencilActive, eraserActive, fillActive, textActive, uploadedImageUrl, loadedImage, borderActive, borderColor, borderSize, borderType, zoomLevel]);
 
     // Update border properties on selected shapes when border settings change
     useEffect(() => {
@@ -665,6 +688,38 @@ const Canvas = ({ splitMode = "none", pencilActive = false, fillActive = false, 
 
             // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw filled images for this panel
+            const panelFilled = filledImages.find(f => f.panelId === panelId);
+            if (panelFilled) {
+                ctx.putImageData(panelFilled.imageData, 0, 0);
+            }
+
+            // Draw drawings for this panel
+            const panelDrawings = drawings.find(d => d.panelId === panelId);
+            if (panelDrawings) {
+                panelDrawings.paths.forEach(path => {
+                    if (path.points.length < 2) return;
+                    ctx.beginPath();
+                    ctx.moveTo(path.points[0].x, path.points[0].y);
+                    for (let i = 1; i < path.points.length; i++) {
+                        ctx.lineTo(path.points[i].x, path.points[i].y);
+                    }
+                    if (path.tool === 'eraser') {
+                        ctx.globalCompositeOperation = "destination-out";
+                        ctx.lineWidth = path.size || 10;
+                        ctx.lineCap = "round";
+                        ctx.stroke();
+                        ctx.globalCompositeOperation = "source-over";
+                    } else {
+                        ctx.globalCompositeOperation = "source-over";
+                        ctx.lineWidth = path.size || 2;
+                        ctx.lineCap = "round";
+                        ctx.strokeStyle = path.color || "#000";
+                        ctx.stroke();
+                    }
+                });
+            }
 
             // Draw shapes for this panel only
             shapes.filter(shape => shape.panelId === panelId).forEach((shape) => {
@@ -1034,7 +1089,7 @@ const Canvas = ({ splitMode = "none", pencilActive = false, fillActive = false, 
                 }
             });
         });
-    }, [shapes, splitMode, textInput, editingShapeId]);
+    }, [shapes, drawings, filledImages, splitMode, textInput, editingShapeId]);
 
     const renderPanels = () => {
         switch (splitMode) {
