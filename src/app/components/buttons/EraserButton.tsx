@@ -1,15 +1,16 @@
 'use client';
 import { useState } from "react";
-import { Tooltip, Button, Menu, MenuItem, Divider } from "@mui/material";
+import { Tooltip, Button, Menu, MenuItem, Divider, Slider, Typography, Box } from "@mui/material";
 import { IconEraser } from "@tabler/icons-react";
 
 interface EraserButtonProps {
     active?: boolean;
     onEraserToggle?: (enabled: boolean) => void;
     onSizeChange?: (size: number) => void;
+    eraserSize?: number;
 }
 
-const EraserButton = ({ active = false, onEraserToggle, onSizeChange }: EraserButtonProps) => {
+const EraserButton = ({ active = false, onEraserToggle, onSizeChange, eraserSize = 10 }: EraserButtonProps) => {
     const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
 
     const toggleEraser = () => {
@@ -45,19 +46,25 @@ const EraserButton = ({ active = false, onEraserToggle, onSizeChange }: EraserBu
             </Tooltip>
 
             <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={closeMenu}>
-                <MenuItem disabled>Eraser Size</MenuItem>
+                <MenuItem disabled>
+                    <Typography variant="body2">Eraser Size: {eraserSize}px</Typography>
+                </MenuItem>
                 <Divider />
-                {[5, 10, 15, 20, 30, 40].map((size) => (
-                    <MenuItem
-                        key={size}
-                        onClick={() => {
-                            handleSizeChange(size);
-                            closeMenu();
-                        }}
-                    >
-                        {size}px
-                    </MenuItem>
-                ))}
+                <Box sx={{ px: 2, py: 1, width: 200 }}>
+                    <Slider
+                        value={eraserSize}
+                        onChange={(_, value) => handleSizeChange(value as number)}
+                        min={5}
+                        max={40}
+                        step={1}
+                        valueLabelDisplay="auto"
+                        marks={[
+                            { value: 5, label: '5px' },
+                            { value: 20, label: '20px' },
+                            { value: 40, label: '40px' }
+                        ]}
+                    />
+                </Box>
             </Menu>
         </>
     );
