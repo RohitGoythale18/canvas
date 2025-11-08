@@ -199,6 +199,7 @@ export default function Home() {
         onColorChange={setFillColor}
         onEraserToggle={handleEraserToggle}
         onEraserSizeChange={setEraserSize}
+        eraserSize={eraserSize}
         pencilActive={pencilActive}
         fillActive={fillActive}
         eraserActive={eraserActive}
