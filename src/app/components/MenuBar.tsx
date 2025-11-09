@@ -1,12 +1,10 @@
 'use client';
 import Image from "next/image"
-import { useState } from "react";
 
-import { Box, Button, Divider, List, Tooltip, Menu as MuiMenu, Typography } from "@mui/material";
-import MenuItem from '@mui/material/MenuItem';
+
+import { Box, Button, Divider, List, Tooltip, Typography } from "@mui/material";
 import UndoIcon from '@mui/icons-material/Undo';
 import RedoIcon from '@mui/icons-material/Redo';
-import ListItemText from '@mui/material/ListItemText';
 
 import { CanvasData } from "../../types";
 
@@ -64,7 +62,6 @@ interface MenuBarProps {
 }
 
 const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onPencilToggle, onFillToggle, onColorChange, onEraserToggle, onEraserSizeChange, eraserSize, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, onImageUsed, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange }: MenuBarProps) => {
-    const [pencilMenuAnchor, setPencilMenuAnchor] = useState<null | HTMLElement>(null);
 
     return (
         <Box>
@@ -111,18 +108,6 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
 
                         <List sx={{ p: 1, display: "flex", gap: 1 }}>
                             <PencilButton active={pencilActive} onToggle={onPencilToggle} />
-
-                            <MuiMenu anchorEl={pencilMenuAnchor} open={Boolean(pencilMenuAnchor)}>
-                                <MenuItem>
-                                    <ListItemText primary="Pencil Size" />
-                                </MenuItem>
-                                <Divider />
-                                {[1, 2, 3, 5, 8, 10].map((size) => (
-                                    <MenuItem key={size}>
-                                        {size}px
-                                    </MenuItem>
-                                ))}
-                            </MuiMenu>
 
                             <FillButton active={fillActive} onFillToggle={onFillToggle} onColorChange={onColorChange} />
 

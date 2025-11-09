@@ -9,8 +9,6 @@ const CANVAS_HEIGHT = 1080;
 const MIN_SHAPE_WIDTH = 20;
 const MIN_SHAPE_HEIGHT = 20;
 
-
-
 interface CanvasProps {
     splitMode?: string;
     pencilActive?: boolean;
@@ -297,8 +295,6 @@ const Canvas = ({ splitMode = "none", pencilActive = false, fillActive = false, 
                 let clickedOnText = false;
                 shapes.forEach((shape) => {
                     if (shape.type === "text") {
-                        const textHeight = shape.fontSize || 16;
-
                         if (mouseX >= shape.x && mouseX <= shape.x + shape.width &&
                             mouseY >= shape.y && mouseY <= shape.y + shape.height) {
                             clickedOnText = true;
@@ -434,14 +430,12 @@ const Canvas = ({ splitMode = "none", pencilActive = false, fillActive = false, 
 
     // Clear drawings and filled images when new canvas is created
     useEffect(() => {
-        if (selectedShape) {
-            // Don't clear drawings when placing shapes
-            return;
-        }
-        // Clear drawings and filled images on new canvas or when switching modes, but keep shapes
-        setDrawings([]);
-        setFilledImages([]);
-    }, [splitMode]);
+        // Use requestAnimationFrame to avoid synchronous state updates
+        requestAnimationFrame(() => {
+            setDrawings([]);
+            setFilledImages([]);
+        });
+    }, [splitMode, setDrawings, setFilledImages]);
 
     // Shape placement and interaction logic
     useEffect(() => {
@@ -646,34 +640,38 @@ const Canvas = ({ splitMode = "none", pencilActive = false, fillActive = false, 
         return () => {
             cleanupFns.forEach(fn => fn());
         };
-    }, [selectedShape, splitMode, onShapeSelect, shapes, drawings, dragging, resizing, resizeHandle, dragOffset, pencilActive, eraserActive, fillActive, textActive, uploadedImageUrl, loadedImage, borderActive, borderColor, borderSize, borderType, zoomLevel]);
+    }, [selectedShape, splitMode, onShapeSelect, shapes, drawings, dragging, resizing, resizeHandle, dragOffset, pencilActive, eraserActive, fillActive, textActive, uploadedImageUrl, loadedImage, onImageUsed, borderActive, borderColor, borderSize, borderType, zoomLevel]);
 
     // Update border properties on selected shapes when border settings change
     useEffect(() => {
-        setShapes(prev => prev.map(shape => ({
-            ...shape,
-            borderType: shape.selected && borderActive ? borderType : shape.borderType,
-            borderSize: shape.selected && borderActive ? borderSize : shape.borderSize,
-            borderColor: shape.selected && borderActive ? borderColor : shape.borderColor,
-        })));
-    }, [borderActive, borderType, borderSize, borderColor]);
+        requestAnimationFrame(() => {
+            setShapes(prev => prev.map(shape => ({
+                ...shape,
+                borderType: shape.selected && borderActive ? borderType : shape.borderType,
+                borderSize: shape.selected && borderActive ? borderSize : shape.borderSize,
+                borderColor: shape.selected && borderActive ? borderColor : shape.borderColor,
+            })));
+        });
+    }, [borderActive, borderType, borderSize, borderColor, shapes]);
 
     // Update font features on selected text shapes when font features change
     useEffect(() => {
-        setShapes(prev => prev.map(shape => {
-            if (shape.selected && shape.type === "text") {
-                return {
-                    ...shape,
-                    fontSize: currentFontFeatures.fontSize,
-                    fontFamily: currentFontFeatures.fontFamily,
-                    textColor: currentFontFeatures.textColor,
-                    fontStyles: currentFontFeatures.fontStyles,
-                    textAlignment: currentFontFeatures.alignment,
-                    listType: currentFontFeatures.listType,
-                };
-            }
-            return shape;
-        }));
+        requestAnimationFrame(() => {
+            setShapes(prev => prev.map(shape => {
+                if (shape.selected && shape.type === "text") {
+                    return {
+                        ...shape,
+                        fontSize: currentFontFeatures.fontSize,
+                        fontFamily: currentFontFeatures.fontFamily,
+                        textColor: currentFontFeatures.textColor,
+                        fontStyles: currentFontFeatures.fontStyles,
+                        textAlignment: currentFontFeatures.alignment,
+                        listType: currentFontFeatures.listType,
+                    };
+                }
+                return shape;
+            }));
+        });
     }, [currentFontFeatures]);
 
     // Shape rendering logic
@@ -788,7 +786,7 @@ const Canvas = ({ splitMode = "none", pencilActive = false, fillActive = false, 
                         Shapes.drawCubeShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Cylinder":
-                        Shapes.drawCylinderShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawCylinderShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.borderSize, shape.borderColor);
                         break;
                     case "Pyramid":
                         Shapes.drawPyramidShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
@@ -835,10 +833,6 @@ const Canvas = ({ splitMode = "none", pencilActive = false, fillActive = false, 
                         const fontSize = shape.fontSize || 16;
                         const fontWeight = shape.fontStyles?.bold ? "bold" : "normal";
                         const fontStyle = shape.fontStyles?.italic ? "italic" : "normal";
-                        const textDecoration = [
-                            shape.fontStyles?.underline ? "underline" : "",
-                            shape.fontStyles?.strikethrough ? "line-through" : ""
-                        ].filter(Boolean).join(" ") || "none";
 
                         // Build the complete font string
                         ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
@@ -916,7 +910,7 @@ const Canvas = ({ splitMode = "none", pencilActive = false, fillActive = false, 
                                 if (ctx.measureText(line).width <= maxWidth) return [line];
                                 const brokenLines: string[] = [];
                                 let current = '';
-                                for (let char of line) {
+                                for (const char of line) {
                                     if (ctx.measureText(current + char).width <= maxWidth) {
                                         current += char;
                                     } else {
@@ -1009,7 +1003,7 @@ const Canvas = ({ splitMode = "none", pencilActive = false, fillActive = false, 
                         }
 
                         // Calculate text positioning based on alignment
-                        const getTextXPosition = (line: string) => {
+                        const getTextXPosition = () => {
                             switch (textAlign) {
                                 case 'center':
                                     return shape.x + (shape.width / 2);
@@ -1026,7 +1020,7 @@ const Canvas = ({ splitMode = "none", pencilActive = false, fillActive = false, 
                         for (const line of lines) {
                             if (y > shape.y + shape.height - textHeight) break; // Stop if beyond box height
 
-                            const xPos = getTextXPosition(line);
+                            const xPos = getTextXPosition();
 
                             // Draw the text
                             ctx.fillText(line, xPos, y);

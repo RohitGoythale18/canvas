@@ -9,7 +9,7 @@ interface UploadImageButtonProps {
     onImageUsed?: () => void;
 }
 
-const UploadImageButton = ({ onImageUpload, onImageUsed }: UploadImageButtonProps) => {
+const UploadImageButton = ({ onImageUpload }: UploadImageButtonProps) => {
     const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 

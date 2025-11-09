@@ -7,7 +7,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-import { CanvasData, Shape } from "../../../types";
+import { CanvasData } from "../../../types";
 
 interface Board {
     id: string;
@@ -39,7 +39,7 @@ interface BoardButtonProps {
 
 const STORAGE_KEY = "snapcanvas-boards";
 
-const BoardButton = ({ canvasData, onLoadCanvas, getCurrentCanvasImage }: BoardButtonProps) => {
+const BoardButton = ({ onLoadCanvas, getCurrentCanvasImage }: BoardButtonProps) => {
     const [boards, setBoards] = useState<Board[]>([]);
     const [currentBoardId, setCurrentBoardId] = useState<string | null>(null);
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -53,20 +53,6 @@ const BoardButton = ({ canvasData, onLoadCanvas, getCurrentCanvasImage }: BoardB
     const showSnackbar = useCallback((message: string, severity: "success" | "error") => {
         setSnackbar({ open: true, message, severity });
     }, []);
-
-    const loadBoards = useCallback(() => {
-        try {
-            const data = localStorage.getItem(STORAGE_KEY);
-            if (data) {
-                const parsedData: BoardsData = JSON.parse(data);
-                setBoards(parsedData.boards || []);
-                setCurrentBoardId(parsedData.currentBoardId || null);
-            }
-        } catch (error) {
-            console.error("Error loading boards:", error);
-            showSnackbar("Error loading boards", "error");
-        }
-    }, [showSnackbar]);
 
     const saveBoards = useCallback((updatedBoards: Board[], updatedCurrentBoardId: string | null = null) => {
         try {
@@ -98,8 +84,28 @@ const BoardButton = ({ canvasData, onLoadCanvas, getCurrentCanvasImage }: BoardB
 
     // Load boards from localStorage on component mount
     useEffect(() => {
+        const loadBoards = () => {
+            try {
+                const data = localStorage.getItem(STORAGE_KEY);
+                if (data) {
+                    const parsedData: BoardsData = JSON.parse(data);
+                    // Use requestAnimationFrame to avoid synchronous state updates
+                    requestAnimationFrame(() => {
+                        setBoards(parsedData.boards || []);
+                        setCurrentBoardId(parsedData.currentBoardId || null);
+                    });
+                }
+            } catch (error) {
+                console.error("Error loading boards:", error);
+                // Use setTimeout to avoid synchronous state updates in effect
+                setTimeout(() => {
+                    showSnackbar("Error loading boards", "error");
+                }, 0);
+            }
+        };
+
         loadBoards();
-    }, [loadBoards]);
+    }, [showSnackbar]);
 
     const handleBoardMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
         setAnchorEl(event.currentTarget);
@@ -199,6 +205,7 @@ const BoardButton = ({ canvasData, onLoadCanvas, getCurrentCanvasImage }: BoardB
         showSnackbar("Board deleted successfully", "success");
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleLoadPin = (pin: Pin) => {
         if (onLoadCanvas) {
             // Here you would need to implement the logic to reconstruct the canvas state
