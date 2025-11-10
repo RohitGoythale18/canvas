@@ -1,17 +1,22 @@
 import { useEffect } from 'react';
+import { Shape } from '../types';
 
 interface UseFillToolProps {
     splitMode: string;
     fillActive: boolean;
     fillColor: string;
     setFilledImages: React.Dispatch<React.SetStateAction<{ panelId: string; imageData: ImageData }[]>>;
+    shapes: Shape[];
+    onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
 }
 
 export const useFillTool = ({
     splitMode,
     fillActive,
     fillColor,
-    setFilledImages
+    setFilledImages,
+    shapes,
+    onShapesChange
 }: UseFillToolProps) => {
     useEffect(() => {
         const canvases = document.querySelectorAll<HTMLCanvasElement>(".drawing-panel");
@@ -109,7 +114,31 @@ export const useFillTool = ({
                 const x = Math.floor((e.clientX - rect.left) * (canvas.width / rect.width));
                 const y = Math.floor((e.clientY - rect.top) * (canvas.height / rect.height));
                 if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) return;
-                floodFill(x, y, fillColor || "#ff0000");
+
+                const panelId = canvas.getAttribute("data-panel-id") || "default";
+                const panelShapes = shapes.filter(shape => shape.panelId === panelId);
+
+                // Check if click is inside a shape
+                let clickedShape: Shape | null = null;
+                for (const shape of panelShapes) {
+                    if (x >= shape.x && x <= shape.x + shape.width &&
+                        y >= shape.y && y <= shape.y + shape.height) {
+                        clickedShape = shape;
+                        break;
+                    }
+                }
+
+                if (clickedShape) {
+                    // Update shape's fillColor
+                    onShapesChange(prev => prev.map(shape =>
+                        shape.id === clickedShape!.id
+                            ? { ...shape, fillColor: fillColor || "#ff0000" }
+                            : shape
+                    ));
+                } else {
+                    // Perform flood fill on canvas
+                    floodFill(x, y, fillColor || "#ff0000");
+                }
             };
 
             canvas.addEventListener("click", handleFillClick);
@@ -122,5 +151,5 @@ export const useFillTool = ({
         return () => {
             cleanupFunctions.forEach(cleanup => cleanup());
         };
-    }, [splitMode, fillActive, fillColor, setFilledImages]);
+    }, [splitMode, fillActive, fillColor, setFilledImages, shapes, onShapesChange]);
 };

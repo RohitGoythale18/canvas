@@ -104,7 +104,9 @@ const Canvas = ({
         splitMode,
         fillActive,
         fillColor,
-        setFilledImages
+        setFilledImages,
+        shapes,
+        onShapesChange
     });
 
     useTextTools({
