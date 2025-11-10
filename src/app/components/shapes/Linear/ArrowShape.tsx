@@ -1,4 +1,4 @@
-export const drawArrowShape = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, fillColor: string, imageElement?: HTMLImageElement, borderType?: 'solid' | 'dashed' | 'dotted', borderSize?: number, borderColor?: string) => {
+export const drawArrowShape = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, fillColor: string, _imageElement?: HTMLImageElement, _borderType?: 'solid' | 'dashed' | 'dotted', _borderSize?: number, _borderColor?: string) => {
     ctx.save();
 
     // Set fill color

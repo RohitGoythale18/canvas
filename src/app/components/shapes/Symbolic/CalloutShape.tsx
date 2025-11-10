@@ -1,5 +1,5 @@
 export const drawCalloutShape = (
-ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, fillColor?: string, imageElement?: HTMLImageElement, borderType?: string | undefined, borderSize?: number | undefined, borderColor?: string | undefined) => {
+ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, fillColor?: string, imageElement?: HTMLImageElement, _borderType?: string | undefined, _borderSize?: number | undefined, _borderColor?: string | undefined) => {
     if (imageElement && imageElement.complete) {
         ctx.save();
         // Clip to callout shape

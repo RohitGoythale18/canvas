@@ -1,4 +1,4 @@
-export const drawBadgeShape = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, fillColor?: string, imageElement?: HTMLImageElement, borderType?: string | undefined, borderSize?: number | undefined, borderColor?: string | undefined) => {
+export const drawBadgeShape = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, fillColor?: string, imageElement?: HTMLImageElement, _borderType?: string | undefined, _borderSize?: number | undefined, _borderColor?: string | undefined) => {
     const centerX = x + width / 2;
     const centerY = y + height / 2;
     const radius = Math.min(width, height) * 0.4;
