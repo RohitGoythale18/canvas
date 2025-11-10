@@ -1,33 +1,38 @@
-export const createButtonShape = (): SVGElement => {
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("width", "100");
-    svg.setAttribute("height", "40");
-    svg.setAttribute("viewBox", "0 0 100 40");
+export const drawButtonShape = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, fillColor: string, imageElement?: HTMLImageElement, borderType?: 'solid' | 'dashed' | 'dotted', borderSize?: number, borderColor?: string) => {
+    ctx.save();
 
-    // Button background
-    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    rect.setAttribute("x", "5");
-    rect.setAttribute("y", "5");
-    rect.setAttribute("width", "90");
-    rect.setAttribute("height", "30");
-    rect.setAttribute("rx", "5");
-    rect.setAttribute("ry", "5");
-    rect.setAttribute("fill", "#007bff");
-    rect.setAttribute("stroke", "#0056b3");
-    rect.setAttribute("stroke-width", "1");
+    // Set fill color
+    ctx.fillStyle = fillColor || "#007bff";
 
-    // Button text
-    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    text.setAttribute("x", "50");
-    text.setAttribute("y", "25");
-    text.setAttribute("text-anchor", "middle");
-    text.setAttribute("fill", "#fff");
-    text.setAttribute("font-size", "12");
-    text.setAttribute("font-family", "Arial, sans-serif");
-    text.textContent = "Button";
+    // Scale factors for the SVG coordinates to fit the shape dimensions
+    const scaleX = width / 100;
+    const scaleY = height / 40;
 
-    svg.appendChild(rect);
-    svg.appendChild(text);
+    // Button background: x=5, y=5, width=90, height=30, rx=5, ry=5
+    ctx.beginPath();
+    ctx.roundRect(x + 5 * scaleX, y + 5 * scaleY, 90 * scaleX, 30 * scaleY, 5 * Math.min(scaleX, scaleY));
+    ctx.fill();
 
-    return svg;
+    // Draw border if specified
+    if (borderType && borderSize && borderColor) {
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = borderSize;
+        if (borderType === 'dashed') {
+            ctx.setLineDash([5, 5]);
+        } else if (borderType === 'dotted') {
+            ctx.setLineDash([2, 2]);
+        } else {
+            ctx.setLineDash([]);
+        }
+        ctx.stroke();
+    }
+
+    // Button text: x=50, y=25, text-anchor=middle, fill=#fff, font-size=12
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `${12 * Math.min(scaleX, scaleY)}px Arial, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Button", x + 50 * scaleX, y + 25 * scaleY);
+
+    ctx.restore();
 };

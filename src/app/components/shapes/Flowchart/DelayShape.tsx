@@ -1,36 +1,45 @@
-export const createDelayShape = (): SVGElement => {
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("width", "100");
-    svg.setAttribute("height", "60");
+export const drawDelayShape = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, fillColor: string, imageElement?: HTMLImageElement, borderType?: 'solid' | 'dashed' | 'dotted', borderSize?: number, borderColor?: string) => {
+    ctx.save();
 
-    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    rect.setAttribute("x", "10");
-    rect.setAttribute("y", "20");
-    rect.setAttribute("width", "60");
-    rect.setAttribute("height", "40");
-    rect.setAttribute("fill", "#FFFFFF");
-    rect.setAttribute("stroke", "#000000");
-    rect.setAttribute("stroke-width", "2");
+    // Set fill color
+    ctx.fillStyle = fillColor || "#FFFFFF";
 
-    const line1 = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    line1.setAttribute("x1", "70");
-    line1.setAttribute("y1", "20");
-    line1.setAttribute("x2", "80");
-    line1.setAttribute("y2", "10");
-    line1.setAttribute("stroke", "#000000");
-    line1.setAttribute("stroke-width", "2");
+    // Scale factors for the SVG coordinates to fit the shape dimensions
+    const scaleX = width / 100;
+    const scaleY = height / 60;
 
-    const line2 = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    line2.setAttribute("x1", "80");
-    line2.setAttribute("y1", "10");
-    line2.setAttribute("x2", "90");
-    line2.setAttribute("y2", "20");
-    line2.setAttribute("stroke", "#000000");
-    line2.setAttribute("stroke-width", "2");
+    // Rectangle: x=10, y=20, width=60, height=40
+    ctx.beginPath();
+    ctx.rect(x + 10 * scaleX, y + 20 * scaleY, 60 * scaleX, 40 * scaleY);
+    ctx.fill();
 
-    svg.appendChild(rect);
-    svg.appendChild(line1);
-    svg.appendChild(line2);
+    // Line 1: x1=70, y1=20, x2=80, y2=10
+    ctx.beginPath();
+    ctx.moveTo(x + 70 * scaleX, y + 20 * scaleY);
+    ctx.lineTo(x + 80 * scaleX, y + 10 * scaleY);
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 2 * Math.min(scaleX, scaleY);
+    ctx.stroke();
 
-    return svg;
+    // Line 2: x1=80, y1=10, x2=90, y2=20
+    ctx.beginPath();
+    ctx.moveTo(x + 80 * scaleX, y + 10 * scaleY);
+    ctx.lineTo(x + 90 * scaleX, y + 20 * scaleY);
+    ctx.stroke();
+
+    // Draw border if specified
+    if (borderType && borderSize && borderColor) {
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = borderSize;
+        if (borderType === 'dashed') {
+            ctx.setLineDash([5, 5]);
+        } else if (borderType === 'dotted') {
+            ctx.setLineDash([2, 2]);
+        } else {
+            ctx.setLineDash([]);
+        }
+        ctx.strokeRect(x + 10 * scaleX, y + 20 * scaleY, 60 * scaleX, 40 * scaleY);
+    }
+
+    ctx.restore();
 };

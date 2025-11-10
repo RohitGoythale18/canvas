@@ -1,19 +1,24 @@
-export const createDividerShape = (): SVGElement => {
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("width", "100");
-    svg.setAttribute("height", "10");
-    svg.setAttribute("viewBox", "0 0 100 10");
+export const drawDividerShape = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, fillColor: string, imageElement?: HTMLImageElement, borderType?: 'solid' | 'dashed' | 'dotted', borderSize?: number, borderColor?: string) => {
+    ctx.save();
 
-    // Divider line
-    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    line.setAttribute("x1", "0");
-    line.setAttribute("y1", "5");
-    line.setAttribute("x2", "100");
-    line.setAttribute("y2", "5");
-    line.setAttribute("stroke", "#ccc");
-    line.setAttribute("stroke-width", "2");
+    // Scale factors for the SVG coordinates to fit the shape dimensions
+    const scaleX = width / 100;
+    const scaleY = height / 10;
 
-    svg.appendChild(line);
+    // Divider line: x1=0, y1=5, x2=100, y2=5, stroke=#ccc, stroke-width=2
+    ctx.strokeStyle = borderColor || "#cccccc";
+    ctx.lineWidth = borderSize || 2;
+    if (borderType === 'dashed') {
+        ctx.setLineDash([5, 5]);
+    } else if (borderType === 'dotted') {
+        ctx.setLineDash([2, 2]);
+    } else {
+        ctx.setLineDash([]);
+    }
+    ctx.beginPath();
+    ctx.moveTo(x + 0 * scaleX, y + 5 * scaleY);
+    ctx.lineTo(x + 100 * scaleX, y + 5 * scaleY);
+    ctx.stroke();
 
-    return svg;
+    ctx.restore();
 };

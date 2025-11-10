@@ -1,45 +1,43 @@
-export const createCardShape = (): SVGElement => {
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("width", "100");
-    svg.setAttribute("height", "60");
-    svg.setAttribute("viewBox", "0 0 100 60");
+export const drawCardShape = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, fillColor: string, imageElement?: HTMLImageElement, borderType?: 'solid' | 'dashed' | 'dotted', borderSize?: number, borderColor?: string) => {
+    ctx.save();
 
-    // Card background
-    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    rect.setAttribute("x", "5");
-    rect.setAttribute("y", "5");
-    rect.setAttribute("width", "90");
-    rect.setAttribute("height", "50");
-    rect.setAttribute("rx", "5");
-    rect.setAttribute("ry", "5");
-    rect.setAttribute("fill", "#fff");
-    rect.setAttribute("stroke", "#ccc");
-    rect.setAttribute("stroke-width", "1");
+    // Set fill color
+    ctx.fillStyle = fillColor || "#ffffff";
 
-    // Card title
-    const title = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    title.setAttribute("x", "50");
-    title.setAttribute("y", "20");
-    title.setAttribute("text-anchor", "middle");
-    title.setAttribute("fill", "#333");
-    title.setAttribute("font-size", "10");
-    title.setAttribute("font-family", "Arial, sans-serif");
-    title.setAttribute("font-weight", "bold");
-    title.textContent = "Card Title";
+    // Scale factors for the SVG coordinates to fit the shape dimensions
+    const scaleX = width / 100;
+    const scaleY = height / 60;
 
-    // Card content
-    const content = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    content.setAttribute("x", "50");
-    content.setAttribute("y", "35");
-    content.setAttribute("text-anchor", "middle");
-    content.setAttribute("fill", "#666");
-    content.setAttribute("font-size", "8");
-    content.setAttribute("font-family", "Arial, sans-serif");
-    content.textContent = "Card content";
+    // Card background: x=5, y=5, width=90, height=50, rx=5, ry=5
+    ctx.beginPath();
+    ctx.roundRect(x + 5 * scaleX, y + 5 * scaleY, 90 * scaleX, 50 * scaleY, 5 * Math.min(scaleX, scaleY));
+    ctx.fill();
 
-    svg.appendChild(rect);
-    svg.appendChild(title);
-    svg.appendChild(content);
+    // Draw border if specified
+    if (borderType && borderSize && borderColor) {
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = borderSize;
+        if (borderType === 'dashed') {
+            ctx.setLineDash([5, 5]);
+        } else if (borderType === 'dotted') {
+            ctx.setLineDash([2, 2]);
+        } else {
+            ctx.setLineDash([]);
+        }
+        ctx.stroke();
+    }
 
-    return svg;
+    // Card title: x=50, y=20, text-anchor=middle, fill=#333, font-size=10, font-weight=bold
+    ctx.fillStyle = "#333333";
+    ctx.font = `bold ${10 * Math.min(scaleX, scaleY)}px Arial, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Card Title", x + 50 * scaleX, y + 20 * scaleY);
+
+    // Card content: x=50, y=35, text-anchor=middle, fill=#666, font-size=8
+    ctx.fillStyle = "#666666";
+    ctx.font = `${8 * Math.min(scaleX, scaleY)}px Arial, sans-serif`;
+    ctx.fillText("Card content", x + 50 * scaleX, y + 35 * scaleY);
+
+    ctx.restore();
 };

@@ -1,49 +1,48 @@
-export const createSplitArrowShape = (): SVGElement => {
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("width", "100");
-    svg.setAttribute("height", "100");
-    svg.setAttribute("viewBox", "0 0 100 100");
+export const drawSplitArrowShape = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, fillColor: string, imageElement?: HTMLImageElement, borderType?: 'solid' | 'dashed' | 'dotted', borderSize?: number, borderColor?: string) => {
+    ctx.save();
 
-    // Main shaft
-    const mainLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    mainLine.setAttribute("x1", "10");
-    mainLine.setAttribute("y1", "50");
-    mainLine.setAttribute("x2", "50");
-    mainLine.setAttribute("y2", "50");
-    mainLine.setAttribute("stroke", "#000");
-    mainLine.setAttribute("stroke-width", "4");
+    // Set fill color
+    ctx.fillStyle = fillColor || "#000000";
 
-    // Split lines
-    const splitLine1 = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    splitLine1.setAttribute("x1", "50");
-    splitLine1.setAttribute("y1", "50");
-    splitLine1.setAttribute("x2", "80");
-    splitLine1.setAttribute("y2", "30");
-    splitLine1.setAttribute("stroke", "#000");
-    splitLine1.setAttribute("stroke-width", "4");
+    // Scale factors for the SVG coordinates to fit the shape dimensions
+    const scaleX = width / 100;
+    const scaleY = height / 100;
 
-    const splitLine2 = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    splitLine2.setAttribute("x1", "50");
-    splitLine2.setAttribute("y1", "50");
-    splitLine2.setAttribute("x2", "80");
-    splitLine2.setAttribute("y2", "70");
-    splitLine2.setAttribute("stroke", "#000");
-    splitLine2.setAttribute("stroke-width", "4");
+    // Main shaft: x1=10, y1=50, x2=50, y2=50
+    ctx.beginPath();
+    ctx.moveTo(x + 10 * scaleX, y + 50 * scaleY);
+    ctx.lineTo(x + 50 * scaleX, y + 50 * scaleY);
+    ctx.strokeStyle = fillColor || "#000000";
+    ctx.lineWidth = 4 * Math.min(scaleX, scaleY);
+    ctx.stroke();
 
-    // Arrowheads
-    const arrowhead1 = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-    arrowhead1.setAttribute("points", "80,30 70,25 70,35");
-    arrowhead1.setAttribute("fill", "#000");
+    // Split line 1: x1=50, y1=50, x2=80, y2=30
+    ctx.beginPath();
+    ctx.moveTo(x + 50 * scaleX, y + 50 * scaleY);
+    ctx.lineTo(x + 80 * scaleX, y + 30 * scaleY);
+    ctx.stroke();
 
-    const arrowhead2 = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-    arrowhead2.setAttribute("points", "80,70 70,65 70,75");
-    arrowhead2.setAttribute("fill", "#000");
+    // Split line 2: x1=50, y1=50, x2=80, y2=70
+    ctx.beginPath();
+    ctx.moveTo(x + 50 * scaleX, y + 50 * scaleY);
+    ctx.lineTo(x + 80 * scaleX, y + 70 * scaleY);
+    ctx.stroke();
 
-    svg.appendChild(mainLine);
-    svg.appendChild(splitLine1);
-    svg.appendChild(splitLine2);
-    svg.appendChild(arrowhead1);
-    svg.appendChild(arrowhead2);
+    // Arrowhead 1: points="80,30 70,25 70,35"
+    ctx.beginPath();
+    ctx.moveTo(x + 80 * scaleX, y + 30 * scaleY);
+    ctx.lineTo(x + 70 * scaleX, y + 25 * scaleY);
+    ctx.lineTo(x + 70 * scaleX, y + 35 * scaleY);
+    ctx.closePath();
+    ctx.fill();
 
-    return svg;
+    // Arrowhead 2: points="80,70 70,65 70,75"
+    ctx.beginPath();
+    ctx.moveTo(x + 80 * scaleX, y + 70 * scaleY);
+    ctx.lineTo(x + 70 * scaleX, y + 65 * scaleY);
+    ctx.lineTo(x + 70 * scaleX, y + 75 * scaleY);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
 };

@@ -723,109 +723,184 @@ const Canvas = ({ splitMode = "none", pencilActive = false, fillActive = false, 
             shapes.filter(shape => shape.panelId === panelId).forEach((shape) => {
                 switch (shape.type) {
                     case "Rectangle":
-                        Shapes.drawRectangleShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawRectangleShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Square":
-                        Shapes.drawSquareShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawSquareShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Circle":
-                        Shapes.drawCircleShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawCircleShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Triangle":
-                        Shapes.drawTriangleShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawTriangleShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Line":
                         Shapes.drawLineShape(ctx, shape.x, shape.y, shape.width, shape.height, undefined, undefined, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Diamond":
-                        Shapes.drawDiamondShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawDiamondShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Star":
-                        Shapes.drawStarShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawStarShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Ellipse / Oval":
-                        Shapes.drawEllipseShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawEllipseShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Diamond / Rhombus":
-                        Shapes.drawDiamondShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawDiamondShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Hexagon":
-                        Shapes.drawHexagonShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawHexagonShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Octagon":
-                        Shapes.drawOctagonShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawOctagonShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Parallelogram":
-                        Shapes.drawParallelogramShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawParallelogramShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Pentagon":
-                        Shapes.drawPentagonShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawPentagonShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Polygon":
-                        Shapes.drawPolygonShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawPolygonShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Right Triangle":
-                        Shapes.drawRightTriangleShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawRightTriangleShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Trapezoid":
-                        Shapes.drawTrapezoidShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawTrapezoidShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Arc":
                         Shapes.drawArcShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Chord":
-                        Shapes.drawChordShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawChordShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Cone":
-                        Shapes.drawConeShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor);
+                        Shapes.drawConeShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa");
                         break;
                     case "Crescent":
-                        Shapes.drawCrescentShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor);
+                        Shapes.drawCrescentShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa");
                         break;
                     case "Cube (3D)":
-                        Shapes.drawCubeShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawCubeShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Cylinder":
-                        Shapes.drawCylinderShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.borderSize, shape.borderColor);
+                        Shapes.drawCylinderShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.borderSize, shape.borderColor);
                         break;
                     case "Pyramid":
-                        Shapes.drawPyramidShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawPyramidShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Ring / Donut":
-                        Shapes.drawRingShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawRingShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Sector":
-                        Shapes.drawSectorShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawSectorShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Sphere":
-                        Shapes.drawSphereShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawSphereShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Star (5-point)":
-                        Shapes.drawStar5Shape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawStar5Shape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Star (6-point)":
-                        Shapes.drawStar6Shape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawStar6Shape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Burst / Explosion":
-                        Shapes.drawBurstShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawBurstShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Heart":
-                        Shapes.drawHeartShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawHeartShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Cloud":
-                        Shapes.drawCloudShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawCloudShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Banner":
-                        Shapes.drawBannerShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawBannerShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Badge":
-                        Shapes.drawBadgeShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawBadgeShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Speech Bubble":
-                        Shapes.drawSpeechBubbleShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawSpeechBubbleShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "Callout":
-                        Shapes.drawCalloutShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor, shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        Shapes.drawCalloutShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        break;
+                    case "Arrow":
+                        Shapes.drawArrowShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa");
+                        break;
+                    case "Bent Arrow":
+                        Shapes.drawBentArrowShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa");
+                        break;
+                    case "Circular Arrow":
+                        Shapes.drawCircularArrowShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa");
+                        break;
+                    case "Curved Arrow":
+                        Shapes.drawCurvedArrowShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa");
+                        break;
+                    case "Dashed Connector":
+                        Shapes.drawDashedConnectorShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa");
+                        break;
+                    case "Double Arrow":
+                        Shapes.drawDoubleArrowShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa");
+                        break;
+                    case "Split Arrow":
+                        Shapes.drawSplitArrowShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa");
+                        break;
+                    case "Terminator (Start/End)":
+                        Shapes.drawTerminatorShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        break;
+                    case "Process":
+                        Shapes.drawProcessShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        break;
+                    case "Decision":
+                        Shapes.drawDecisionShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        break;
+                    case "Input / Output":
+                        Shapes.drawInputOutputShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        break;
+                    case "Preparation":
+                        Shapes.drawPreparationShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        break;
+                    case "Connector":
+                        Shapes.drawConnectorShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        break;
+                    case "Document":
+                        Shapes.drawDocumentShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        break;
+                    case "Delay":
+                        Shapes.drawDelayShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        break;
+                    case "Manual Input":
+                        Shapes.drawManualInputShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        break;
+                    case "Database":
+                        Shapes.drawDatabaseShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        break;
+                    case "Frame":
+                        Shapes.drawFrameShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        break;
+                    case "Divider Line":
+                        Shapes.drawDividerShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        break;
+                    case "Checkbox":
+                        Shapes.drawCheckboxShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa");
+                        break;
+                    case "Radio Button":
+                        Shapes.drawRadioButtonShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa");
+                        break;
+                    case "Button Shape":
+                        Shapes.drawButtonShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa");
+                        break;
+                    case "Tab Shape":
+                        Shapes.drawTabShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa");
+                        break;
+                    case "Card":
+                        Shapes.drawCardShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
+                        break;
+                    case "Timeline Node":
+                        Shapes.drawTimelineNodeShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
                         break;
                     case "text":
                         // Apply font styles with all font features

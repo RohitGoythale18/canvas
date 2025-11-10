@@ -1,31 +1,36 @@
-export const createDoubleArrowShape = (): SVGElement => {
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("width", "100");
-    svg.setAttribute("height", "100");
-    svg.setAttribute("viewBox", "0 0 100 100");
+export const drawDoubleArrowShape = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, fillColor: string, imageElement?: HTMLImageElement, borderType?: 'solid' | 'dashed' | 'dotted', borderSize?: number, borderColor?: string) => {
+    ctx.save();
 
-    // Arrow shaft
-    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    line.setAttribute("x1", "10");
-    line.setAttribute("y1", "50");
-    line.setAttribute("x2", "90");
-    line.setAttribute("y2", "50");
-    line.setAttribute("stroke", "#000");
-    line.setAttribute("stroke-width", "4");
+    // Set fill color
+    ctx.fillStyle = fillColor || "#000000";
 
-    // Left arrowhead
-    const leftArrowhead = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-    leftArrowhead.setAttribute("points", "10,50 20,40 20,60");
-    leftArrowhead.setAttribute("fill", "#000");
+    // Scale factors for the SVG coordinates to fit the shape dimensions
+    const scaleX = width / 100;
+    const scaleY = height / 100;
 
-    // Right arrowhead
-    const rightArrowhead = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-    rightArrowhead.setAttribute("points", "90,50 80,40 80,60");
-    rightArrowhead.setAttribute("fill", "#000");
+    // Arrow shaft: x1=10, y1=50, x2=90, y2=50
+    ctx.beginPath();
+    ctx.moveTo(x + 10 * scaleX, y + 50 * scaleY);
+    ctx.lineTo(x + 90 * scaleX, y + 50 * scaleY);
+    ctx.strokeStyle = fillColor || "#000000";
+    ctx.lineWidth = 4 * Math.min(scaleX, scaleY);
+    ctx.stroke();
 
-    svg.appendChild(line);
-    svg.appendChild(leftArrowhead);
-    svg.appendChild(rightArrowhead);
+    // Left arrowhead: points="10,50 20,40 20,60"
+    ctx.beginPath();
+    ctx.moveTo(x + 10 * scaleX, y + 50 * scaleY);
+    ctx.lineTo(x + 20 * scaleX, y + 40 * scaleY);
+    ctx.lineTo(x + 20 * scaleX, y + 60 * scaleY);
+    ctx.closePath();
+    ctx.fill();
 
-    return svg;
+    // Right arrowhead: points="90,50 80,40 80,60"
+    ctx.beginPath();
+    ctx.moveTo(x + 90 * scaleX, y + 50 * scaleY);
+    ctx.lineTo(x + 80 * scaleX, y + 40 * scaleY);
+    ctx.lineTo(x + 80 * scaleX, y + 60 * scaleY);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
 };

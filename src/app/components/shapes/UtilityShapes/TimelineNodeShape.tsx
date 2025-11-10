@@ -1,40 +1,45 @@
-export const createTimelineNodeShape = (): SVGElement => {
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("width", "100");
-    svg.setAttribute("height", "50");
-    svg.setAttribute("viewBox", "0 0 100 50");
+export const drawTimelineNodeShape = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, fillColor: string, imageElement?: HTMLImageElement, borderType?: 'solid' | 'dashed' | 'dotted', borderSize?: number, borderColor?: string) => {
+    ctx.save();
 
-    // Timeline line
-    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    line.setAttribute("x1", "0");
-    line.setAttribute("y1", "25");
-    line.setAttribute("x2", "100");
-    line.setAttribute("y2", "25");
-    line.setAttribute("stroke", "#ccc");
-    line.setAttribute("stroke-width", "2");
+    // Scale factors for the SVG coordinates to fit the shape dimensions
+    const scaleX = width / 100;
+    const scaleY = height / 50;
 
-    // Node circle
-    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    circle.setAttribute("cx", "50");
-    circle.setAttribute("cy", "25");
-    circle.setAttribute("r", "10");
-    circle.setAttribute("fill", "#007bff");
-    circle.setAttribute("stroke", "#0056b3");
-    circle.setAttribute("stroke-width", "2");
+    // Timeline line: x1=0, y1=25, x2=100, y2=25, stroke=#ccc, stroke-width=2
+    ctx.strokeStyle = "#cccccc";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(x + 0 * scaleX, y + 25 * scaleY);
+    ctx.lineTo(x + 100 * scaleX, y + 25 * scaleY);
+    ctx.stroke();
 
-    // Node text
-    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    text.setAttribute("x", "50");
-    text.setAttribute("y", "30");
-    text.setAttribute("text-anchor", "middle");
-    text.setAttribute("fill", "#fff");
-    text.setAttribute("font-size", "10");
-    text.setAttribute("font-family", "Arial, sans-serif");
-    text.textContent = "1";
+    // Node circle: cx=50, cy=25, r=10, fill=#007bff, stroke=#0056b3, stroke-width=2
+    ctx.fillStyle = fillColor || "#007bff";
+    ctx.beginPath();
+    ctx.arc(x + 50 * scaleX, y + 25 * scaleY, 10 * Math.min(scaleX, scaleY), 0, 2 * Math.PI);
+    ctx.fill();
 
-    svg.appendChild(line);
-    svg.appendChild(circle);
-    svg.appendChild(text);
+    // Draw border if specified
+    if (borderType && borderSize && borderColor) {
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = borderSize;
+        if (borderType === 'dashed') {
+            ctx.setLineDash([5, 5]);
+        } else if (borderType === 'dotted') {
+            ctx.setLineDash([2, 2]);
+        } else {
+            ctx.setLineDash([]);
+        }
+        ctx.stroke();
+    }
 
-    return svg;
+    // Node text: x=50, y=30, text-anchor=middle, fill=#fff, font-size=10
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `${10 * Math.min(scaleX, scaleY)}px Arial, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("1", x + 50 * scaleX, y + 30 * scaleY);
+
+    ctx.restore();
 };

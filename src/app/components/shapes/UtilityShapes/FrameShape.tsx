@@ -1,31 +1,25 @@
-export const createFrameShape = (): SVGElement => {
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("width", "100");
-    svg.setAttribute("height", "60");
-    svg.setAttribute("viewBox", "0 0 100 60");
+export const drawFrameShape = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, fillColor: string, imageElement?: HTMLImageElement, borderType?: 'solid' | 'dashed' | 'dotted', borderSize?: number, borderColor?: string) => {
+    ctx.save();
 
-    // Outer frame
-    const outerRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    outerRect.setAttribute("x", "0");
-    outerRect.setAttribute("y", "0");
-    outerRect.setAttribute("width", "100");
-    outerRect.setAttribute("height", "60");
-    outerRect.setAttribute("fill", "none");
-    outerRect.setAttribute("stroke", "#000");
-    outerRect.setAttribute("stroke-width", "3");
+    // Scale factors for the SVG coordinates to fit the shape dimensions
+    const scaleX = width / 100;
+    const scaleY = height / 60;
 
-    // Inner frame
-    const innerRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    innerRect.setAttribute("x", "10");
-    innerRect.setAttribute("y", "10");
-    innerRect.setAttribute("width", "80");
-    innerRect.setAttribute("height", "40");
-    innerRect.setAttribute("fill", "none");
-    innerRect.setAttribute("stroke", "#000");
-    innerRect.setAttribute("stroke-width", "1");
+    // Outer frame: x=0, y=0, width=100, height=60, fill=none, stroke=#000, stroke-width=3
+    ctx.strokeStyle = borderColor || "#000000";
+    ctx.lineWidth = borderSize || 3;
+    if (borderType === 'dashed') {
+        ctx.setLineDash([5, 5]);
+    } else if (borderType === 'dotted') {
+        ctx.setLineDash([2, 2]);
+    } else {
+        ctx.setLineDash([]);
+    }
+    ctx.strokeRect(x + 0 * scaleX, y + 0 * scaleY, 100 * scaleX, 60 * scaleY);
 
-    svg.appendChild(outerRect);
-    svg.appendChild(innerRect);
+    // Inner frame: x=10, y=10, width=80, height=40, fill=none, stroke=#000, stroke-width=1
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 10 * scaleX, y + 10 * scaleY, 80 * scaleX, 40 * scaleY);
 
-    return svg;
+    ctx.restore();
 };
