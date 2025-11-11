@@ -99,5 +99,5 @@ export const useDrawingTools = ({
         return () => {
             cleanupFunctions.forEach(cleanup => cleanup());
         };
-    }, [pencilActive, eraserActive, eraserSize, splitMode, setDrawings, onSaveState]);
+    }, [pencilActive, eraserActive, eraserSize, splitMode, setDrawings]); // onSaveState is not included as it's only called in event handlers, not during effect setup
 };
