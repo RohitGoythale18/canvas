@@ -30,6 +30,7 @@ interface UseShapeInteractionProps {
     resizing: boolean;
     resizeHandle: string | null;
     dragOffset: { x: number; y: number };
+    onSaveState?: () => void;
 }
 
 export const useShapeInteraction = ({
@@ -57,7 +58,8 @@ export const useShapeInteraction = ({
     dragging,
     resizing,
     resizeHandle,
-    dragOffset
+    dragOffset,
+    onSaveState
 }: UseShapeInteractionProps) => {
     useEffect(() => {
         const canvases = document.querySelectorAll<HTMLCanvasElement>(".drawing-panel");
@@ -243,6 +245,10 @@ export const useShapeInteraction = ({
                 setDragging(false);
                 setResizing(false);
                 setResizeHandle(null);
+                // Save state after shape interaction ends
+                if (onSaveState) {
+                    onSaveState();
+                }
             };
 
             canvas.addEventListener("mousedown", handleMouseDown);
@@ -264,6 +270,6 @@ export const useShapeInteraction = ({
     }, [
         selectedShape, splitMode, onShapeSelect, shapes, pencilActive, eraserActive, fillActive, textActive,
         uploadedImageUrl, loadedImage, onImageUsed, borderActive, borderColor, borderSize, borderType, zoomLevel,
-        onShapesChange, setDragging, setResizing, setDragOffset, setResizeHandle, dragging, resizing, resizeHandle, dragOffset
+        onShapesChange, setDragging, setResizing, setDragOffset, setResizeHandle, dragging, resizing, resizeHandle, dragOffset, onSaveState
     ]);
 };

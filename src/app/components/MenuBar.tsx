@@ -59,9 +59,11 @@ interface MenuBarProps {
     onTextAlignmentChange?: (alignment: 'left' | 'center' | 'right' | 'justify') => void;
     onListTypeChange?: (listType: 'bullet' | 'number' | 'none') => void;
     onTextColorChange?: (color: string | { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }) => void;
+    onUndo?: () => void;
+    onRedo?: () => void;
 }
 
-const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onPencilToggle, onFillToggle, onColorChange, onEraserToggle, onEraserSizeChange, eraserSize, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, onImageUsed, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange }: MenuBarProps) => {
+const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onPencilToggle, onFillToggle, onColorChange, onEraserToggle, onEraserSizeChange, eraserSize, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, onImageUsed, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange, onUndo, onRedo }: MenuBarProps) => {
 
     return (
         <Box>
@@ -92,13 +94,13 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
                     <Box sx={{ display: 'flex' }}>
                         <List sx={{ display: "flex", gap: 1, px: 1 }}>
                             <Tooltip title="Undo" arrow>
-                                <Button variant="outlined" size="small" color="primary">
+                                <Button variant="outlined" size="small" color="primary" onClick={onUndo}>
                                     <UndoIcon />
                                 </Button>
                             </Tooltip>
 
                             <Tooltip title="Redo" arrow>
-                                <Button variant="outlined" size="small" color="primary">
+                                <Button variant="outlined" size="small" color="primary" onClick={onRedo}>
                                     <RedoIcon />
                                 </Button>
                             </Tooltip>

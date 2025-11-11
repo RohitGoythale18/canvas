@@ -46,6 +46,11 @@ interface CanvasProps {
     };
     shapes: Shape[];
     onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
+    drawings: { panelId: string, paths: Array<{ points: { x: number, y: number }[], tool: 'pencil' | 'eraser', color?: string, size?: number }> }[];
+    onDrawingsChange: React.Dispatch<React.SetStateAction<{ panelId: string, paths: Array<{ points: { x: number, y: number }[], tool: 'pencil' | 'eraser', color?: string, size?: number }> }[]>>;
+    filledImages: { panelId: string, imageData: ImageData }[];
+    onFilledImagesChange: React.Dispatch<React.SetStateAction<{ panelId: string, imageData: ImageData }[]>>;
+    onSaveState: () => void;
 }
 
 const Canvas = ({
@@ -76,11 +81,14 @@ const Canvas = ({
         textColor: "#000000"
     },
     shapes,
-    onShapesChange
+    onShapesChange,
+    drawings,
+    onDrawingsChange,
+    filledImages,
+    onFilledImagesChange,
+    onSaveState
 }: CanvasProps) => {
-    // State declarations
-    const [drawings, setDrawings] = useState<{ panelId: string, paths: Array<{ points: { x: number, y: number }[], tool: 'pencil' | 'eraser', color?: string, size?: number }> }[]>([]);
-    const [filledImages, setFilledImages] = useState<{ panelId: string, imageData: ImageData }[]>([]);
+    // State declarations - now using props
     const [dragging, setDragging] = useState(false);
     const [resizing, setResizing] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -97,16 +105,18 @@ const Canvas = ({
         eraserActive,
         eraserSize,
         splitMode,
-        setDrawings
+        setDrawings: onDrawingsChange,
+        onSaveState
     });
 
     useFillTool({
         splitMode,
         fillActive,
         fillColor,
-        setFilledImages,
+        setFilledImages: onFilledImagesChange,
         shapes,
-        onShapesChange
+        onShapesChange,
+        onSaveState
     });
 
     useTextTools({
@@ -145,7 +155,8 @@ const Canvas = ({
         dragging,
         resizing,
         resizeHandle,
-        dragOffset
+        dragOffset,
+        onSaveState
     });
 
     useShapeProperties({
@@ -160,13 +171,14 @@ const Canvas = ({
 
     useKeyboardShortcuts({
         shapes,
-        onShapesChange
+        onShapesChange,
+        onSaveState
     });
 
     useCanvasCleanup({
         splitMode,
-        setDrawings,
-        setFilledImages
+        setDrawings: onDrawingsChange,
+        setFilledImages: onFilledImagesChange
     });
 
     useShapeRenderer({

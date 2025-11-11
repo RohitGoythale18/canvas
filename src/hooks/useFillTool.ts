@@ -8,6 +8,7 @@ interface UseFillToolProps {
     setFilledImages: React.Dispatch<React.SetStateAction<{ panelId: string; imageData: ImageData }[]>>;
     shapes: Shape[];
     onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
+    onSaveState?: () => void;
 }
 
 export const useFillTool = ({
@@ -16,7 +17,8 @@ export const useFillTool = ({
     fillColor,
     setFilledImages,
     shapes,
-    onShapesChange
+    onShapesChange,
+    onSaveState
 }: UseFillToolProps) => {
     useEffect(() => {
         const canvases = document.querySelectorAll<HTMLCanvasElement>(".drawing-panel");
@@ -135,9 +137,17 @@ export const useFillTool = ({
                             ? { ...shape, fillColor: fillColor || "#ff0000" }
                             : shape
                     ));
+                    // Save state after filling shape
+                    if (onSaveState) {
+                        onSaveState();
+                    }
                 } else {
                     // Perform flood fill on canvas
                     floodFill(x, y, fillColor || "#ff0000");
+                    // Save state after flood fill
+                    if (onSaveState) {
+                        onSaveState();
+                    }
                 }
             };
 
@@ -151,5 +161,5 @@ export const useFillTool = ({
         return () => {
             cleanupFunctions.forEach(cleanup => cleanup());
         };
-    }, [splitMode, fillActive, fillColor, setFilledImages, shapes, onShapesChange]);
+    }, [splitMode, fillActive, fillColor, setFilledImages, shapes, onShapesChange, onSaveState]);
 };

@@ -13,6 +13,7 @@ interface UseDrawingToolsProps {
     eraserSize: number;
     splitMode: string;
     setDrawings: React.Dispatch<React.SetStateAction<{ panelId: string; paths: DrawingPath[] }[]>>;
+    onSaveState?: () => void;
 }
 
 export const useDrawingTools = ({
@@ -20,7 +21,8 @@ export const useDrawingTools = ({
     eraserActive,
     eraserSize,
     splitMode,
-    setDrawings
+    setDrawings,
+    onSaveState
 }: UseDrawingToolsProps) => {
     useEffect(() => {
         const canvases = document.querySelectorAll<HTMLCanvasElement>(".drawing-panel");
@@ -74,6 +76,10 @@ export const useDrawingTools = ({
             const endDraw = () => {
                 if (drawing) {
                     drawing = false;
+                    // Save state after drawing ends
+                    if (onSaveState) {
+                        onSaveState();
+                    }
                 }
             };
 
@@ -93,5 +99,5 @@ export const useDrawingTools = ({
         return () => {
             cleanupFunctions.forEach(cleanup => cleanup());
         };
-    }, [pencilActive, eraserActive, eraserSize, splitMode, setDrawings]);
+    }, [pencilActive, eraserActive, eraserSize, splitMode, setDrawings, onSaveState]);
 };

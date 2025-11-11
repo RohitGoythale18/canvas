@@ -1,5 +1,5 @@
 'use client';
-import { useState } from "react";
+import { useState, useCallback } from "react";
 
 import Menu from "./components/MenuBar";
 import Canvas from "./components/Canvas";
@@ -43,11 +43,79 @@ export default function Home() {
   // Add shapes state here
   const [shapes, setShapes] = useState<Shape[]>([]);
 
+  // Add drawings and filledImages state here for centralized management
+  const [drawings, setDrawings] = useState<{ panelId: string, paths: Array<{ points: { x: number, y: number }[], tool: 'pencil' | 'eraser', color?: string, size?: number }> }[]>([]);
+  const [filledImages, setFilledImages] = useState<{ panelId: string, imageData: ImageData }[]>([]);
+
+  // History state for undo/redo
+  const [history, setHistory] = useState<Array<{
+    shapes: Shape[];
+    drawings: typeof drawings;
+    filledImages: typeof filledImages;
+    backgroundColor: typeof canvasBackground;
+    splitMode: string;
+  }>>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+
+  // Function to save current state to history
+  const saveState = useCallback(() => {
+    const currentState = {
+      shapes,
+      drawings,
+      filledImages,
+      backgroundColor: canvasBackground,
+      splitMode
+    };
+
+    setHistory(prev => {
+      const newHistory = prev.slice(0, historyIndex + 1);
+      newHistory.push(currentState);
+      // Limit history to 50 snapshots
+      if (newHistory.length > 50) {
+        newHistory.shift();
+        setHistoryIndex(49);
+      } else {
+        setHistoryIndex(newHistory.length - 1);
+      }
+      return newHistory;
+    });
+  }, [shapes, drawings, filledImages, canvasBackground, splitMode, historyIndex]);
+
+  // Undo function
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      const prevState = history[historyIndex - 1];
+      setShapes(prevState.shapes);
+      setDrawings(prevState.drawings);
+      setFilledImages(prevState.filledImages);
+      setCanvasBackground(prevState.backgroundColor);
+      setSplitMode(prevState.splitMode);
+      setHistoryIndex(historyIndex - 1);
+    }
+  };
+
+  // Redo function
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1) {
+      const nextState = history[historyIndex + 1];
+      setShapes(nextState.shapes);
+      setDrawings(nextState.drawings);
+      setFilledImages(nextState.filledImages);
+      setCanvasBackground(nextState.backgroundColor);
+      setSplitMode(nextState.splitMode);
+      setHistoryIndex(historyIndex + 1);
+    }
+  };
+
   const handleNewCanvas = () => {
     setSplitMode("none");
     setCanvasBackground({ default: "#ffffff" });
     setSelectedPanel("default");
     setShapes([]); // Clear shapes when creating new canvas
+    setDrawings([]); // Clear drawings
+    setFilledImages([]); // Clear filled images
+    setHistory([]); // Clear history
+    setHistoryIndex(-1); // Reset history index
     setResetKey(prev => prev + 1);
   };
 
@@ -225,6 +293,8 @@ export default function Home() {
         onTextAlignmentChange={handleTextAlignmentChange}
         onListTypeChange={handleListTypeChange}
         onTextColorChange={handleTextColorChange}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
       />
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80vh', p: 1 }}>
         <Canvas
@@ -251,6 +321,11 @@ export default function Home() {
           // Pass shapes and setShapes as props to Canvas
           shapes={shapes}
           onShapesChange={setShapes}
+          drawings={drawings}
+          onDrawingsChange={setDrawings}
+          filledImages={filledImages}
+          onFilledImagesChange={setFilledImages}
+          onSaveState={saveState}
         />
       </Box>
     </Box>
