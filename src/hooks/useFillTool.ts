@@ -131,7 +131,7 @@ export const useFillTool = ({
                 }
 
                 if (clickedShape) {
-                    // Update shape's fillColor
+                    // Update shape's fillColor for shape filling
                     onShapesChange(prev => prev.map(shape =>
                         shape.id === clickedShape!.id
                             ? { ...shape, fillColor: fillColor || "#ff0000" }
@@ -142,7 +142,7 @@ export const useFillTool = ({
                         onSaveState();
                     }
                 } else {
-                    // Perform flood fill on canvas
+                    // Perform flood fill on canvas only when not clicking on a shape
                     floodFill(x, y, fillColor || "#ff0000");
                     // Save state after flood fill
                     if (onSaveState) {

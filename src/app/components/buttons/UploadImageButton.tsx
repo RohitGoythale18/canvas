@@ -2,10 +2,11 @@
 import { useState, useRef } from "react";
 import { Tooltip, Button, Menu, MenuItem, Divider } from "@mui/material";
 import ImageIcon from '@mui/icons-material/Image';
+import { imageStorage } from '../../../lib/imageStorage';
 
 interface UploadImageButtonProps {
     active?: boolean;
-    onImageUpload?: (imageUrl: string) => void;
+    onImageUpload?: (imageUrl: string, imageId?: string) => void;
     onImageUsed?: () => void;
 }
 
@@ -26,15 +27,24 @@ const UploadImageButton = ({ onImageUpload }: UploadImageButtonProps) => {
         closeMenu();
     };
 
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const imageUrl = e.target?.result as string;
-                onImageUpload?.(imageUrl);
-            };
-            reader.readAsDataURL(file);
+            try {
+                // Store the blob in IndexedDB
+                const imageId = await imageStorage.storeImage(file);
+
+                // Create a blob URL for immediate use
+                const blobUrl = URL.createObjectURL(file);
+
+                // Store image ID in localStorage for persistence
+                localStorage.setItem('currentImageId', imageId);
+
+                // Pass the blob URL and image ID
+                onImageUpload?.(blobUrl, imageId);
+            } catch (error) {
+                console.error('Error storing image:', error);
+            }
         }
         // Reset the input so the same file can be selected again
         event.target.value = '';
@@ -43,7 +53,9 @@ const UploadImageButton = ({ onImageUpload }: UploadImageButtonProps) => {
     const handleUrlInput = () => {
         const url = prompt("Enter image URL:");
         if (url && url.trim()) {
-            onImageUpload?.(url.trim());
+            const trimmedUrl = url.trim();
+            // For URLs, we don't store in IndexedDB, just pass the URL directly
+            onImageUpload?.(trimmedUrl);
         }
         closeMenu();
     };

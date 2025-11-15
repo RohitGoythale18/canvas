@@ -9,6 +9,8 @@ interface UseShapeRendererProps {
     splitMode: string;
     textInput: string;
     editingShapeId: string | null;
+    loadedImage?: HTMLImageElement | null;
+    backgroundColor?: Record<string, string | { start: string; end: string }>;
 }
 
 export const useShapeRenderer = ({
@@ -17,7 +19,9 @@ export const useShapeRenderer = ({
     filledImages,
     splitMode,
     textInput,
-    editingShapeId
+    editingShapeId,
+    loadedImage,
+    backgroundColor,
 }: UseShapeRendererProps) => {
     useEffect(() => {
         const canvases = document.querySelectorAll<HTMLCanvasElement>(".drawing-panel");
@@ -31,11 +35,25 @@ export const useShapeRenderer = ({
             // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw filled images for this panel
-            const panelFilled = filledImages.find(f => f.panelId === panelId);
-            if (panelFilled) {
-                ctx.putImageData(panelFilled.imageData, 0, 0);
+            // Draw background color first
+            const panelColor = backgroundColor?.[panelId] || backgroundColor?.default || "#ffffff";
+            if (typeof panelColor === 'string') {
+                ctx.fillStyle = panelColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            } else if (panelColor && typeof panelColor === 'object') {
+                // Handle gradient background
+                const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                gradient.addColorStop(0, panelColor.start);
+                gradient.addColorStop(1, panelColor.end);
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
+
+            // Draw filled images for this panel
+            const panelFilledImages = filledImages.filter(img => img.panelId === panelId);
+            panelFilledImages.forEach(({ imageData }) => {
+                ctx.putImageData(imageData, 0, 0);
+            });
 
             // Draw drawings for this panel
             const panelDrawings = drawings.find(d => d.panelId === panelId);
@@ -63,12 +81,14 @@ export const useShapeRenderer = ({
                 });
             }
 
+
+
             // Draw shapes for this panel only
             shapes.filter(shape => shape.panelId === panelId).forEach((shape) => {
                 renderShape(ctx, shape, textInput, editingShapeId);
             });
         });
-    }, [shapes, drawings, filledImages, splitMode, textInput, editingShapeId]);
+    }, [shapes, drawings, filledImages, splitMode, textInput, editingShapeId, loadedImage, backgroundColor]);
 };
 
 // Helper function to render individual shapes

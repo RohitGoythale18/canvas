@@ -37,7 +37,7 @@ export const useShapeProperties = ({
                 borderColor: shape.selected && borderActive ? borderColor : shape.borderColor,
             })));
         });
-    }, [borderActive, borderType, borderSize, borderColor, shapes, onShapesChange]);
+    }, [borderActive, borderType, borderSize, borderColor, onShapesChange]);
 
     // Update font features on selected text shapes when font features change
     useEffect(() => {
@@ -57,5 +57,5 @@ export const useShapeProperties = ({
                 return shape;
             }));
         });
-    }, [currentFontFeatures, onShapesChange]);
+    }, [currentFontFeatures, shapes, onShapesChange]);
 };
