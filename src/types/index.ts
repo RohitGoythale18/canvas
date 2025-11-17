@@ -16,6 +16,7 @@ export interface Shape {
   panelId: string;
   fillColor?: string;
   imageUrl?: string;
+  imageId?: string;
   imageElement?: HTMLImageElement;
   borderType?: 'solid' | 'dashed' | 'dotted';
   borderSize?: number;
@@ -34,4 +35,9 @@ export interface CanvasData {
   shapes: Shape[];
   backgroundColor: Record<string, string | { start: string; end: string }>;
   splitMode: string;
+  drawings: { panelId: string, paths: Array<{ points: { x: number, y: number }[], tool: 'pencil' | 'eraser', color?: string, size?: number }> }[];
+  filledImages: { panelId: string, imageData: ImageData }[];
+  uploadedImageUrl?: string | null;
+  loadedImageData?: string | null;
+  currentImageId?: string | null;
 }

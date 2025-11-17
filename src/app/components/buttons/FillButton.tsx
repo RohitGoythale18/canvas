@@ -7,11 +7,12 @@ interface FillButtonProps {
     active?: boolean;
     onFillToggle?: (enabled: boolean) => void;
     onColorChange?: (color: string) => void;
+    currentColor?: string;
 }
 
-const FillButton = ({ active = false, onFillToggle, onColorChange }: FillButtonProps) => {
+const FillButton = ({ active = false, onFillToggle, onColorChange, currentColor }: FillButtonProps) => {
     const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
-    const [fillColor, setFillColor] = useState("");
+    const [fillColor, setFillColor] = useState(currentColor || "#ff0000");
 
 
 

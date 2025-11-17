@@ -8,6 +8,7 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 import { CanvasData } from "../../../types";
+import Image from "next/image";
 
 interface Board {
     id: string;
@@ -21,8 +22,10 @@ interface Pin {
     id: string;
     title: string;
     imageUrl: string; // Base64 encoded canvas image
+    canvasData: CanvasData; // Full canvas state
     boardId: string;
     createdAt: string;
+    updatedAt?: string;
     order: number;
 }
 
@@ -39,7 +42,7 @@ interface BoardButtonProps {
 
 const STORAGE_KEY = "snapcanvas-boards";
 
-const BoardButton = ({ onLoadCanvas, getCurrentCanvasImage }: BoardButtonProps) => {
+const BoardButton = ({ canvasData, onLoadCanvas, getCurrentCanvasImage }: BoardButtonProps) => {
     const [boards, setBoards] = useState<Board[]>([]);
     const [currentBoardId, setCurrentBoardId] = useState<string | null>(null);
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -155,27 +158,73 @@ const BoardButton = ({ onLoadCanvas, getCurrentCanvasImage }: BoardButtonProps) 
             return;
         }
 
-        // Get canvas image as base64
+        // Get canvas image as base64 for thumbnail
         const canvasImage = getCurrentCanvasImage();
         if (!canvasImage) {
             showSnackbar("Could not capture canvas image", "error");
             return;
         }
 
+        // Check if a pin with the same title already exists in this board
+        const existingPinIndex = (currentBoard.pins || []).findIndex(pin => pin.title === pinTitle.trim());
+
+        // Create canvas data with image information
+        const canvasDataToSave: CanvasData = {
+            shapes: canvasData?.shapes || [],
+            backgroundColor: canvasData?.backgroundColor || { default: "#ffffff" },
+            splitMode: canvasData?.splitMode || "none",
+            drawings: canvasData?.drawings || [],
+            filledImages: canvasData?.filledImages || [],
+            // Save the current image state
+            uploadedImageUrl: canvasData?.uploadedImageUrl || null,
+            loadedImageData: canvasData?.uploadedImageUrl || null, // Use the same URL for loaded image
+            currentImageId: canvasData?.currentImageId || null
+        };
+
+        // Note: imageElement is not saved as it's a DOM element and will be recreated during load
+
+        // Ensure all shapes have their properties properly saved
+        canvasDataToSave.shapes = canvasDataToSave.shapes.map(shape => ({
+            ...shape,
+            fillColor: shape.fillColor || undefined, // Ensure fillColor is preserved
+            borderType: shape.borderType || undefined,
+            borderSize: shape.borderSize || undefined,
+            borderColor: shape.borderColor || undefined,
+            fontSize: shape.fontSize || undefined,
+            fontFamily: shape.fontFamily || undefined,
+            textColor: shape.textColor || undefined,
+            fontStyles: shape.fontStyles || undefined,
+            textAlignment: shape.textAlignment || undefined,
+            listType: shape.listType || undefined,
+            imageUrl: shape.imageUrl || undefined,
+            imageId: shape.imageId || undefined,
+            imageElement: undefined // Don't save DOM elements
+        }));
+
         const newPin: Pin = {
-            id: `pin-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            title: pinTitle,
+            id: existingPinIndex >= 0 ? (currentBoard.pins || [])[existingPinIndex].id : `pin-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            title: pinTitle.trim(),
             imageUrl: canvasImage,
+            canvasData: canvasDataToSave, // Full canvas state including images
             boardId: currentBoardId,
-            createdAt: new Date().toISOString(),
-            order: currentBoard.pins?.length ?? 0
+            createdAt: existingPinIndex >= 0 ? (currentBoard.pins || [])[existingPinIndex].createdAt : new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            order: existingPinIndex >= 0 ? (currentBoard.pins || [])[existingPinIndex].order : (currentBoard.pins?.length ?? 0)
         };
 
         const updatedBoards = boards.map(board => {
             if (board.id === currentBoardId) {
+                const updatedPins = [...(board.pins || [])];
+                if (existingPinIndex >= 0) {
+                    // Update existing pin
+                    updatedPins[existingPinIndex] = newPin;
+                } else {
+                    // Add new pin
+                    updatedPins.push(newPin);
+                }
                 return {
                     ...board,
-                    pins: [...(board.pins || []), newPin]
+                    pins: updatedPins
                 };
             }
             return board;
@@ -184,7 +233,7 @@ const BoardButton = ({ onLoadCanvas, getCurrentCanvasImage }: BoardButtonProps) 
         saveBoards(updatedBoards);
         setSaveDialogOpen(false);
         setPinTitle("");
-        showSnackbar(`Design saved to "${currentBoard.name}"`, "success");
+        showSnackbar(existingPinIndex >= 0 ? `Design updated in "${currentBoard.name}"` : `Design saved to "${currentBoard.name}"`, "success");
     };
 
     const handleSelectBoard = (boardId: string) => {
@@ -205,12 +254,12 @@ const BoardButton = ({ onLoadCanvas, getCurrentCanvasImage }: BoardButtonProps) 
         showSnackbar("Board deleted successfully", "success");
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const handleLoadPin = (pin: Pin) => {
-        if (onLoadCanvas) {
-            // Here you would need to implement the logic to reconstruct the canvas state
-            // from the saved data. This might require additional metadata storage.
+        if (onLoadCanvas && pin.canvasData) {
+            onLoadCanvas(pin.canvasData);
             showSnackbar(`Loaded design: ${pin.title}`, "success");
+        } else {
+            showSnackbar("Could not load design - missing canvas data", "error");
         }
     };
 
@@ -263,30 +312,56 @@ const BoardButton = ({ onLoadCanvas, getCurrentCanvasImage }: BoardButtonProps) 
                 {boards.length > 0 && <hr className="my-1" />}
 
                 {boards.map((board) => (
-                    <MenuItem
-                        key={board.id}
-                        selected={board.id === currentBoardId}
-                        onClick={() => handleSelectBoard(board.id)}
-                        sx={{ justifyContent: 'space-between' }}
-                    >
-                        <div className="flex items-center">
-                            <FolderOpenIcon fontSize="small" sx={{ mr: 1 }} />
-                            <div className="flex flex-col">
-                                <span className="font-medium">{board.name}</span>
-                                <span className="text-xs text-gray-500">
-                                    {(board.pins || []).length} designs
-                                </span>
-                            </div>
-                        </div>
-                        <Button
-                            size="small"
-                            color="error"
-                            onClick={(e) => handleDeleteBoard(board.id, e)}
-                            sx={{ minWidth: 'auto', p: 0.5 }}
+                    <div key={board.id}>
+                        <MenuItem
+                            selected={board.id === currentBoardId}
+                            onClick={() => handleSelectBoard(board.id)}
+                            sx={{ justifyContent: 'space-between' }}
                         >
-                            <DeleteIcon fontSize="small" />
-                        </Button>
-                    </MenuItem>
+                            <div className="flex items-center">
+                                <FolderOpenIcon fontSize="small" sx={{ mr: 1 }} />
+                                <div className="flex flex-col">
+                                    <span className="font-medium">{board.name}</span>
+                                    <span className="text-xs text-gray-500">
+                                        {(board.pins || []).length} designs
+                                    </span>
+                                </div>
+                            </div>
+                            <Button
+                                size="small"
+                                color="error"
+                                onClick={(e) => handleDeleteBoard(board.id, e)}
+                                sx={{ minWidth: 'auto', p: 0.5 }}
+                            >
+                                <DeleteIcon fontSize="small" />
+                            </Button>
+                        </MenuItem>
+                        {/* Display pins for this board */}
+                        {(board.pins || []).map((pin) => (
+                            <MenuItem
+                                key={pin.id}
+                                onClick={() => handleLoadPin(pin)}
+                                sx={{ pl: 2, fontSize: '0.875rem' }}
+                            >
+                                <div className="flex items-center w-full">
+                                    <Image
+                                        src={pin.imageUrl}
+                                        alt={pin.title}
+                                        width={100}
+                                        height={100}
+                                        style={{
+                                            border: '1px solid black',
+                                            margin: 2,
+                                            marginRight: 8,
+                                            borderRadius: 4,
+                                            objectFit: 'cover'
+                                        }}
+                                    />
+                                    <span>{pin.title}</span>
+                                </div>
+                            </MenuItem>
+                        ))}
+                    </div>
                 ))}
 
                 {boards.length === 0 && (

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Box } from "@mui/material";
 import { Shape, FontStyles } from "../../types";
 
@@ -29,6 +29,7 @@ interface CanvasProps {
     textActive?: boolean;
     uploadedImageUrl?: string | null;
     loadedImage?: HTMLImageElement | null;
+    currentImageId?: string | null;
     onImageUsed?: () => void;
     backgroundColor?: Record<string, string | { start: string; end: string }>;
     onPanelSelect?: (panelId: string) => void;
@@ -65,6 +66,7 @@ const Canvas = ({
     textActive = false,
     uploadedImageUrl,
     loadedImage,
+    currentImageId,
     onImageUsed,
     backgroundColor = { default: "#ffffff" },
     onPanelSelect,
@@ -141,6 +143,7 @@ const Canvas = ({
         textActive,
         uploadedImageUrl,
         loadedImage,
+        currentImageId,
         onImageUsed,
         borderActive,
         borderColor,
@@ -187,8 +190,19 @@ const Canvas = ({
         filledImages,
         splitMode,
         textInput,
-        editingShapeId
+        editingShapeId,
+        loadedImage,
+        backgroundColor,
     });
+
+    // Debug effect to log image state
+    useEffect(() => {
+        console.log('Canvas - Loaded Image State:', {
+            hasLoadedImage: !!loadedImage,
+            hasUploadedImageUrl: !!uploadedImageUrl,
+            loadedImageSrc: loadedImage?.src?.substring(0, 100) + '...'
+        });
+    }, [loadedImage, uploadedImageUrl]);
 
     // Helper functions
     const getBackgroundStyle = (panelId: string) => {
@@ -214,6 +228,7 @@ const Canvas = ({
                 data-panel-id={panelId}
                 tabIndex={0}
             />
+
         </div>
     );
 

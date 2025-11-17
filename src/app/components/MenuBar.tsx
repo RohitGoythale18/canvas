@@ -31,6 +31,7 @@ interface MenuBarProps {
     onPencilToggle?: (enabled: boolean) => void;
     onFillToggle?: (enabled: boolean) => void;
     onColorChange?: (color: string) => void;
+    fillColor?: string;
     onEraserToggle?: (enabled: boolean) => void;
     onEraserSizeChange?: (size: number) => void;
     eraserSize?: number;
@@ -63,7 +64,7 @@ interface MenuBarProps {
     onRedo?: () => void;
 }
 
-const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onPencilToggle, onFillToggle, onColorChange, onEraserToggle, onEraserSizeChange, eraserSize, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, onImageUsed, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange, onUndo, onRedo }: MenuBarProps) => {
+const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onPencilToggle, onFillToggle, onColorChange, fillColor, onEraserToggle, onEraserSizeChange, eraserSize, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, onImageUsed, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange, onUndo, onRedo }: MenuBarProps) => {
 
     return (
         <Box>
@@ -111,7 +112,7 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
                         <List sx={{ p: 1, display: "flex", gap: 1 }}>
                             <PencilButton active={pencilActive} onToggle={onPencilToggle} />
 
-                            <FillButton active={fillActive} onFillToggle={onFillToggle} onColorChange={onColorChange} />
+                        <FillButton active={fillActive} onFillToggle={onFillToggle} onColorChange={onColorChange} currentColor={fillColor} />
 
                             <EraserButton active={eraserActive} onEraserToggle={onEraserToggle} onSizeChange={onEraserSizeChange} eraserSize={eraserSize} />
                         </List>

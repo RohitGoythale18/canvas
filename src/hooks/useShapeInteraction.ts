@@ -15,6 +15,7 @@ interface UseShapeInteractionProps {
     textActive: boolean;
     uploadedImageUrl?: string | null;
     loadedImage?: HTMLImageElement | null;
+    currentImageId?: string | null;
     onImageUsed?: () => void;
     borderActive: boolean;
     borderColor: string;
@@ -44,6 +45,7 @@ export const useShapeInteraction = ({
     textActive,
     uploadedImageUrl,
     loadedImage,
+    currentImageId,
     onImageUsed,
     borderActive,
     borderColor,
@@ -87,7 +89,8 @@ export const useShapeInteraction = ({
                         selected: false,
                         panelId: panelId,
                         fillColor: "#60a5fa",
-                        imageUrl: uploadedImageUrl || undefined,
+                        imageUrl: uploadedImageUrl && !uploadedImageUrl.startsWith('blob:') ? uploadedImageUrl : undefined,
+                        imageId: currentImageId || undefined,
                         imageElement: loadedImage || undefined,
                         borderType: undefined,
                         borderSize: undefined,
@@ -95,10 +98,7 @@ export const useShapeInteraction = ({
                     };
                     onShapesChange(prev => [...prev, newShape]);
                     onShapeSelect(null as never);
-                    // Clear the uploaded image after using it for the shape
-                    if (uploadedImageUrl) {
-                        onImageUsed?.();
-                    }
+                    // Keep the image available for multiple shapes - do not clear here
                     return;
                 }
 
@@ -269,7 +269,7 @@ export const useShapeInteraction = ({
         };
     }, [
         selectedShape, splitMode, onShapeSelect, shapes, pencilActive, eraserActive, fillActive, textActive,
-        uploadedImageUrl, loadedImage, onImageUsed, borderActive, borderColor, borderSize, borderType, zoomLevel,
+        uploadedImageUrl, loadedImage, currentImageId, onImageUsed, borderActive, borderColor, borderSize, borderType, zoomLevel,
         onShapesChange, setDragging, setResizing, setDragOffset, setResizeHandle, dragging, resizing, resizeHandle, dragOffset, onSaveState
     ]);
 };
