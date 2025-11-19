@@ -36,7 +36,7 @@ export interface CanvasData {
   backgroundColor: Record<string, string | { start: string; end: string }>;
   splitMode: string;
   drawings: { panelId: string, paths: Array<{ points: { x: number, y: number }[], tool: 'pencil' | 'eraser', color?: string, size?: number }> }[];
-  filledImages: { panelId: string, imageData: ImageData }[];
+  filledImages: { panelId: string, imageData: string }[]; // base64 encoded
   uploadedImageUrl?: string | null;
   loadedImageData?: string | null;
   currentImageId?: string | null;

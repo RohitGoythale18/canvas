@@ -166,8 +166,7 @@ export default function Home() {
     setHistory([]); // Clear history
     setHistoryIndex(-1); // Reset history index
     setResetKey(prev => prev + 1);
-    // Clear stored image data
-    localStorage.removeItem('currentImageId');
+    localStorage.removeItem('currentImageId'); // Clear stored image data
   };
 
   const handlePencilToggle = (enabled: boolean) => {
@@ -224,7 +223,7 @@ export default function Home() {
     const img = new Image();
     img.onload = () => {
       setLoadedImage(img);
-      saveState(); // Save state after image loads
+      saveState(); 
     };
     img.onerror = () => {
       console.error("Failed to load image");
@@ -239,7 +238,7 @@ export default function Home() {
     setUploadedImageUrl(null);
     setLoadedImage(null);
     setCurrentImageId(null);
-    saveState(); // Save state after image is used/cleared
+    saveState();
   };
 
   const handleCanvasBackgroundChange = (color: { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }, panelId: string = 'default') => {
@@ -288,9 +287,7 @@ export default function Home() {
     setFontFeatures(prev => ({ ...prev, textColor: color }));
   };
 
-  // Add function to capture canvas as base64
   const handleSaveCanvas = (): string => {
-    // Capture the first canvas element
     const canvas = document.querySelector('canvas');
     if (canvas) {
       return canvas.toDataURL('image/png');
@@ -299,10 +296,8 @@ export default function Home() {
   };
 
   const handleLoadCanvas = async (canvasData: CanvasData) => {
-    // Save current state to history before loading new one
     saveState();
 
-    // Implement loading canvas data
     if (canvasData.shapes) {
       setShapes(canvasData.shapes);
     }
@@ -316,10 +311,34 @@ export default function Home() {
       setDrawings(canvasData.drawings);
     }
     if (canvasData.filledImages) {
-      setFilledImages(canvasData.filledImages);
+      const convertedFilledImages = canvasData.filledImages.map(fi => {
+        const img = new Image();
+        img.src = fi.imageData as string;
+        return new Promise<{ panelId: string; imageData: ImageData }>((resolve) => {
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0);
+              const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+              resolve({ panelId: fi.panelId, imageData });
+            } else {
+              resolve({ panelId: fi.panelId, imageData: new ImageData(1, 1) }); // Fallback
+            }
+          };
+          img.onerror = () => {
+            resolve({ panelId: fi.panelId, imageData: new ImageData(1, 1) }); // Fallback
+          };
+        });
+      });
+
+      Promise.all(convertedFilledImages).then((results) => {
+        setFilledImages(results);
+      });
     }
 
-    // Handle image loading - prioritize stored image ID over URL
     if (canvasData.currentImageId) {
       try {
         const { imageStorage } = await import('../lib/imageStorage');
@@ -343,7 +362,6 @@ export default function Home() {
           img.src = blobUrl;
         } else {
           console.warn("Image not found in IndexedDB, falling back to URL");
-          // Fallback to URL if blob not found
           const imageUrlToLoad = canvasData.uploadedImageUrl || canvasData.loadedImageData;
           if (imageUrlToLoad) {
             setUploadedImageUrl(imageUrlToLoad);
@@ -365,7 +383,6 @@ export default function Home() {
         }
       } catch (error) {
         console.error('Error loading image from IndexedDB:', error);
-        // Fallback to URL
         const imageUrlToLoad = canvasData.uploadedImageUrl || canvasData.loadedImageData;
         if (imageUrlToLoad) {
           setUploadedImageUrl(imageUrlToLoad);
@@ -386,7 +403,6 @@ export default function Home() {
         }
       }
     } else {
-      // No stored image ID, try URL
       const imageUrlToLoad = canvasData.uploadedImageUrl || canvasData.loadedImageData;
       if (imageUrlToLoad) {
         setUploadedImageUrl(imageUrlToLoad);
@@ -405,14 +421,12 @@ export default function Home() {
         };
         img.src = imageUrlToLoad;
       } else {
-        // Clear images if none in saved data
         setUploadedImageUrl(null);
         setLoadedImage(null);
         setCurrentImageId(null);
       }
     }
 
-    // Load images for shapes that have imageUrl or imageId
     if (canvasData.shapes) {
       const updatedShapes = [...canvasData.shapes];
       const loadPromises: Promise<void>[] = [];
@@ -433,12 +447,11 @@ export default function Home() {
               console.error('Failed to load shape image:', shape.imageUrl);
               resolve();
             };
-            shapeImg.crossOrigin = 'anonymous'; // Handle CORS issues
+            shapeImg.crossOrigin = 'anonymous';
             shapeImg.src = shape.imageUrl!;
           });
           loadPromises.push(loadPromise);
         } else if (shape.imageId && !shape.imageElement) {
-          // Load from IndexedDB if imageId is present
           const loadPromise = new Promise<void>(async (resolve) => {
             try {
               const { imageStorage } = await import('../lib/imageStorage');
@@ -452,7 +465,6 @@ export default function Home() {
                     updatedShapes[index] = { ...updatedShapes[index], imageElement: shapeImg };
                     console.log('Shape image loaded from IndexedDB:', shape.imageId);
                   }
-                  // Clean up blob URL after image is loaded
                   URL.revokeObjectURL(blobUrl);
                   resolve();
                 };
@@ -475,7 +487,6 @@ export default function Home() {
         }
       }
 
-      // Wait for all images to load before setting shapes
       Promise.all(loadPromises).then(() => {
         setShapes(updatedShapes);
         console.log('All shape images loaded');
@@ -495,7 +506,20 @@ export default function Home() {
           backgroundColor: canvasBackground,
           splitMode: splitMode,
           drawings: drawings,
-          filledImages: filledImages,
+          filledImages: filledImages.map(fi => ({
+            panelId: fi.panelId,
+            imageData: (() => {
+              const canvas = document.createElement('canvas');
+              canvas.width = fi.imageData.width;
+              canvas.height = fi.imageData.height;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.putImageData(fi.imageData, 0, 0);
+                return canvas.toDataURL('image/png');
+              }
+              return '';
+            })()
+          })),
           uploadedImageUrl: uploadedImageUrl, // Add this to pass current image state
           currentImageId: currentImageId
         }}
