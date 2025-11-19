@@ -21,8 +21,8 @@ interface Board {
 interface Pin {
     id: string;
     title: string;
-    imageUrl: string; // Base64 encoded canvas image
-    canvasData: CanvasData; // Full canvas state
+    imageUrl: string;
+    canvasData: CanvasData;
     boardId: string;
     createdAt: string;
     updatedAt?: string;
@@ -37,7 +37,7 @@ interface BoardsData {
 interface BoardButtonProps {
     canvasData?: CanvasData;
     onLoadCanvas?: (canvasData: CanvasData) => void;
-    getCurrentCanvasImage?: () => string; // Function to get current canvas as base64 image
+    getCurrentCanvasImage?: () => string;
 }
 
 const STORAGE_KEY = "snapcanvas-boards";
@@ -64,7 +64,6 @@ const BoardButton = ({ canvasData, onLoadCanvas, getCurrentCanvasImage }: BoardB
                 currentBoardId: updatedCurrentBoardId !== null ? updatedCurrentBoardId : currentBoardId
             };
 
-            // Check storage quota (approx 5MB limit)
             const dataString = JSON.stringify(data);
             const sizeInBytes = new Blob([dataString]).size;
             const maxSize = 5 * 1024 * 1024; // 5MB
@@ -85,14 +84,12 @@ const BoardButton = ({ canvasData, onLoadCanvas, getCurrentCanvasImage }: BoardB
         }
     }, [currentBoardId, showSnackbar]);
 
-    // Load boards from localStorage on component mount
     useEffect(() => {
         const loadBoards = () => {
             try {
                 const data = localStorage.getItem(STORAGE_KEY);
                 if (data) {
                     const parsedData: BoardsData = JSON.parse(data);
-                    // Use requestAnimationFrame to avoid synchronous state updates
                     requestAnimationFrame(() => {
                         setBoards(parsedData.boards || []);
                         setCurrentBoardId(parsedData.currentBoardId || null);
@@ -100,7 +97,6 @@ const BoardButton = ({ canvasData, onLoadCanvas, getCurrentCanvasImage }: BoardB
                 }
             } catch (error) {
                 console.error("Error loading boards:", error);
-                // Use setTimeout to avoid synchronous state updates in effect
                 setTimeout(() => {
                     showSnackbar("Error loading boards", "error");
                 }, 0);
@@ -158,35 +154,28 @@ const BoardButton = ({ canvasData, onLoadCanvas, getCurrentCanvasImage }: BoardB
             return;
         }
 
-        // Get canvas image as base64 for thumbnail
         const canvasImage = getCurrentCanvasImage();
         if (!canvasImage) {
             showSnackbar("Could not capture canvas image", "error");
             return;
         }
 
-        // Check if a pin with the same title already exists in this board
         const existingPinIndex = (currentBoard.pins || []).findIndex(pin => pin.title === pinTitle.trim());
 
-        // Create canvas data with image information
         const canvasDataToSave: CanvasData = {
             shapes: canvasData?.shapes || [],
             backgroundColor: canvasData?.backgroundColor || { default: "#ffffff" },
             splitMode: canvasData?.splitMode || "none",
             drawings: canvasData?.drawings || [],
             filledImages: canvasData?.filledImages || [],
-            // Save the current image state
             uploadedImageUrl: canvasData?.uploadedImageUrl || null,
-            loadedImageData: canvasData?.uploadedImageUrl || null, // Use the same URL for loaded image
+            loadedImageData: canvasData?.uploadedImageUrl || null,
             currentImageId: canvasData?.currentImageId || null
         };
 
-        // Note: imageElement is not saved as it's a DOM element and will be recreated during load
-
-        // Ensure all shapes have their properties properly saved
         canvasDataToSave.shapes = canvasDataToSave.shapes.map(shape => ({
             ...shape,
-            fillColor: shape.fillColor || undefined, // Ensure fillColor is preserved
+            fillColor: shape.fillColor || undefined, 
             borderType: shape.borderType || undefined,
             borderSize: shape.borderSize || undefined,
             borderColor: shape.borderColor || undefined,
@@ -205,7 +194,7 @@ const BoardButton = ({ canvasData, onLoadCanvas, getCurrentCanvasImage }: BoardB
             id: existingPinIndex >= 0 ? (currentBoard.pins || [])[existingPinIndex].id : `pin-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             title: pinTitle.trim(),
             imageUrl: canvasImage,
-            canvasData: canvasDataToSave, // Full canvas state including images
+            canvasData: canvasDataToSave,
             boardId: currentBoardId,
             createdAt: existingPinIndex >= 0 ? (currentBoard.pins || [])[existingPinIndex].createdAt : new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -216,10 +205,8 @@ const BoardButton = ({ canvasData, onLoadCanvas, getCurrentCanvasImage }: BoardB
             if (board.id === currentBoardId) {
                 const updatedPins = [...(board.pins || [])];
                 if (existingPinIndex >= 0) {
-                    // Update existing pin
                     updatedPins[existingPinIndex] = newPin;
                 } else {
-                    // Add new pin
                     updatedPins.push(newPin);
                 }
                 return {
