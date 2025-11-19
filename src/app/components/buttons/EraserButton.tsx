@@ -41,7 +41,7 @@ const EraserButton = ({ active = false, onEraserToggle, onSizeChange, eraserSize
                     }}
                     size="small"
                 >
-                    <IconEraser stroke={2} color={active ? "white" : "white"} />
+                    <IconEraser stroke={2} color={active ? "white" : "white"} className="size-5" />
                 </Button>
             </Tooltip>
 

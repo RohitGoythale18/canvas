@@ -1,17 +1,14 @@
 'use client';
 import Image from "next/image"
-
-
-import { Box, Button, Divider, List, Tooltip, Typography } from "@mui/material";
-import UndoIcon from '@mui/icons-material/Undo';
-import RedoIcon from '@mui/icons-material/Redo';
-
+import { Box, Divider, List, Typography } from "@mui/material";
 import { CanvasData } from "../../types";
 
 import BoardButton from "./buttons/BoardButton";
 import NewCanvasButton from "./buttons/NewCanvasButton";
 import SplitButton from "./buttons/SplitButton";
 import ExportButton from "./buttons/ExportButton";
+import UndoButton from "./buttons/UndoButton";
+import RedoButton from "./buttons/RedoButton";
 import PencilButton from "./buttons/PencilButton";
 import FillButton from "./buttons/FillButton";
 import EraserButton from "./buttons/EraserButton";
@@ -94,17 +91,8 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
                     <Typography variant="h2" sx={{ fontSize: '1rem' }}>Edit</Typography>
                     <Box sx={{ display: 'flex' }}>
                         <List sx={{ display: "flex", gap: 1, px: 1 }}>
-                            <Tooltip title="Undo" arrow>
-                                <Button variant="outlined" size="small" color="primary" onClick={onUndo}>
-                                    <UndoIcon />
-                                </Button>
-                            </Tooltip>
-
-                            <Tooltip title="Redo" arrow>
-                                <Button variant="outlined" size="small" color="primary" onClick={onRedo}>
-                                    <RedoIcon />
-                                </Button>
-                            </Tooltip>
+                            <UndoButton onClick={onUndo} />
+                            <RedoButton onClick={onRedo} />
                         </List>
 
                         <Divider orientation="vertical" sx={{ borderColor: 'primary.main' }} />
@@ -112,7 +100,7 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
                         <List sx={{ p: 1, display: "flex", gap: 1 }}>
                             <PencilButton active={pencilActive} onToggle={onPencilToggle} />
 
-                        <FillButton active={fillActive} onFillToggle={onFillToggle} onColorChange={onColorChange} currentColor={fillColor} />
+                            <FillButton active={fillActive} onFillToggle={onFillToggle} onColorChange={onColorChange} currentColor={fillColor} />
 
                             <EraserButton active={eraserActive} onEraserToggle={onEraserToggle} onSizeChange={onEraserSizeChange} eraserSize={eraserSize} />
                         </List>
