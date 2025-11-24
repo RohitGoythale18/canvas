@@ -15,6 +15,7 @@ import EraserButton from "./buttons/EraserButton";
 import ShapeButton from "./buttons/ShapeButton";
 import TextButton from "./buttons/TextButton";
 import UploadImageButton from "./buttons/UploadImageButton";
+import ClearImageButton from "./buttons/ClearImageButton";
 import ColorButton from "./buttons/ColorButton";
 import BorderButton from "./buttons/BorderButton";
 import FontFeatButton from "./buttons/FontFeatButton";
@@ -40,6 +41,7 @@ interface MenuBarProps {
     textActive?: boolean;
     onImageUpload?: (imageUrl: string) => void;
     onImageUsed?: () => void;
+    onClearImage?: () => void;
     onCanvasBackgroundChange?: (color: { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }, panelId?: string) => void;
     selectedPanel?: string;
     onBorderToggle?: (enabled: boolean) => void;
@@ -61,7 +63,7 @@ interface MenuBarProps {
     onRedo?: () => void;
 }
 
-const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onPencilToggle, onFillToggle, onColorChange, fillColor, onEraserToggle, onEraserSizeChange, eraserSize, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, onImageUsed, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange, onUndo, onRedo }: MenuBarProps) => {
+const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onPencilToggle, onFillToggle, onColorChange, fillColor, onEraserToggle, onEraserSizeChange, eraserSize, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, onImageUsed, onClearImage, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange, onUndo, onRedo }: MenuBarProps) => {
 
     return (
         <Box>
@@ -115,6 +117,7 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
                         <ShapeButton onShapeSelect={onShapeSelect} />
                         <TextButton active={textActive} onToggle={onTextToggle} />
                         <UploadImageButton onImageUpload={onImageUpload} onImageUsed={onImageUsed} />
+                        <ClearImageButton onClearImage={onClearImage} />
                     </List>
                 </Box>
 

@@ -31,31 +31,23 @@ const UploadImageButton = ({ onImageUpload }: UploadImageButtonProps) => {
         const file = event.target.files?.[0];
         if (file) {
             try {
-                // Store the blob in IndexedDB
                 const imageId = await imageStorage.storeImage(file);
-
-                // Create a blob URL for immediate use
                 const blobUrl = URL.createObjectURL(file);
 
-                // Store image ID in localStorage for persistence
                 localStorage.setItem('currentImageId', imageId);
 
-                // Pass the blob URL and image ID
                 onImageUpload?.(blobUrl, imageId);
             } catch (error) {
                 console.error('Error storing image:', error);
             }
         }
-        // Reset the input so the same file can be selected again
         event.target.value = '';
     };
 
     const handleUrlInput = () => {
         const url = prompt("Enter image URL:");
         if (url && url.trim()) {
-            const trimmedUrl = url.trim();
-            // For URLs, we don't store in IndexedDB, just pass the URL directly
-            onImageUpload?.(trimmedUrl);
+            onImageUpload?.(url.trim());
         }
         closeMenu();
     };
@@ -71,11 +63,7 @@ const UploadImageButton = ({ onImageUpload }: UploadImageButtonProps) => {
             />
 
             <Tooltip title="Upload Image" arrow>
-                <Button
-                    variant="outlined"
-                    onClick={openMenu}
-                    size="small"
-                >
+                <Button variant="outlined" onClick={openMenu} size="small">
                     <ImageIcon sx={{ fontSize: 20 }} />
                 </Button>
             </Tooltip>
@@ -83,12 +71,8 @@ const UploadImageButton = ({ onImageUpload }: UploadImageButtonProps) => {
             <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={closeMenu}>
                 <MenuItem disabled>Upload Image</MenuItem>
                 <Divider />
-                <MenuItem onClick={handleFileSelect}>
-                    From Device
-                </MenuItem>
-                <MenuItem onClick={handleUrlInput}>
-                    From URL
-                </MenuItem>
+                <MenuItem onClick={handleFileSelect}>From Device</MenuItem>
+                <MenuItem onClick={handleUrlInput}>From URL</MenuItem>
             </Menu>
         </>
     );

@@ -1,9 +1,8 @@
 'use client';
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Box } from "@mui/material";
 import { Shape, FontStyles } from "../../types";
 
-// Import custom hooks
 import { useCanvasResize } from "../../hooks/useCanvasResize";
 import { useDrawingTools } from "../../hooks/useDrawingTools";
 import { useFillTool } from "../../hooks/useFillTool";
@@ -31,6 +30,7 @@ interface CanvasProps {
     loadedImage?: HTMLImageElement | null;
     currentImageId?: string | null;
     onImageUsed?: () => void;
+    onClearImage?: () => void;
     backgroundColor?: Record<string, string | { start: string; end: string }>;
     onPanelSelect?: (panelId: string) => void;
     borderActive?: boolean;
@@ -43,14 +43,14 @@ interface CanvasProps {
         fontStyles: FontStyles;
         alignment: 'left' | 'center' | 'right' | 'justify';
         listType: 'bullet' | 'number' | 'none';
-        textColor: string | { type: 'solid' | 'gradient'; value: string | { start: string; end: string } };
+        textColor: string | { type: 'solid' | 'gradient'; value: any };
     };
     shapes: Shape[];
     onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
-    drawings: { panelId: string, paths: Array<{ points: { x: number, y: number }[], tool: 'pencil' | 'eraser', color?: string, size?: number }> }[];
-    onDrawingsChange: React.Dispatch<React.SetStateAction<{ panelId: string, paths: Array<{ points: { x: number, y: number }[], tool: 'pencil' | 'eraser', color?: string, size?: number }> }[]>>;
-    filledImages: { panelId: string, imageData: ImageData }[];
-    onFilledImagesChange: React.Dispatch<React.SetStateAction<{ panelId: string, imageData: ImageData }[]>>;
+    drawings: any[];
+    onDrawingsChange: React.Dispatch<React.SetStateAction<any[]>>;
+    filledImages: any[];
+    onFilledImagesChange: React.Dispatch<React.SetStateAction<any[]>>;
     onSaveState: () => void;
 }
 
@@ -61,27 +61,21 @@ const Canvas = ({
     fillColor = "#ff0000",
     eraserActive = false,
     eraserSize = 10,
-    selectedShape,
+    selectedShape = null,
     onShapeSelect,
     textActive = false,
     uploadedImageUrl,
     loadedImage,
     currentImageId,
     onImageUsed,
+    // onClearImage,
     backgroundColor = { default: "#ffffff" },
     onPanelSelect,
     borderActive = false,
     borderType = 'solid',
     borderSize = 2,
     borderColor = '#000000',
-    currentFontFeatures = {
-        fontFamily: "Arial, sans-serif",
-        fontSize: 16,
-        fontStyles: {},
-        alignment: 'left' as 'left' | 'center' | 'right' | 'justify',
-        listType: 'none' as 'bullet' | 'number' | 'none',
-        textColor: "#000000"
-    },
+    currentFontFeatures,
     shapes,
     onShapesChange,
     drawings,
@@ -90,16 +84,16 @@ const Canvas = ({
     onFilledImagesChange,
     onSaveState
 }: CanvasProps) => {
-    // State declarations - now using props
+
     const [dragging, setDragging] = useState(false);
     const [resizing, setResizing] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
     const [resizeHandle, setResizeHandle] = useState<string | null>(null);
     const [textInput, setTextInput] = useState<string>("");
     const [editingShapeId, setEditingShapeId] = useState<string | null>(null);
+
     const wrapperRef = useRef<HTMLDivElement>(null);
 
-    // Custom hooks
     const { zoomLevel } = useCanvasResize(wrapperRef);
 
     useDrawingTools({
@@ -133,7 +127,7 @@ const Canvas = ({
     });
 
     useShapeInteraction({
-        selectedShape: selectedShape ?? null,
+        selectedShape,
         splitMode,
         onShapeSelect,
         shapes,
@@ -195,24 +189,15 @@ const Canvas = ({
         backgroundColor,
     });
 
-    // Debug effect to log image state
-    useEffect(() => {
-        console.log('Canvas - Loaded Image State:', {
-            hasLoadedImage: !!loadedImage,
-            hasUploadedImageUrl: !!uploadedImageUrl,
-            loadedImageSrc: loadedImage?.src?.substring(0, 100) + '...'
-        });
-    }, [loadedImage, uploadedImageUrl]);
-
-    // Helper functions
     const getBackgroundStyle = (panelId: string) => {
         const panelColor = backgroundColor[panelId] || backgroundColor.default || "#ffffff";
         if (typeof panelColor === 'string') {
             return { backgroundColor: panelColor };
-        } else if (panelColor && typeof panelColor === 'object') {
-            return { background: `linear-gradient(to bottom, ${panelColor.start}, ${panelColor.end})` };
+        } else {
+            return {
+                background: `linear-gradient(to bottom, ${panelColor.start}, ${panelColor.end})`
+            };
         }
-        return { backgroundColor: "#ffffff" };
     };
 
     const renderPanelCanvas = (widthMult = 1, heightMult = 1, panelId = "default") => (
@@ -236,100 +221,78 @@ const Canvas = ({
         switch (splitMode) {
             case "2-way":
                 return (
-                    <Box
-                        id="canvas-container"
-                        sx={{
-                            width: `${CANVAS_WIDTH}px`,
-                            height: `${CANVAS_HEIGHT}px`,
-                            transform: `scale(${zoomLevel})`,
-                            transformOrigin: "center center",
-                            display: 'flex',
-                        }}
-                    >
+                    <Box id="canvas-container" sx={{
+                        width: `${CANVAS_WIDTH}px`,
+                        height: `${CANVAS_HEIGHT}px`,
+                        transform: `scale(${zoomLevel})`,
+                        transformOrigin: "center center",
+                        display: 'flex'
+                    }}>
                         {renderPanelCanvas(0.5, 1, "panel-1")}
                         {renderPanelCanvas(0.5, 1, "panel-2")}
                     </Box>
                 );
+
             case "3-way-left":
                 return (
-                    <Box
-                        id="canvas-container"
-                        sx={{
-                            width: `${CANVAS_WIDTH}px`,
-                            height: `${CANVAS_HEIGHT}px`,
-                            transform: `scale(${zoomLevel})`,
-                            transformOrigin: "center center",
-                            display: 'flex',
-                        }}
-                    >
-                        {/* Left single panel */}
-                        <Box sx={{ flex: 1, display: 'flex' }}>
-                            {renderPanelCanvas(1, 1, "panel-1")}
-                        </Box>
-
-                        {/* Right stacked panels */}
-                        <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                            <Box sx={{ flex: 1, display: 'flex' }}>{renderPanelCanvas(1, 1, "panel-2")}</Box>
-                            <Box sx={{ flex: 1, display: 'flex' }}>{renderPanelCanvas(1, 1, "panel-3")}</Box>
+                    <Box id="canvas-container" sx={{
+                        width: `${CANVAS_WIDTH}px`,
+                        height: `${CANVAS_HEIGHT}px`,
+                        transform: `scale(${zoomLevel})`,
+                        transformOrigin: "center center",
+                        display: 'flex'
+                    }}>
+                        <Box sx={{ flex: 1 }}>{renderPanelCanvas(1, 1, "panel-1")}</Box>
+                        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                            <Box sx={{ flex: 1 }}>{renderPanelCanvas(1, 1, "panel-2")}</Box>
+                            <Box sx={{ flex: 1 }}>{renderPanelCanvas(1, 1, "panel-3")}</Box>
                         </Box>
                     </Box>
                 );
+
             case "3-way-right":
                 return (
-                    <Box
-                        id="canvas-container"
-                        sx={{
-                            width: `${CANVAS_WIDTH}px`,
-                            height: `${CANVAS_HEIGHT}px`,
-                            transform: `scale(${zoomLevel})`,
-                            transformOrigin: "center center",
-                            display: 'flex',
-                        }}
-                    >
-                        {/* Left stacked panels */}
-                        <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                            <Box sx={{ flex: 1, display: 'flex' }}>{renderPanelCanvas(1, 1, "panel-1")}</Box>
-                            <Box sx={{ flex: 1, display: 'flex' }}>{renderPanelCanvas(1, 1, "panel-2")}</Box>
+                    <Box id="canvas-container" sx={{
+                        width: `${CANVAS_WIDTH}px`,
+                        height: `${CANVAS_HEIGHT}px`,
+                        transform: `scale(${zoomLevel})`,
+                        transformOrigin: "center center",
+                        display: 'flex'
+                    }}>
+                        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                            <Box sx={{ flex: 1 }}>{renderPanelCanvas(1, 1, "panel-1")}</Box>
+                            <Box sx={{ flex: 1 }}>{renderPanelCanvas(1, 1, "panel-2")}</Box>
                         </Box>
-
-                        {/* Right single panel */}
-                        <Box sx={{ flex: 1, display: 'flex' }}>
-                            {renderPanelCanvas(1, 1, "panel-3")}
-                        </Box>
+                        <Box sx={{ flex: 1 }}>{renderPanelCanvas(1, 1, "panel-3")}</Box>
                     </Box>
                 );
+
             case "4-way":
                 return (
-                    <Box
-                        id="canvas-container"
-                        sx={{
-                            width: `${CANVAS_WIDTH}px`,
-                            height: `${CANVAS_HEIGHT}px`,
-                            transform: `scale(${zoomLevel})`,
-                            transformOrigin: "center center",
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(2, 1fr)',
-                            gridTemplateRows: 'repeat(2, 1fr)',
-                        }}
-                    >
-                        {renderPanelCanvas(0.5, 0.5, "panel-1")}
-                        {renderPanelCanvas(0.5, 0.5, "panel-2")}
-                        {renderPanelCanvas(0.5, 0.5, "panel-3")}
-                        {renderPanelCanvas(0.5, 0.5, "panel-4")}
+                    <Box id="canvas-container" sx={{
+                        width: `${CANVAS_WIDTH}px`,
+                        height: `${CANVAS_HEIGHT}px`,
+                        transform: `scale(${zoomLevel})`,
+                        transformOrigin: "center center",
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(2, 1fr)',
+                        gridTemplateRows: 'repeat(2, 1fr)'
+                    }}>
+                        {renderPanelCanvas(.5, .5, "panel-1")}
+                        {renderPanelCanvas(.5, .5, "panel-2")}
+                        {renderPanelCanvas(.5, .5, "panel-3")}
+                        {renderPanelCanvas(.5, .5, "panel-4")}
                     </Box>
                 );
+
             default:
                 return (
-                    <Box
-                        id="canvas-container"
-                        sx={{
-                            width: `${CANVAS_WIDTH}px`,
-                            height: `${CANVAS_HEIGHT}px`,
-                            transform: `scale(${zoomLevel})`,
-                            transformOrigin: "center center",
-                        }}
-                    >
-                        {/* Original Canvas */}
+                    <Box id="canvas-container" sx={{
+                        width: `${CANVAS_WIDTH}px`,
+                        height: `${CANVAS_HEIGHT}px`,
+                        transform: `scale(${zoomLevel})`,
+                        transformOrigin: "center center"
+                    }}>
                         {renderPanelCanvas(1, 1, "default")}
                     </Box>
                 );
@@ -348,10 +311,7 @@ const Canvas = ({
                 overflow: 'hidden'
             }}
         >
-            {/* Main Canvas */}
-            <Box>
-                {renderPanels()}
-            </Box>
+            <Box>{renderPanels()}</Box>
         </Box>
     );
 };

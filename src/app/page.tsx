@@ -23,7 +23,7 @@ export default function Home() {
 
   // Load image from localStorage on component mount
   useStoredImageLoader(setUploadedImageUrl, setCurrentImageId, setLoadedImage);
-  
+
   const [canvasBackground, setCanvasBackground] = useState<Record<string, string | { start: string; end: string }>>({ default: "#ffffff" });
   const [selectedPanel, setSelectedPanel] = useState<string>("default");
   const [borderActive, setBorderActive] = useState(false);
@@ -41,15 +41,12 @@ export default function Home() {
     fontFamily: "Arial, sans-serif",
     fontSize: 16,
     fontStyles: {},
-    alignment: 'left' as 'left' | 'center' | 'right' | 'justify',
-    listType: 'none' as 'bullet' | 'number' | 'none',
+    alignment: 'left',
+    listType: 'none',
     textColor: "#000000"
   });
 
-  // Add shapes state here
   const [shapes, setShapes] = useState<Shape[]>([]);
-
-  // Add drawings and filledImages state here for centralized management
   const [drawings, setDrawings] = useState<{ panelId: string, paths: Array<{ points: { x: number, y: number }[], tool: 'pencil' | 'eraser', color?: string, size?: number }> }[]>([]);
   const [filledImages, setFilledImages] = useState<{ panelId: string, imageData: ImageData }[]>([]);
 
@@ -65,7 +62,7 @@ export default function Home() {
   }>>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
-  // Function to save current state to history
+  // Save state to history
   const saveState = useCallback(() => {
     const currentState = {
       shapes,
@@ -80,7 +77,7 @@ export default function Home() {
     setHistory(prev => {
       const newHistory = prev.slice(0, historyIndex + 1);
       newHistory.push(currentState);
-      // Limit history to 50 snapshots
+
       if (newHistory.length > 50) {
         newHistory.shift();
         setHistoryIndex(49);
@@ -91,7 +88,7 @@ export default function Home() {
     });
   }, [shapes, drawings, filledImages, canvasBackground, splitMode, historyIndex, uploadedImageUrl, loadedImage]);
 
-  // Undo function
+  // Undo/Redo
   const handleUndo = () => {
     if (historyIndex > 0) {
       const prevState = history[historyIndex - 1];
@@ -106,7 +103,6 @@ export default function Home() {
     }
   };
 
-  // Redo function
   const handleRedo = () => {
     if (historyIndex < history.length - 1) {
       const nextState = history[historyIndex + 1];
@@ -121,21 +117,102 @@ export default function Home() {
     }
   };
 
+  // New Canvas
   const handleNewCanvas = () => {
     setSplitMode("none");
     setCanvasBackground({ default: "#ffffff" });
     setSelectedPanel("default");
-    setShapes([]); // Clear shapes when creating new canvas
-    setDrawings([]); // Clear drawings
-    setFilledImages([]); // Clear filled images
-    setUploadedImageUrl(null); // Clear uploaded image
-    setLoadedImage(null); // Clear loaded image
-    setCurrentImageId(null); // Clear current image ID
-    setHistory([]); // Clear history
-    setHistoryIndex(-1); // Reset history index
+    setShapes([]);
+    setDrawings([]);
+    setFilledImages([]);
+    setUploadedImageUrl(null);
+    setLoadedImage(null);
+    setCurrentImageId(null);
+    setHistory([]);
+    setHistoryIndex(-1);
     setResetKey(prev => prev + 1);
-    localStorage.removeItem('currentImageId'); // Clear stored image data
+    localStorage.removeItem('currentImageId');
   };
+
+  // NEW — Apply image to selected shape
+  const applyImageToSelectedShape = (img: HTMLImageElement, imageId?: string, imageUrl?: string) => {
+    setShapes(prev =>
+      prev.map(shape =>
+        shape.selected
+          ? {
+            ...shape,
+            imageElement: img,
+            imageId: imageId || undefined,
+            imageUrl: imageUrl || undefined
+          }
+          : shape
+      )
+    );
+    saveState();
+  };
+
+  // NEW — Updated image upload workflow
+  const handleImageUpload = (imageUrl: string, imageId?: string) => {
+    const selected = shapes.find(s => s.selected);
+    if (!selected) {
+      window.alert("Please select a shape first.");
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      setUploadedImageUrl(imageUrl);
+      setLoadedImage(img);
+      setCurrentImageId(imageId || null);
+
+      applyImageToSelectedShape(img, imageId, imageUrl);
+    };
+    img.onerror = () => {
+      console.error("Failed to load image");
+    };
+    img.src = imageUrl;
+  };
+
+  const handleImageUsed = () => {
+    setUploadedImageUrl(null);
+    setLoadedImage(null);
+    setCurrentImageId(null);
+    saveState();
+  };
+
+  // NEW — Clear image from selected shape
+  const handleClearImage = () => {
+    const selected = shapes.find(s => s.selected);
+    if (!selected) {
+      window.alert("Please select a shape first.");
+      return;
+    }
+
+    setShapes(prev =>
+      prev.map(shape =>
+        shape.selected
+          ? {
+            ...shape,
+            imageElement: undefined,
+            imageId: undefined,
+            imageUrl: undefined
+          }
+          : shape
+      )
+    );
+
+    saveState();
+  };
+
+  const handleCanvasBackgroundChange = (color: any, panelId: string = 'default') => {
+    setCanvasBackground(prev => ({
+      ...prev,
+      [panelId]: color.value
+    }));
+    saveState();
+  };
+
+  const handlePanelSelect = (panelId: string) => setSelectedPanel(panelId);
 
   const handlePencilToggle = (enabled: boolean) => {
     setPencilActive(enabled);
@@ -185,76 +262,7 @@ export default function Home() {
     }
   };
 
-  const handleImageUpload = (imageUrl: string, imageId?: string) => {
-    setUploadedImageUrl(imageUrl);
-    setCurrentImageId(imageId || null);
-    const img = new Image();
-    img.onload = () => {
-      setLoadedImage(img);
-      saveState(); 
-    };
-    img.onerror = () => {
-      console.error("Failed to load image");
-      setUploadedImageUrl(null);
-      setLoadedImage(null);
-      setCurrentImageId(null);
-    };
-    img.src = imageUrl;
-  };
-
-  const handleImageUsed = () => {
-    setUploadedImageUrl(null);
-    setLoadedImage(null);
-    setCurrentImageId(null);
-    saveState();
-  };
-
-  const handleCanvasBackgroundChange = (color: { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }, panelId: string = 'default') => {
-    setCanvasBackground(prev => ({
-      ...prev,
-      [panelId]: color.value
-    }));
-    saveState();
-  };
-
-  const handlePanelSelect = (panelId: string) => {
-    setSelectedPanel(panelId);
-  };
-
-  const handleBorderToggle = (enabled: boolean) => {
-    setBorderActive(enabled);
-  };
-
-  const handleBorderChange = (border: { type: 'solid' | 'dashed' | 'dotted'; size: number; color: string }) => {
-    setBorderType(border.type);
-    setBorderSize(border.size);
-    setBorderColor(border.color);
-  };
-
-  const handleFontFamilyChange = (fontFamily: string) => {
-    setFontFeatures(prev => ({ ...prev, fontFamily }));
-  };
-
-  const handleFontSizeChange = (fontSize: number) => {
-    setFontFeatures(prev => ({ ...prev, fontSize }));
-  };
-
-  const handleFontStyleChange = (styles: FontStyles) => {
-    setFontFeatures(prev => ({ ...prev, fontStyles: styles }));
-  };
-
-  const handleTextAlignmentChange = (alignment: 'left' | 'center' | 'right' | 'justify') => {
-    setFontFeatures(prev => ({ ...prev, alignment }));
-  };
-
-  const handleListTypeChange = (listType: 'bullet' | 'number' | 'none') => {
-    setFontFeatures(prev => ({ ...prev, listType }));
-  };
-
-  const handleTextColorChange = (color: string | { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }) => {
-    setFontFeatures(prev => ({ ...prev, textColor: color }));
-  };
-
+  // SAVE CANVAS EXPORT AS PNG
   const handleSaveCanvas = (): string => {
     const canvas = document.querySelector('canvas');
     if (canvas) {
@@ -465,7 +473,7 @@ export default function Home() {
   };
 
   return (
-    <Box suppressHydrationWarning sx={{ bgcolor: 'grey.900', height: '100vh', color: 'white', display: 'flex', flexDirection: 'column', gap: 1 }}>
+    <Box suppressHydrationWarning sx={{ bgcolor: 'grey.900', height: '105vh', color: 'white', display: 'flex', flexDirection: 'column', gap: 1 }}>
       <Menu
         onSaveCanvas={handleSaveCanvas}
         onLoadCanvas={handleLoadCanvas}
@@ -488,7 +496,7 @@ export default function Home() {
               return '';
             })()
           })),
-          uploadedImageUrl: uploadedImageUrl, // Add this to pass current image state
+          uploadedImageUrl: uploadedImageUrl,
           currentImageId: currentImageId
         }}
         onNewCanvas={handleNewCanvas}
@@ -508,23 +516,28 @@ export default function Home() {
         textActive={textActive}
         onImageUpload={handleImageUpload}
         onImageUsed={handleImageUsed}
+        onClearImage={handleClearImage}
         onCanvasBackgroundChange={handleCanvasBackgroundChange}
         selectedPanel={selectedPanel}
-        onBorderToggle={handleBorderToggle}
-        onBorderChange={handleBorderChange}
         borderActive={borderActive}
+        onBorderToggle={setBorderActive}
+        onBorderChange={(b) => {
+          setBorderType(b.type);
+          setBorderSize(b.size);
+          setBorderColor(b.color);
+        }}
         currentFontFamily={fontFeatures.fontFamily}
         currentFontSize={fontFeatures.fontSize}
         currentFontStyles={fontFeatures.fontStyles}
         currentTextAlignment={fontFeatures.alignment}
         currentListType={fontFeatures.listType}
         currentTextColor={fontFeatures.textColor}
-        onFontFamilyChange={handleFontFamilyChange}
-        onFontSizeChange={handleFontSizeChange}
-        onFontStyleChange={handleFontStyleChange}
-        onTextAlignmentChange={handleTextAlignmentChange}
-        onListTypeChange={handleListTypeChange}
-        onTextColorChange={handleTextColorChange}
+        onFontFamilyChange={(v) => setFontFeatures(prev => ({ ...prev, fontFamily: v }))}
+        onFontSizeChange={(v) => setFontFeatures(prev => ({ ...prev, fontSize: v }))}
+        onFontStyleChange={(v) => setFontFeatures(prev => ({ ...prev, fontStyles: v }))}
+        onTextAlignmentChange={(v) => setFontFeatures(prev => ({ ...prev, alignment: v }))}
+        onListTypeChange={(v) => setFontFeatures(prev => ({ ...prev, listType: v }))}
+        onTextColorChange={(v) => setFontFeatures(prev => ({ ...prev, textColor: v }))}
         onUndo={handleUndo}
         onRedo={handleRedo}
       />
@@ -544,6 +557,7 @@ export default function Home() {
           loadedImage={loadedImage}
           currentImageId={currentImageId}
           onImageUsed={handleImageUsed}
+          onClearImage={handleClearImage}
           backgroundColor={canvasBackground}
           onPanelSelect={handlePanelSelect}
           borderActive={borderActive}
@@ -551,7 +565,6 @@ export default function Home() {
           borderSize={borderSize}
           borderColor={borderColor}
           currentFontFeatures={fontFeatures}
-          // Pass shapes and setShapes as props to Canvas
           shapes={shapes}
           onShapesChange={setShapes}
           drawings={drawings}

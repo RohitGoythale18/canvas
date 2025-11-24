@@ -1,3 +1,4 @@
+'use client';
 import { useEffect } from 'react';
 import { Shape, FontStyles } from '../types';
 
@@ -9,7 +10,7 @@ interface UseTextToolsProps {
     shapes: Shape[];
     textInput: string;
     editingShapeId: string | null;
-    currentFontFeatures: {
+    currentFontFeatures?: {
         fontFamily: string;
         fontSize: number;
         fontStyles: FontStyles;
@@ -22,6 +23,20 @@ interface UseTextToolsProps {
     setEditingShapeId: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
+const DEFAULT_FONT_FEATURES = {
+    fontFamily: "Arial, sans-serif",
+    fontSize: 16,
+    fontStyles: {
+        bold: false,
+        italic: false,
+        underline: false,
+        strikethrough: false
+    } as FontStyles,
+    alignment: 'left' as const,
+    listType: 'none' as const,
+    textColor: "#000000"
+};
+
 export const useTextTools = ({
     textActive,
     shapes,
@@ -32,8 +47,13 @@ export const useTextTools = ({
     setTextInput,
     setEditingShapeId
 }: UseTextToolsProps) => {
+    // Use provided font features or fallback to default
+    const fontFeatures = currentFontFeatures ?? DEFAULT_FONT_FEATURES;
+
     // Text creation logic
     useEffect(() => {
+        if (typeof document === 'undefined') return;
+
         const canvases = document.querySelectorAll<HTMLCanvasElement>(".drawing-panel");
         const cleanupFunctions: (() => void)[] = [];
 
@@ -80,12 +100,12 @@ export const useTextTools = ({
                         selected: true,
                         panelId: panelId,
                         text: "",
-                        fontSize: currentFontFeatures.fontSize,
-                        fontFamily: currentFontFeatures.fontFamily,
-                        textColor: currentFontFeatures.textColor,
-                        fontStyles: currentFontFeatures.fontStyles,
-                        textAlignment: currentFontFeatures.alignment,
-                        listType: currentFontFeatures.listType,
+                        fontSize: fontFeatures.fontSize,
+                        fontFamily: fontFeatures.fontFamily,
+                        textColor: fontFeatures.textColor,
+                        fontStyles: fontFeatures.fontStyles,
+                        textAlignment: fontFeatures.alignment,
+                        listType: fontFeatures.listType,
                         isEditing: true,
                     };
 
@@ -104,9 +124,9 @@ export const useTextTools = ({
         return () => {
             cleanupFunctions.forEach(cleanup => cleanup());
         };
-    }, [textActive, shapes, currentFontFeatures, onShapesChange, setTextInput, setEditingShapeId]);
+    }, [textActive, shapes, onShapesChange, setTextInput, setEditingShapeId, fontFeatures.fontSize, fontFeatures.fontFamily, fontFeatures.fontStyles, fontFeatures.alignment, fontFeatures.listType, fontFeatures.textColor]);
 
-    // Consolidated text input handler
+    // Text input handler
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             const editingShape = shapes.find(shape => shape.isEditing && shape.type === "text");
@@ -124,12 +144,12 @@ export const useTextTools = ({
                             isEditing: false,
                             text: textInput,
                             // Ensure font features are preserved
-                            fontSize: currentFontFeatures.fontSize,
-                            fontFamily: currentFontFeatures.fontFamily,
-                            textColor: currentFontFeatures.textColor,
-                            fontStyles: currentFontFeatures.fontStyles,
-                            textAlignment: currentFontFeatures.alignment,
-                            listType: currentFontFeatures.listType
+                            fontSize: fontFeatures.fontSize,
+                            fontFamily: fontFeatures.fontFamily,
+                            textColor: fontFeatures.textColor,
+                            fontStyles: fontFeatures.fontStyles,
+                            textAlignment: fontFeatures.alignment,
+                            listType: fontFeatures.listType
                         }
                         : shape
                 ));
@@ -138,6 +158,7 @@ export const useTextTools = ({
                 e.preventDefault();
                 setTextInput(prev => prev.slice(0, -1));
             } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+                // Printable character
                 e.preventDefault();
                 setTextInput(prev => prev + e.key);
             }
@@ -145,17 +166,28 @@ export const useTextTools = ({
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [shapes, textInput, setTextInput, currentFontFeatures, onShapesChange, setEditingShapeId]);
+    }, [shapes, textInput, setTextInput, onShapesChange, setEditingShapeId, fontFeatures]);
 
     // Focus management for text input
     useEffect(() => {
-        if (editingShapeId) {
-            const canvas = document.querySelector<HTMLCanvasElement>(".drawing-panel");
-            if (canvas) {
-                canvas.focus();
-            }
+        if (!editingShapeId) return;
+        if (typeof document === 'undefined') return;
+
+        // Focus the canvas that contains the editing shape (if possible)
+        const editingShape = shapes.find(s => s.id === editingShapeId);
+        let canvasToFocus: HTMLCanvasElement | null = null;
+        if (editingShape) {
+            // Try to find canvas with matching panel id
+            canvasToFocus = document.querySelector<HTMLCanvasElement>(`.drawing-panel[data-panel-id="${editingShape.panelId || 'default'}"]`);
         }
-    }, [editingShapeId]);
+        // fallback to first drawing-panel
+        if (!canvasToFocus) {
+            canvasToFocus = document.querySelector<HTMLCanvasElement>(".drawing-panel");
+        }
+        if (canvasToFocus) {
+            canvasToFocus.focus();
+        }
+    }, [editingShapeId, shapes]);
 
     // Force re-render during text editing for smooth cursor
     useEffect(() => {
