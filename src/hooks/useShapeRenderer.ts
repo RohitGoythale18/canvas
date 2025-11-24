@@ -36,7 +36,7 @@ export const useShapeRenderer = ({
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // Draw background color first
-            const panelColor = backgroundColor?.[panelId] || backgroundColor?.default || "#ffffff";
+            const panelColor = (backgroundColor && (backgroundColor[panelId] ?? backgroundColor.default)) || "#ffffff";
             if (typeof panelColor === 'string') {
                 ctx.fillStyle = panelColor;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -52,7 +52,13 @@ export const useShapeRenderer = ({
             // Draw filled images for this panel
             const panelFilledImages = filledImages.filter(img => img.panelId === panelId);
             panelFilledImages.forEach(({ imageData }) => {
-                ctx.putImageData(imageData, 0, 0);
+                try {
+                    ctx.putImageData(imageData, 0, 0);
+                } catch (err) {
+                    // Some browsers may throw if imageData dimensions mismatch — ignore to avoid crash
+                    // eslint-disable-next-line no-console
+                    console.warn('putImageData failed', err);
+                }
             });
 
             // Draw drawings for this panel
@@ -300,46 +306,56 @@ const renderTextShape = (
     textInput: string,
     editingShapeId: string | null
 ) => {
-    // Apply font styles with all font features
-    const fontFamily = shape.fontFamily || "sans-serif";
-    const fontSize = shape.fontSize || 16;
-    const fontWeight = shape.fontStyles?.bold ? "bold" : "normal";
-    const fontStyle = shape.fontStyles?.italic ? "italic" : "normal";
+    // Normalize font-related properties to safe defaults
+    const fontFamily = (shape.fontFamily && String(shape.fontFamily)) || "Arial, sans-serif";
+    const fontSize = typeof shape.fontSize === 'number' ? shape.fontSize : 16;
+    const fontStyles = shape.fontStyles ?? { bold: false, italic: false, underline: false, strikethrough: false };
+    const listType = shape.listType ?? 'none';
+    const textAlignment = shape.textAlignment ?? 'left';
+    const textColorProp = shape.textColor ?? "#000000";
 
-    // Build the complete font string
+    const fontWeight = fontStyles.bold ? "bold" : "normal";
+    const fontStyle = fontStyles.italic ? "italic" : "normal";
+
+    // Build the font string
     ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
     ctx.textBaseline = "top";
 
-    // Apply text alignment
-    const textAlign = shape.textAlignment || 'left';
-    // CanvasRenderingContext2D.textAlign does not support 'justify', map it to a supported value
-    const canvasTextAlign = textAlign === 'justify' ? 'left' : (textAlign as CanvasTextAlign);
+    // Map alignment (canvas doesn't support 'justify')
+    const canvasTextAlign = textAlignment === 'justify' ? 'left' : (textAlignment as CanvasTextAlign);
     ctx.textAlign = canvasTextAlign;
 
-    // Apply text color (solid or gradient)
-    if (typeof shape.textColor === 'string') {
-        ctx.fillStyle = shape.textColor;
-    } else if (shape.textColor && typeof shape.textColor === 'object' && shape.textColor.type === 'gradient') {
-        const gradientValue = shape.textColor.value as { start: string; end: string };
-        const gradient = ctx.createLinearGradient(
-            shape.x,
-            shape.y,
-            shape.x + shape.width,
-            shape.y + shape.height
-        );
-        gradient.addColorStop(0, gradientValue.start);
-        gradient.addColorStop(1, gradientValue.end);
-        ctx.fillStyle = gradient;
-    } else {
-        ctx.fillStyle = "#000000";
-    }
+    // Determine fillStyle for text (support string or object with type 'solid' or 'gradient')
+    const computeTextFillStyle = () => {
+        if (typeof textColorProp === 'string') {
+            return String(textColorProp);
+        }
+        if (typeof textColorProp === 'object') {
+            // object shape: { type: 'solid'|'gradient', value: ... }
+            if ((textColorProp).type === 'gradient') {
+                const gradientValue = (textColorProp).value as { start: string; end: string };
+                const gradient = ctx.createLinearGradient(shape.x, shape.y, shape.x + shape.width, shape.y + shape.height);
+                gradient.addColorStop(0, gradientValue.start);
+                gradient.addColorStop(1, gradientValue.end);
+                return gradient;
+            } else if ((textColorProp).type === 'solid') {
+                const value = (textColorProp).value;
+                return typeof value === 'string' ? value : "#000000";
+            }
+        }
+        return "#000000";
+    };
+
+    const textFillStyle = computeTextFillStyle();
 
     const textHeight = fontSize;
-    const lineHeight = textHeight + 4;
-    const maxWidth = shape.width - 8;
+    const lineHeight = Math.round(fontSize * 1.25);
+    const maxWidth = Math.max(8, shape.width - 8);
 
+    // If editing/selected, draw a translucent background and border to indicate text box
     if (shape.isEditing || shape.selected) {
-        // Draw background for the textbox
+        // Draw background (semi-transparent white so text remains readable)
+        ctx.save();
         ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
         ctx.fillRect(shape.x, shape.y, shape.width, shape.height);
 
@@ -347,176 +363,133 @@ const renderTextShape = (
         ctx.strokeStyle = "#007bff";
         ctx.lineWidth = 2;
         ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
-
-        // Reset fill style for text
-        if (typeof shape.textColor === 'string') {
-            ctx.fillStyle = shape.textColor;
-        } else if (shape.textColor && typeof shape.textColor === 'object' && shape.textColor.type === 'gradient') {
-            const gradientValue = shape.textColor.value as { start: string; end: string };
-            const gradient = ctx.createLinearGradient(
-                shape.x,
-                shape.y,
-                shape.x + shape.width,
-                shape.y + shape.height
-            );
-            gradient.addColorStop(0, gradientValue.start);
-            gradient.addColorStop(1, gradientValue.end);
-            ctx.fillStyle = gradient;
-        } else {
-            ctx.fillStyle = "#000000";
-        }
+        ctx.restore();
     }
 
-    // Clip text to the box to prevent overflow
+    // Clip to box
     ctx.save();
     ctx.beginPath();
     ctx.rect(shape.x, shape.y, shape.width, shape.height);
     ctx.clip();
 
-    const wrapText = (text: string, isEditing: boolean = false) => {
+    // Wrap text function
+    const wrapText = (text: string, isEditing = false) => {
         const lines: string[] = [];
         let currentLine = '';
         const words = text.split(' ');
 
-        const breakLineIfNeeded = (line: string) => {
-            if (ctx.measureText(line).width <= maxWidth) return [line];
-            const brokenLines: string[] = [];
-            let current = '';
-            for (const char of line) {
-                if (ctx.measureText(current + char).width <= maxWidth) {
-                    current += char;
+        const breakLongWord = (word: string) => {
+            // breaks if a single long continuous string exceeds maxWidth
+            const pieces: string[] = [];
+            let buffer = '';
+            for (const ch of word) {
+                if (ctx.measureText(buffer + ch).width <= maxWidth) {
+                    buffer += ch;
                 } else {
-                    if (current) brokenLines.push(current);
-                    current = char;
+                    if (buffer) pieces.push(buffer);
+                    buffer = ch;
                 }
             }
-            if (current) brokenLines.push(current);
-            return brokenLines;
+            if (buffer) pieces.push(buffer);
+            return pieces;
         };
 
         for (let i = 0; i < words.length; i++) {
             const word = words[i];
-            // Handle line breaks for list items
-            if (shape.listType !== 'none' && word.includes('\n')) {
-                const parts = word.split('\n');
-                for (let j = 0; j < parts.length; j++) {
-                    if (j > 0) {
-                        lines.push(currentLine);
-                        currentLine = '';
-                    }
-                    const testLine = currentLine + (currentLine ? ' ' : '') + parts[j];
-                    const metrics = ctx.measureText(testLine);
+            const test = currentLine ? `${currentLine} ${word}` : word;
+            const width = ctx.measureText(test).width;
 
-                    if (metrics.width > maxWidth && currentLine !== '') {
-                        lines.push(currentLine);
-                        const broken = breakLineIfNeeded(parts[j]);
-                        lines.push(...broken.slice(0, -1));
-                        currentLine = broken[broken.length - 1] || '';
-                    } else {
-                        currentLine = testLine;
-                        const broken = breakLineIfNeeded(currentLine);
-                        if (broken.length > 1) {
-                            lines.push(...broken.slice(0, -1));
-                            currentLine = broken[broken.length - 1];
-                        }
-                    }
+            if (width > maxWidth) {
+                if (currentLine) {
+                    lines.push(currentLine);
+                    currentLine = '';
+                }
+                const broken = breakLongWord(word);
+                // push all except last, keep last as currentLine
+                for (let b = 0; b < broken.length; b++) {
+                    if (b < broken.length - 1) lines.push(broken[b]);
+                    else currentLine = broken[b];
                 }
             } else {
-                const testLine = currentLine + (currentLine ? ' ' : '') + word;
-                const metrics = ctx.measureText(testLine);
-
-                if (metrics.width > maxWidth && currentLine !== '') {
-                    lines.push(currentLine);
-                    const broken = breakLineIfNeeded(word);
-                    lines.push(...broken.slice(0, -1));
-                    currentLine = broken[broken.length - 1] || '';
-                } else {
-                    currentLine = testLine;
-                    const broken = breakLineIfNeeded(currentLine);
-                    if (broken.length > 1) {
-                        lines.push(...broken.slice(0, -1));
-                        currentLine = broken[broken.length - 1];
-                    }
-                }
+                currentLine = test;
             }
         }
 
-        if (currentLine) {
-            const broken = breakLineIfNeeded(currentLine);
-            lines.push(...broken);
-        }
+        if (currentLine) lines.push(currentLine);
 
-        // Add list markers
-        if (shape.listType !== 'none') {
+        // handle lists
+        if (listType && listType !== 'none') {
             for (let i = 0; i < lines.length; i++) {
-                if (shape.listType === 'bullet') {
-                    lines[i] = '• ' + lines[i];
-                } else if (shape.listType === 'number') {
-                    lines[i] = (i + 1) + '. ' + lines[i];
-                }
+                if (listType === 'bullet') lines[i] = '• ' + lines[i];
+                else if (listType === 'number') lines[i] = `${i + 1}. ${lines[i]}`;
             }
         }
 
-        // If editing, add cursor to the last line
-        if (isEditing) {
-            const lastLineIndex = lines.length - 1;
-            lines[lastLineIndex] += (Date.now() % 1000 < 500 ? "|" : "");
+        if (isEditing && lines.length > 0) {
+            const lastIndex = lines.length - 1;
+            // blinking cursor
+            lines[lastIndex] = lines[lastIndex] + (Date.now() % 1000 < 500 ? '|' : '');
         }
 
         return lines;
     };
 
-    let lines: string[];
-    if (shape.isEditing) {
-        const currentText = shape.id === editingShapeId ? textInput : (shape.text || "");
-        lines = wrapText(currentText, true);
-    } else {
-        lines = wrapText(shape.text || "");
-    }
+    // Choose source text
+    const sourceText = shape.isEditing && shape.id === editingShapeId ? textInput : (shape.text || "");
+    const lines = wrapText(sourceText, shape.isEditing);
 
-    // Calculate text positioning based on alignment
-    const getTextXPosition = () => {
-        switch (textAlign) {
-            case 'center':
-                return shape.x + (shape.width / 2);
-            case 'right':
-                return shape.x + shape.width - 4;
-            case 'left':
-            default:
-                return shape.x + 4;
+    // Set fillStyle for text
+    (ctx.fillStyle as unknown) = textFillStyle as unknown;
+
+    // Helper to get x pos based on alignment and metrics
+    const getXForLine = (line: string) => {
+        const metrics = ctx.measureText(line);
+        if (canvasTextAlign === 'center') {
+            return shape.x + shape.width / 2;
+        } else if (canvasTextAlign === 'right') {
+            return shape.x + shape.width - 4;
         }
+        // left
+        return shape.x + 4;
     };
 
-    // Draw each line with proper alignment and formatting
-    let y = shape.y + textHeight;
+    // Draw all lines
+    let y = shape.y + 4; // small top padding
     for (const line of lines) {
-        if (y > shape.y + shape.height - textHeight) break; // Stop if beyond box height
+        if (y > shape.y + shape.height - textHeight) break;
 
-        const xPos = getTextXPosition();
+        const xPos = getXForLine(line);
 
-        // Draw the text
+        // draw text
         ctx.fillText(line, xPos, y);
 
-        // Draw text decorations (underline and strikethrough)
-        if (shape.fontStyles) {
-            const metrics = ctx.measureText(line);
-            const textY = y;
+        // Draw underline / strikethrough if requested
+        if (fontStyles.underline || fontStyles.strikethrough) {
+            // measure width of visible text (without cursor if present)
+            const visibleLine = line.replace(/\|$/, '');
+            const _metrics = ctx.measureText(visibleLine); // prefix _ to avoid unused variable warning
+            const metricsWidth = _metrics.width;
+            // compute effective left x depending on alignment
+            let leftX = xPos;
+            if (canvasTextAlign === 'center') leftX = xPos - metricsWidth / 2;
+            else if (canvasTextAlign === 'right') leftX = xPos - metricsWidth;
 
-            if (shape.fontStyles.underline) {
-                ctx.strokeStyle = ctx.fillStyle as string;
-                ctx.lineWidth = 1;
+            const strokeColor = (typeof textFillStyle === 'string') ? textFillStyle : "#000";
+            ctx.strokeStyle = strokeColor as string;
+            ctx.lineWidth = Math.max(1, Math.round(fontSize / 12));
+
+            if (fontStyles.underline) {
+                const underlineY = y + textHeight + 2;
                 ctx.beginPath();
-                ctx.moveTo(xPos, textY + textHeight + 2);
-                ctx.lineTo(xPos + metrics.width, textY + textHeight + 2);
+                ctx.moveTo(leftX, underlineY);
+                ctx.lineTo(leftX + metricsWidth, underlineY);
                 ctx.stroke();
             }
-
-            if (shape.fontStyles.strikethrough) {
-                ctx.strokeStyle = ctx.fillStyle as string;
-                ctx.lineWidth = 1;
+            if (fontStyles.strikethrough) {
+                const strikeY = y + (textHeight / 2);
                 ctx.beginPath();
-                ctx.moveTo(xPos, textY + (textHeight / 2));
-                ctx.lineTo(xPos + metrics.width, textY + (textHeight / 2));
+                ctx.moveTo(leftX, strikeY);
+                ctx.lineTo(leftX + metricsWidth, strikeY);
                 ctx.stroke();
             }
         }
@@ -526,7 +499,7 @@ const renderTextShape = (
 
     ctx.restore();
 
-    // Reset text alignment to default for other shapes
+    // Reset text alignment to left for other rendering
     ctx.textAlign = 'left';
 };
 

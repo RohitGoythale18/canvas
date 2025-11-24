@@ -26,6 +26,7 @@ interface CanvasProps {
     selectedShape?: string | null;
     onShapeSelect: (shape: string) => void;
     textActive?: boolean;
+    onTextToggle?: (enabled: boolean) => void; // <-- added
     uploadedImageUrl?: string | null;
     loadedImage?: HTMLImageElement | null;
     currentImageId?: string | null;
@@ -59,6 +60,7 @@ const Canvas = ({
     selectedShape = null,
     onShapeSelect,
     textActive = false,
+    onTextToggle, // <-- accept prop
     uploadedImageUrl,
     loadedImage,
     currentImageId,
@@ -120,7 +122,8 @@ const Canvas = ({
         currentFontFeatures,
         onShapesChange,
         setTextInput,
-        setEditingShapeId
+        setEditingShapeId,
+        onTextToggle // <-- pass the toggle callback into the hook
     });
 
     useShapeInteraction({

@@ -1,10 +1,10 @@
 'use client';
 import { useState, useCallback } from "react";
+import { Box } from "@mui/material";
+import { Shape, DrawingPath, FontFeatures, CanvasData } from "../types";
 
 import Menu from "./components/MenuBar";
 import Canvas from "./components/Canvas";
-import { Box } from "@mui/material";
-import { Shape, CanvasData, FontFeatures } from "../types";
 import { useStoredImageLoader } from "../hooks/useStoredImageLoader";
 
 export default function Home() {
@@ -40,7 +40,7 @@ export default function Home() {
   });
 
   const [shapes, setShapes] = useState<Shape[]>([]);
-  const [drawings, setDrawings] = useState<{ panelId: string, paths: Array<{ points: { x: number, y: number }[], tool: 'pencil' | 'eraser', color?: string, size?: number }> }[]>([]);
+  const [drawings, setDrawings] = useState<{ panelId: string, paths: DrawingPath[] }[]>([]);
   const [filledImages, setFilledImages] = useState<{ panelId: string, imageData: ImageData }[]>([]);
 
   // History state for undo/redo
@@ -343,9 +343,22 @@ export default function Home() {
   const handleLoadCanvas = async (canvasData: CanvasData) => {
     saveState();
 
+    // Normalize shapes (ensure text/font props exist) BEFORE setShapes
+    let normalizedShapes: Shape[] = [];
     if (canvasData.shapes) {
-      setShapes(canvasData.shapes);
+      normalizedShapes = (canvasData.shapes as Shape[]).map((shape) => ({
+        ...shape,
+        fontFamily: shape.fontFamily ?? "Arial, sans-serif",
+        fontSize: shape.fontSize ?? 16,
+        fontStyles: shape.fontStyles ?? { bold: false, italic: false, underline: false, strikethrough: false },
+        textColor: shape.textColor ?? "#000000",
+        textAlignment: shape.textAlignment ?? "left",
+        listType: shape.listType ?? "none"
+      }));
+
+      setShapes(normalizedShapes);
     }
+
     if (canvasData.backgroundColor) {
       setCanvasBackground(canvasData.backgroundColor);
     }
@@ -356,7 +369,7 @@ export default function Home() {
       setDrawings(canvasData.drawings);
     }
     if (canvasData.filledImages) {
-      const convertedFilledImages = canvasData.filledImages.map(fi => {
+      const convertedFilledImages = canvasData.filledImages.map((fi) => {
         const img = new Image();
         img.src = fi.imageData as string;
         return new Promise<{ panelId: string; imageData: ImageData }>((resolve) => {
@@ -472,12 +485,13 @@ export default function Home() {
       }
     }
 
-    if (canvasData.shapes) {
-      const updatedShapes = [...canvasData.shapes];
+    // Load shape images (if any). Use normalizedShapes so text/font props are preserved.
+    if (normalizedShapes.length > 0) {
+      const updatedShapes = [...normalizedShapes];
       const loadPromises: Promise<void>[] = [];
 
       for (const shape of updatedShapes) {
-        if (shape.imageUrl && !shape.imageElement) {
+        if (shape.imageUrl && !(shape).imageElement) {
           const loadPromise = new Promise<void>((resolve) => {
             const shapeImg = new Image();
             shapeImg.onload = () => {
@@ -496,7 +510,7 @@ export default function Home() {
             shapeImg.src = shape.imageUrl!;
           });
           loadPromises.push(loadPromise);
-        } else if (shape.imageId && !shape.imageElement) {
+        } else if (shape.imageId && !(shape).imageElement) {
           const loadPromise = new Promise<void>(async (resolve) => {
             try {
               const { imageStorage } = await import('../lib/imageStorage');
@@ -533,7 +547,8 @@ export default function Home() {
       }
 
       Promise.all(loadPromises).then(() => {
-        setShapes(updatedShapes);
+        // setShapes with updatedShapes (which include loaded imageElement if any)
+        setShapes(updatedShapes as Shape[]);
         console.log('All shape images loaded');
       });
     }
@@ -622,6 +637,7 @@ export default function Home() {
           selectedShape={selectedShape}
           onShapeSelect={handleShapeSelect}
           textActive={textActive}
+          onTextToggle={handleTextToggle}
           uploadedImageUrl={uploadedImageUrl}
           loadedImage={loadedImage}
           currentImageId={currentImageId}
