@@ -76,7 +76,6 @@ export const useDrawingTools = ({
             const endDraw = () => {
                 if (drawing) {
                     drawing = false;
-                    // Save state after drawing ends
                     if (onSaveState) {
                         onSaveState();
                     }
@@ -99,5 +98,5 @@ export const useDrawingTools = ({
         return () => {
             cleanupFunctions.forEach(cleanup => cleanup());
         };
-    }, [pencilActive, eraserActive, eraserSize, splitMode, setDrawings]); // onSaveState is not included as it's only called in event handlers, not during effect setup
+    }, [pencilActive, eraserActive, eraserSize, splitMode, setDrawings]);
 };

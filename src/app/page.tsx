@@ -1,10 +1,10 @@
 'use client';
-import React, { useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 
 import Menu from "./components/MenuBar";
 import Canvas from "./components/Canvas";
 import { Box } from "@mui/material";
-import { Shape, FontStyles, CanvasData } from "../types";
+import { Shape, CanvasData, FontFeatures } from "../types";
 import { useStoredImageLoader } from "../hooks/useStoredImageLoader";
 
 export default function Home() {
@@ -30,14 +30,7 @@ export default function Home() {
   const [borderType, setBorderType] = useState<'solid' | 'dashed' | 'dotted'>('solid');
   const [borderSize, setBorderSize] = useState(2);
   const [borderColor, setBorderColor] = useState('#000000');
-  const [fontFeatures, setFontFeatures] = useState<{
-    fontFamily: string;
-    fontSize: number;
-    fontStyles: FontStyles;
-    alignment: 'left' | 'center' | 'right' | 'justify';
-    listType: 'bullet' | 'number' | 'none';
-    textColor: string | { type: 'solid' | 'gradient'; value: string | { start: string; end: string } };
-  }>({
+  const [fontFeatures, setFontFeatures] = useState<FontFeatures>({
     fontFamily: "Arial, sans-serif",
     fontSize: 16,
     fontStyles: {},
@@ -58,20 +51,38 @@ export default function Home() {
     backgroundColor: typeof canvasBackground;
     splitMode: string;
     uploadedImageUrl: string | null;
-    loadedImage: HTMLImageElement | null;
+    loadedImageId: string | null;
   }>>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
-  // Save state to history
+  const safeStructuredClone = (obj: unknown) => {
+    if (obj === undefined) return undefined;
+    try {
+      if (typeof (globalThis).structuredClone === 'function') {
+        return (globalThis).structuredClone(obj);
+      }
+    } catch { }
+    try {
+      return JSON.parse(JSON.stringify(obj));
+    } catch {
+      return obj;
+    }
+  };
+
   const saveState = useCallback(() => {
+    const sanitizedShapes = shapes.map(s => {
+      const { imageElement: _imageElement, ...rest } = s as Shape & { imageElement?: HTMLImageElement };
+      return rest as Shape;
+    });
+
     const currentState = {
-      shapes,
-      drawings,
-      filledImages,
-      backgroundColor: canvasBackground,
+      shapes: safeStructuredClone(sanitizedShapes),
+      drawings: safeStructuredClone(drawings),
+      filledImages: safeStructuredClone(filledImages),
+      backgroundColor: safeStructuredClone(canvasBackground),
       splitMode,
       uploadedImageUrl,
-      loadedImage
+      loadedImageId: currentImageId ?? null
     };
 
     setHistory(prev => {
@@ -80,16 +91,17 @@ export default function Home() {
 
       if (newHistory.length > 50) {
         newHistory.shift();
-        setHistoryIndex(49);
-      } else {
-        setHistoryIndex(newHistory.length - 1);
       }
+
+      const newIdx = newHistory.length - 1;
+      setHistoryIndex(newIdx);
+
       return newHistory;
     });
-  }, [shapes, drawings, filledImages, canvasBackground, splitMode, historyIndex, uploadedImageUrl, loadedImage]);
+  }, [shapes, drawings, filledImages, canvasBackground, splitMode, historyIndex, uploadedImageUrl, currentImageId]);
 
   // Undo/Redo
-  const handleUndo = () => {
+  const handleUndo = async () => {
     if (historyIndex > 0) {
       const prevState = history[historyIndex - 1];
       setShapes(prevState.shapes);
@@ -97,25 +109,82 @@ export default function Home() {
       setFilledImages(prevState.filledImages);
       setCanvasBackground(prevState.backgroundColor);
       setSplitMode(prevState.splitMode);
-      setUploadedImageUrl(prevState.uploadedImageUrl);
-      setLoadedImage(prevState.loadedImage);
+      setUploadedImageUrl(prevState.uploadedImageUrl ?? null);
+      setCurrentImageId(prevState.loadedImageId ?? null);
+
+      // reload image element if we have an id or url
+      if (prevState.loadedImageId) {
+        try {
+          const { imageStorage } = await import('../lib/imageStorage');
+          const blob = await imageStorage.getImage(prevState.loadedImageId);
+          if (blob) {
+            const blobUrl = URL.createObjectURL(blob);
+            const img = new Image();
+            img.onload = () => {
+              setLoadedImage(img);
+              URL.revokeObjectURL(blobUrl);
+            };
+            img.onerror = () => {
+              setLoadedImage(null);
+              URL.revokeObjectURL(blobUrl);
+            };
+            img.src = blobUrl;
+          } else {
+            setLoadedImage(null);
+          }
+        } catch {
+          setLoadedImage(null);
+        }
+      } else {
+        setLoadedImage(null);
+      }
+
       setHistoryIndex(historyIndex - 1);
     }
   };
 
-  const handleRedo = () => {
+  const handleRedo = async () => {
     if (historyIndex < history.length - 1) {
       const nextState = history[historyIndex + 1];
+
       setShapes(nextState.shapes);
       setDrawings(nextState.drawings);
       setFilledImages(nextState.filledImages);
       setCanvasBackground(nextState.backgroundColor);
       setSplitMode(nextState.splitMode);
-      setUploadedImageUrl(nextState.uploadedImageUrl);
-      setLoadedImage(nextState.loadedImage);
+      setUploadedImageUrl(nextState.uploadedImageUrl ?? null);
+      setCurrentImageId(nextState.loadedImageId ?? null);
+
+      if (nextState.loadedImageId) {
+        try {
+          const { imageStorage } = await import('../lib/imageStorage');
+          const blob = await imageStorage.getImage(nextState.loadedImageId);
+          if (blob) {
+            const blobUrl = URL.createObjectURL(blob);
+            const img = new Image();
+            img.onload = () => {
+              setLoadedImage(img);
+              URL.revokeObjectURL(blobUrl);
+            };
+            img.onerror = () => {
+              setLoadedImage(null);
+              URL.revokeObjectURL(blobUrl);
+            };
+            img.src = blobUrl;
+          } else {
+            setLoadedImage(null);
+          }
+        } catch {
+          setLoadedImage(null);
+        }
+      } else {
+        setLoadedImage(null);
+      }
+
       setHistoryIndex(historyIndex + 1);
     }
   };
+
 
   // New Canvas
   const handleNewCanvas = () => {
@@ -134,7 +203,7 @@ export default function Home() {
     localStorage.removeItem('currentImageId');
   };
 
-  // NEW — Apply image to selected shape
+  // Apply image to selected shape
   const applyImageToSelectedShape = (img: HTMLImageElement, imageId?: string, imageUrl?: string) => {
     setShapes(prev =>
       prev.map(shape =>
@@ -180,7 +249,7 @@ export default function Home() {
     saveState();
   };
 
-  // NEW — Clear image from selected shape
+  // Clear image from selected shape
   const handleClearImage = () => {
     const selected = shapes.find(s => s.selected);
     if (!selected) {
@@ -204,7 +273,7 @@ export default function Home() {
     saveState();
   };
 
-  const handleCanvasBackgroundChange = (color: any, panelId: string = 'default') => {
+  const handleCanvasBackgroundChange = (color: { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }, panelId: string = 'default') => {
     setCanvasBackground(prev => ({
       ...prev,
       [panelId]: color.value
@@ -572,6 +641,8 @@ export default function Home() {
           filledImages={filledImages}
           onFilledImagesChange={setFilledImages}
           onSaveState={saveState}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
         />
       </Box>
     </Box>

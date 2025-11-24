@@ -1,7 +1,7 @@
 'use client';
 import Image from "next/image"
 import { Box, Divider, List, Typography } from "@mui/material";
-import { CanvasData } from "../../types";
+import { CanvasData, FontFeatures, TextColor } from "../../types";
 
 import BoardButton from "./buttons/BoardButton";
 import NewCanvasButton from "./buttons/NewCanvasButton";
@@ -52,7 +52,8 @@ interface MenuBarProps {
     currentFontStyles?: { bold?: boolean; italic?: boolean; underline?: boolean; strikethrough?: boolean };
     currentTextAlignment?: 'left' | 'center' | 'right' | 'justify';
     currentListType?: 'bullet' | 'number' | 'none';
-    currentTextColor?: string | { type: 'solid' | 'gradient'; value: string | { start: string; end: string } };
+    currentTextColor: TextColor;
+    currentFontFeatures?: FontFeatures;
     onFontFamilyChange?: (fontFamily: string) => void;
     onFontSizeChange?: (fontSize: number) => void;
     onFontStyleChange?: (styles: { bold?: boolean; italic?: boolean; underline?: boolean; strikethrough?: boolean }) => void;

@@ -1,7 +1,7 @@
 'use client';
 import { useState, useRef } from "react";
 import { Box } from "@mui/material";
-import { Shape, FontStyles } from "../../types";
+import { Shape, DrawingPath, FontFeatures } from "../../types";
 
 import { useCanvasResize } from "../../hooks/useCanvasResize";
 import { useDrawingTools } from "../../hooks/useDrawingTools";
@@ -37,21 +37,16 @@ interface CanvasProps {
     borderType?: 'solid' | 'dashed' | 'dotted';
     borderSize?: number;
     borderColor?: string;
-    currentFontFeatures?: {
-        fontFamily: string;
-        fontSize: number;
-        fontStyles: FontStyles;
-        alignment: 'left' | 'center' | 'right' | 'justify';
-        listType: 'bullet' | 'number' | 'none';
-        textColor: string | { type: 'solid' | 'gradient'; value: any };
-    };
+    currentFontFeatures?: FontFeatures;
     shapes: Shape[];
     onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
-    drawings: any[];
-    onDrawingsChange: React.Dispatch<React.SetStateAction<any[]>>;
-    filledImages: any[];
-    onFilledImagesChange: React.Dispatch<React.SetStateAction<any[]>>;
+    drawings: Array<{ panelId: string; paths: DrawingPath[] }>;
+    onDrawingsChange: React.Dispatch<React.SetStateAction<Array<{ panelId: string; paths: DrawingPath[] }>>>;
+    filledImages: Array<{ panelId: string; imageData: ImageData }>;
+    onFilledImagesChange: React.Dispatch<React.SetStateAction<Array<{ panelId: string; imageData: ImageData }>>>;
     onSaveState: () => void;
+    onUndo?: () => void;
+    onRedo?: () => void;
 }
 
 const Canvas = ({
@@ -82,7 +77,9 @@ const Canvas = ({
     onDrawingsChange,
     filledImages,
     onFilledImagesChange,
-    onSaveState
+    onSaveState,
+    onUndo,
+    onRedo,
 }: CanvasProps) => {
 
     const [dragging, setDragging] = useState(false);
@@ -187,6 +184,14 @@ const Canvas = ({
         editingShapeId,
         loadedImage,
         backgroundColor,
+    });
+
+    useKeyboardShortcuts({
+        shapes,
+        onShapesChange,
+        onSaveState,
+        onUndo: onUndo,
+        onRedo: onRedo
     });
 
     const getBackgroundStyle = (panelId: string) => {
