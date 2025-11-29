@@ -56,7 +56,6 @@ export const useShapeRenderer = ({
                     ctx.putImageData(imageData, 0, 0);
                 } catch (err) {
                     // Some browsers may throw if imageData dimensions mismatch — ignore to avoid crash
-                    // eslint-disable-next-line no-console
                     console.warn('putImageData failed', err);
                 }
             });
@@ -306,7 +305,6 @@ const renderTextShape = (
     textInput: string,
     editingShapeId: string | null
 ) => {
-    // Normalize font-related properties to safe defaults
     const fontFamily = (shape.fontFamily && String(shape.fontFamily)) || "Arial, sans-serif";
     const fontSize = typeof shape.fontSize === 'number' ? shape.fontSize : 16;
     const fontStyles = shape.fontStyles ?? { bold: false, italic: false, underline: false, strikethrough: false };
@@ -353,17 +351,34 @@ const renderTextShape = (
     const maxWidth = Math.max(8, shape.width - 8);
 
     // If editing/selected, draw a translucent background and border to indicate text box
-    if (shape.isEditing || shape.selected) {
-        // Draw background (semi-transparent white so text remains readable)
-        ctx.save();
-        ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-        ctx.fillRect(shape.x, shape.y, shape.width, shape.height);
+    // ALSO: if the shape has explicit border properties, draw that border (1px black for our textboxes)
+    if (shape.isEditing || shape.selected || shape.borderType) {
+        // Draw background (semi-transparent white so text remains readable) — only if editing/selected
+        if (shape.isEditing || shape.selected) {
+            ctx.save();
+            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+            ctx.fillRect(shape.x, shape.y, shape.width, shape.height);
+            ctx.restore();
+        }
 
-        // Draw border
-        ctx.strokeStyle = "#007bff";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
-        ctx.restore();
+        // Draw border if borderType present (we prefer explicit border settings)
+        if (shape.borderType) {
+            ctx.save();
+            ctx.strokeStyle = shape.borderColor ?? "#000";
+            ctx.lineWidth = (typeof shape.borderSize === 'number' ? shape.borderSize : 1);
+            const dash = shape.borderType === 'dashed' ? [6, 4] : shape.borderType === 'dotted' ? [2, 2] : [];
+            ctx.setLineDash(dash);
+            ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
+            ctx.setLineDash([]);
+            ctx.restore();
+        } else if (shape.isEditing || shape.selected) {
+            // fallback visual border for editing state (previous behaviour)
+            ctx.save();
+            ctx.strokeStyle = "#007bff";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
+            ctx.restore();
+        }
     }
 
     // Clip to box
@@ -372,14 +387,13 @@ const renderTextShape = (
     ctx.rect(shape.x, shape.y, shape.width, shape.height);
     ctx.clip();
 
-    // Wrap text function
+    // Wrap text function (unchanged)
     const wrapText = (text: string, isEditing = false) => {
         const lines: string[] = [];
         let currentLine = '';
         const words = text.split(' ');
 
         const breakLongWord = (word: string) => {
-            // breaks if a single long continuous string exceeds maxWidth
             const pieces: string[] = [];
             let buffer = '';
             for (const ch of word) {
@@ -405,7 +419,6 @@ const renderTextShape = (
                     currentLine = '';
                 }
                 const broken = breakLongWord(word);
-                // push all except last, keep last as currentLine
                 for (let b = 0; b < broken.length; b++) {
                     if (b < broken.length - 1) lines.push(broken[b]);
                     else currentLine = broken[b];
@@ -465,11 +478,9 @@ const renderTextShape = (
 
         // Draw underline / strikethrough if requested
         if (fontStyles.underline || fontStyles.strikethrough) {
-            // measure width of visible text (without cursor if present)
             const visibleLine = line.replace(/\|$/, '');
-            const _metrics = ctx.measureText(visibleLine); // prefix _ to avoid unused variable warning
+            const _metrics = ctx.measureText(visibleLine);
             const metricsWidth = _metrics.width;
-            // compute effective left x depending on alignment
             let leftX = xPos;
             if (canvasTextAlign === 'center') leftX = xPos - metricsWidth / 2;
             else if (canvasTextAlign === 'right') leftX = xPos - metricsWidth;
@@ -502,6 +513,7 @@ const renderTextShape = (
     // Reset text alignment to left for other rendering
     ctx.textAlign = 'left';
 };
+
 
 // Selection handles rendering
 const drawSelectionHandles = (ctx: CanvasRenderingContext2D, shape: Shape) => {

@@ -101,7 +101,9 @@ const Canvas = ({
         eraserSize,
         splitMode,
         setDrawings: onDrawingsChange,
-        onSaveState
+        onSaveState,
+        shapes,
+        onShapesChange
     });
 
     useFillTool({

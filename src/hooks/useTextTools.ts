@@ -65,7 +65,11 @@ export const useTextTools = ({
                     textColor: fontFeatures.textColor,
                     fontStyles: fontFeatures.fontStyles,
                     textAlignment: fontFeatures.alignment,
-                    listType: fontFeatures.listType
+                    listType: fontFeatures.listType,
+                    // keep border props intact (we set them on creation)
+                    borderType: shape.borderType ?? 'solid',
+                    borderSize: shape.borderSize ?? 1,
+                    borderColor: shape.borderColor ?? '#000000'
                 }
                 : shape
         ));
@@ -98,7 +102,15 @@ export const useTextTools = ({
                             // Start editing existing text (always allowed)
                             onShapesChange(prev => prev.map(s =>
                                 s.id === shape.id
-                                    ? { ...s, isEditing: true, selected: true }
+                                    ? {
+                                        ...s,
+                                        isEditing: true,
+                                        selected: true,
+                                        // ensure the border props exist (if missing add defaults)
+                                        borderType: s.borderType ?? 'solid',
+                                        borderSize: s.borderSize ?? 1,
+                                        borderColor: s.borderColor ?? '#000000'
+                                    }
                                     : { ...s, isEditing: false, selected: false }
                             ));
                             setTextInput(shape.text || "");
@@ -135,6 +147,10 @@ export const useTextTools = ({
                         textAlignment: fontFeatures.alignment,
                         listType: fontFeatures.listType,
                         isEditing: true,
+                        // <-- NEW: ensure textbox has a 1px black border by default
+                        borderType: 'solid',
+                        borderSize: 1,
+                        borderColor: '#000000'
                     };
 
                     onShapesChange(prev => [...prev.map(s => ({ ...s, selected: false })), newShape]);
