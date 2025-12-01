@@ -557,7 +557,7 @@ export default function Home() {
   };
 
   return (
-    <Box suppressHydrationWarning sx={{ bgcolor: 'grey.900', height: '105vh', color: 'white', display: 'flex', flexDirection: 'column', gap: 1 }}>
+    <Box suppressHydrationWarning sx={{ bgcolor: 'grey.900', height: '100vh', color: 'white', display: 'flex', flexDirection: 'column', gap: 1 }}>
       <Menu
         onSaveCanvas={handleSaveCanvas}
         onLoadCanvas={handleLoadCanvas}

@@ -77,7 +77,7 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
 
             <Divider sx={{ width: '100%', borderColor: 'primary.main' }} />
 
-            <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2, px: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2, px: 1 }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <Typography variant="h2" sx={{ fontSize: '1rem' }}>Home</Typography>
                     <List sx={{ p: 1, display: "flex", gap: 1 }}>
@@ -114,7 +114,7 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
 
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <Typography variant="h2" sx={{ fontSize: '1rem' }}>Insert</Typography>
-                    <List sx={{ p: 1, display: "flex", flexWrap: "wrap", gap: 1 }}>
+                    <List sx={{ p: 1, display: "flex", gap: 1 }}>
                         <ShapeButton onShapeSelect={onShapeSelect} />
                         <TextButton active={textActive} onToggle={onTextToggle} />
                         <UploadImageButton onImageUpload={onImageUpload} onImageUsed={onImageUsed} />
