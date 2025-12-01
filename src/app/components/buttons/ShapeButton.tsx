@@ -1,7 +1,8 @@
 'use client';
 import { useState } from "react";
-import { Drawer, Box, Tabs, Tab, Typography, Tooltip, Button } from "@mui/material";
+import { Menu, Box, Tabs, Tab, Tooltip, Button } from "@mui/material";
 import ShapesIcon from "@mui/icons-material/Category";
+import Image from "next/image";
 
 interface ShapeButtonProps {
     onShapeSelect?: (shape: string) => void;
@@ -14,7 +15,7 @@ interface ShapeCategory {
 
 const shapeCategories: ShapeCategory[] = [
     {
-        category: "Basic Geometric Shapes",
+        category: "Basic Shapes",
         shapes: [
             { name: "Rectangle", file: "RectangleShape.tsx" },
             { name: "Square", file: "SquareShape.tsx" },
@@ -49,13 +50,11 @@ const shapeCategories: ShapeCategory[] = [
         ],
     },
     {
-        category: "Arrows & Connectors",
+        category: "Arrows/Connectors",
         shapes: [
             { name: "Arrow", file: "ArrowShape.tsx" },
             { name: "Double Arrow", file: "DoubleArrowShape.tsx" },
             { name: "Curved Arrow", file: "CurvedArrowShape.tsx" },
-            { name: "Bent Arrow", file: "BentArrowShape.tsx" },
-            { name: "Circular Arrow", file: "CircularArrowShape.tsx" },
             { name: "Split Arrow", file: "SplitArrowShape.tsx" },
             { name: "Dashed Connector", file: "DashedConnectorShape.tsx" },
         ],
@@ -104,46 +103,134 @@ const shapeCategories: ShapeCategory[] = [
     },
 ];
 
+const ICON_MAP: Record<string, string> = {
+    rectangle: "/shapeIcons/rectangle.png",
+    square: "/shapeIcons/square.png",
+    circle: "/shapeIcons/circle.png",
+    ellipseoval: "/shapeIcons/ellipse.png",
+    line: "/shapeIcons/line.png",
+    triangle: "/shapeIcons/triangle.png",
+    righttriangle: "/shapeIcons/rightTriangle.png",
+    polygon: "/shapeIcons/polygon.png",
+    diamond: "/shapeIcons/rhombus.png",
+    trapezoid: "/shapeIcons/trapezoid.png",
+    parallelogram: "/shapeIcons/parallelogram.png",
+    pentagon: "/shapeIcons/pentagon.png",
+    hexagon: "/shapeIcons/hexagon.png",
+    octagon: "/shapeIcons/octagon.png",
+    star: "/shapeIcons/star.png",
+
+    terminator: "/shapeIcons/startend.png",
+    process: "/shapeIcons/process.png",
+    decision: "/shapeIcons/decision.png",
+    inputoutput: "/shapeIcons/inputOutput.png",
+    preparation: "/shapeIcons/preparation.png",
+    connector: "/shapeIcons/circle.png",
+    document: "/shapeIcons/document.png",
+    delay: "/shapeIcons/delay.png",
+    manualinput: "/shapeIcons/manualInput.png",
+    database: "/shapeIcons/database.png",
+
+    arrow: "/shapeIcons/arrow.png",
+    doublearrow: "/shapeIcons/doubleArrow.png",
+    curvedarrow: "/shapeIcons/curvedArrow.png",
+    splitarrow: "/shapeIcons/splitArrow.png",
+    dashedconnector: "/shapeIcons/dashedLine.png",
+    dashedline: "/shapeIcons/dashedLine.png",
+
+    star5point: "/shapeIcons/star.png",
+    star6point: "/shapeIcons/star6.png",
+    burstexplosion: "/shapeIcons/burst.png",
+    heart: "/shapeIcons/heart.png",
+    cloud: "/shapeIcons/cloud.png",
+    banner: "/shapeIcons/banner.png",
+    badge: "/shapeIcons/badge.png",
+    speechbubble: "/shapeIcons/speechBubble.png",
+    callout: "/shapeIcons/callout.png",
+
+    arc: "/shapeIcons/arc.png",
+    sector: "/shapeIcons/sector.png",
+    chord: "/shapeIcons/chord.png",
+    crescent: "/shapeIcons/crescent.png",
+    ringdonut: "/shapeIcons/ring.png",
+    cube3d: "/shapeIcons/cube.png",
+    cylinder: "/shapeIcons/cylinder.png",
+    cone: "/shapeIcons/cone.png",
+    pyramid: "/shapeIcons/pyramid.png",
+    sphere: "/shapeIcons/sphere.png",
+
+    frame: "/shapeIcons/frame.png",
+    dividerline: "/shapeIcons/dividerLine.png",
+    checkbox: "/shapeIcons/checkbox.png",
+    radiobutton: "/shapeIcons/radioButton.png",
+    buttonshape: "/shapeIcons/buttonShape.png",
+    tabshape: "/shapeIcons/tabShape.png",
+    card: "/shapeIcons/card.png",
+    timelinenode: "/shapeIcons/timelineNode.png",
+};
+
+/* normalize helper */
+function normalizeKey(s: string) {
+    return s.replace(/\W+/g, '').toLowerCase();
+}
+
+function iconPathFromFile(fileName: string): string {
+    const noExt = fileName.replace(/\.(tsx|ts|jsx|js)$/, '');
+    const base = noExt.replace(/Shape$/i, '');
+    const normalized = normalizeKey(base);
+
+    // direct map matches
+    if (ICON_MAP[normalized]) return ICON_MAP[normalized];
+
+    // try trimmed (remove trailing numbers)
+    const trimmed = normalized.replace(/\d+$/, '');
+    if (ICON_MAP[trimmed]) return ICON_MAP[trimmed];
+
+    // fallback to computed path inside /public/shapeIcons
+    const lowerFirst = base.charAt(0).toLowerCase() + base.slice(1);
+    return `/shapeIcons/${lowerFirst}.png`;
+}
+
 export default function ShapeButton({ onShapeSelect }: ShapeButtonProps) {
-    const [drawerOpen, setDrawerOpen] = useState(false);
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const [selectedCategory, setSelectedCategory] = useState(0);
 
+    const open = Boolean(anchorEl);
+
+    const handleOpen = (e: React.MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget);
+    const handleClose = () => setAnchorEl(null);
+
     const handleShapeSelect = (shapeName: string) => {
-        console.log(`Selected Shape: ${shapeName}`);
         onShapeSelect?.(shapeName);
-        setDrawerOpen(false);
+        handleClose();
     };
 
     return (
         <>
             <Tooltip title="Shapes" arrow>
-                <Button
-                    onClick={() => setDrawerOpen(true)}
-                    variant="outlined"
-                    size="small"
-                >
+                <Button onClick={handleOpen} variant="outlined" size="small">
                     <ShapesIcon sx={{ fontSize: 20 }} />
                 </Button>
             </Tooltip>
 
-            <Drawer
-                anchor="top"
-                open={drawerOpen}
-                onClose={() => setDrawerOpen(false)}
+            <Menu
+                anchorEl={anchorEl}
+                open={open}
+                onClose={handleClose}
                 PaperProps={{
                     sx: {
-                        backgroundColor: "#121212",
                         color: "white",
-                        borderBottomLeftRadius: 12,
-                        borderBottomRightRadius: 12,
+                        borderRadius: 1,
+                        width: { xs: "95vw", sm: 700, md: 270 },
+                        maxHeight: "70vh",
+                        overflow: "hidden",
+                        p: 0,
                     },
                 }}
+                anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+                transformOrigin={{ vertical: "top", horizontal: "left" }}
             >
-                {/* Category Tabs */}
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, py: 2, borderBottom: 1, borderColor: "divider", bgcolor: "#1E1E1E" }}>
-                    {/* Shapes Heading */}
-                    <h2 className="text-3xl font-semibold text-white text-center">Add Shapes</h2>
-
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, color: "black", borderBottom: 1, borderColor: "divider", p: 0 }}>
                     <Tabs
                         value={selectedCategory}
                         onChange={(e, newVal) => setSelectedCategory(newVal)}
@@ -151,54 +238,72 @@ export default function ShapeButton({ onShapeSelect }: ShapeButtonProps) {
                         scrollButtons="auto"
                         textColor="inherit"
                         indicatorColor="primary"
+                        sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            minHeight: 0,
+                            height: 30,
+                            "& .MuiTab-root": { mr: 2 },
+                        }}
                     >
                         {shapeCategories.map((cat, index) => (
-                            <Tab key={index} label={cat.category} />
+                            <Tab
+                                key={index}
+                                label={cat.category}
+                                sx={{ color: "black", textTransform: "none", minWidth: "auto", fontSize: "0.8rem", p: 0 }}
+                            />
                         ))}
                     </Tabs>
                 </Box>
 
-                {/* Shape Grid */}
-                <Box sx={{ p: 3, height: "100%", overflowY: "auto" }}>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                        {shapeCategories[selectedCategory].shapes.map((shape, idx) => (
-                            <Box
-                                key={idx}
-                                onClick={() => handleShapeSelect(shape.name)}
-                                sx={{
-                                    flex: '0 0 50%',
-                                    '@media (min-width:600px)': { flex: '0 0 33.33%' },
-                                    '@media (min-width:900px)': { flex: '0 0 25%' },
-                                    '@media (min-width:1200px)': { flex: '0 0 16.67%' },
-                                    p: 2,
-                                    cursor: "pointer",
-                                    borderRadius: 2,
-                                    "&:hover": { backgroundColor: "#2A2A2A" },
-                                    textAlign: "center",
-                                }}
-                            >
-                                <Box
-                                    sx={{
-                                        height: 60,
-                                        border: "1px solid #555",
-                                        borderRadius: 2,
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        mb: 1,
-                                    }}
-                                >
-                                    {/* Placeholder for Shape Preview */}
-                                    <Typography variant="h6">⬜</Typography>
-                                </Box>
-                                <Typography variant="body2" sx={{ color: "#ccc" }}>
-                                    {shape.name}
-                                </Typography>
-                            </Box>
-                        ))}
+                <Box sx={{ p: 1, overflowY: "auto", maxHeight: "60vh" }}>
+                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "center" }}>
+                        {shapeCategories[selectedCategory].shapes.map((shape, idx) => {
+                            const iconPath = iconPathFromFile(shape.file);
+
+                            return (
+                                <Tooltip key={idx} title={shape.name} arrow>
+                                    <Box
+                                        onClick={() => handleShapeSelect(shape.name)}
+                                        sx={{
+                                            flex: "0 0 50%",
+                                            "@media (min-width:600px)": { flex: "0 0 33.33%" },
+                                            "@media (min-width:900px)": { flex: "0 0 25%" },
+                                            "@media (min-width:1200px)": { flex: "0 0 16.67%" },
+                                            cursor: "pointer",
+                                            borderRadius: 1,
+                                            textAlign: "center",
+                                        }}
+                                    >
+                                        <Box
+                                            sx={{
+                                                width: 30,
+                                                height: 30,
+                                                border: "1px solid #555",
+                                                borderRadius: 1,
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                mb: 1,
+                                                px: 1,
+                                            }}
+                                        >
+                                            <Image
+                                                src={iconPath}
+                                                alt={shape.name}
+                                                width={20}
+                                                height={20}
+                                                style={{ objectFit: "contain", display: "block" }}
+                                            />
+                                        </Box>
+                                    </Box>
+                                </Tooltip>
+                            );
+                        })}
                     </Box>
                 </Box>
-            </Drawer>
+            </Menu>
         </>
     );
 }

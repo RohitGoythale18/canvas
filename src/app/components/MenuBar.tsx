@@ -1,7 +1,7 @@
 'use client';
 import Image from "next/image"
 import { Box, Divider, List, Typography } from "@mui/material";
-import { CanvasData } from "../../types";
+import { CanvasData, FontFeatures, TextColor } from "../../types";
 
 import BoardButton from "./buttons/BoardButton";
 import NewCanvasButton from "./buttons/NewCanvasButton";
@@ -15,6 +15,7 @@ import EraserButton from "./buttons/EraserButton";
 import ShapeButton from "./buttons/ShapeButton";
 import TextButton from "./buttons/TextButton";
 import UploadImageButton from "./buttons/UploadImageButton";
+import ClearImageButton from "./buttons/ClearImageButton";
 import ColorButton from "./buttons/ColorButton";
 import BorderButton from "./buttons/BorderButton";
 import FontFeatButton from "./buttons/FontFeatButton";
@@ -40,6 +41,7 @@ interface MenuBarProps {
     textActive?: boolean;
     onImageUpload?: (imageUrl: string) => void;
     onImageUsed?: () => void;
+    onClearImage?: () => void;
     onCanvasBackgroundChange?: (color: { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }, panelId?: string) => void;
     selectedPanel?: string;
     onBorderToggle?: (enabled: boolean) => void;
@@ -50,7 +52,8 @@ interface MenuBarProps {
     currentFontStyles?: { bold?: boolean; italic?: boolean; underline?: boolean; strikethrough?: boolean };
     currentTextAlignment?: 'left' | 'center' | 'right' | 'justify';
     currentListType?: 'bullet' | 'number' | 'none';
-    currentTextColor?: string | { type: 'solid' | 'gradient'; value: string | { start: string; end: string } };
+    currentTextColor: TextColor;
+    currentFontFeatures?: FontFeatures;
     onFontFamilyChange?: (fontFamily: string) => void;
     onFontSizeChange?: (fontSize: number) => void;
     onFontStyleChange?: (styles: { bold?: boolean; italic?: boolean; underline?: boolean; strikethrough?: boolean }) => void;
@@ -61,7 +64,7 @@ interface MenuBarProps {
     onRedo?: () => void;
 }
 
-const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onPencilToggle, onFillToggle, onColorChange, fillColor, onEraserToggle, onEraserSizeChange, eraserSize, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, onImageUsed, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange, onUndo, onRedo }: MenuBarProps) => {
+const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onPencilToggle, onFillToggle, onColorChange, fillColor, onEraserToggle, onEraserSizeChange, eraserSize, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, onImageUsed, onClearImage, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange, onUndo, onRedo }: MenuBarProps) => {
 
     return (
         <Box>
@@ -74,7 +77,7 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
 
             <Divider sx={{ width: '100%', borderColor: 'primary.main' }} />
 
-            <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2, px: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2, px: 1 }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <Typography variant="h2" sx={{ fontSize: '1rem' }}>Home</Typography>
                     <List sx={{ p: 1, display: "flex", gap: 1 }}>
@@ -111,10 +114,11 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
 
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <Typography variant="h2" sx={{ fontSize: '1rem' }}>Insert</Typography>
-                    <List sx={{ p: 1, display: "flex", flexWrap: "wrap", gap: 1 }}>
+                    <List sx={{ p: 1, display: "flex", gap: 1 }}>
                         <ShapeButton onShapeSelect={onShapeSelect} />
                         <TextButton active={textActive} onToggle={onTextToggle} />
                         <UploadImageButton onImageUpload={onImageUpload} onImageUsed={onImageUsed} />
+                        <ClearImageButton onClearImage={onClearImage} />
                     </List>
                 </Box>
 

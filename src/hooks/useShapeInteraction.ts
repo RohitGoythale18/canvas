@@ -46,7 +46,7 @@ export const useShapeInteraction = ({
     uploadedImageUrl,
     loadedImage,
     currentImageId,
-    onImageUsed,
+    // onImageUsed,
     borderActive,
     borderColor,
     borderSize,
@@ -76,7 +76,7 @@ export const useShapeInteraction = ({
                 const y = (e.clientY - rect.top) * (canvas.height / rect.height);
 
                 if (selectedShape) {
-                    // Place new shape
+                    // Create new blank shape
                     const panelId = canvas.getAttribute("data-panel-id") || "default";
 
                     const newShape: Shape = {
@@ -89,20 +89,22 @@ export const useShapeInteraction = ({
                         selected: false,
                         panelId: panelId,
                         fillColor: "#60a5fa",
-                        imageUrl: uploadedImageUrl && !uploadedImageUrl.startsWith('blob:') ? uploadedImageUrl : undefined,
-                        imageId: currentImageId || undefined,
-                        imageElement: loadedImage || undefined,
+
+                        // NEW WORKFLOW: remove auto-image insertion
+                        imageUrl: undefined,
+                        imageId: undefined,
+                        imageElement: undefined,
+
                         borderType: undefined,
                         borderSize: undefined,
                         borderColor: undefined,
                     };
                     onShapesChange(prev => [...prev, newShape]);
                     onShapeSelect(null as never);
-                    // Keep the image available for multiple shapes - do not clear here
                     return;
                 }
 
-                // Check for resize handles
+                // Resize handles
                 let foundHandle = false;
                 shapes.forEach((shape) => {
                     if (shape.selected) {
@@ -128,7 +130,7 @@ export const useShapeInteraction = ({
 
                 if (foundHandle) return;
 
-                // Check for shape selection
+                // Selecting shape
                 let selectedShapeId: string | null = null;
                 shapes.forEach((shape) => {
                     if (x >= shape.x && x <= shape.x + shape.width &&
@@ -149,7 +151,7 @@ export const useShapeInteraction = ({
                         setDragOffset({ x: x - selected.x, y: y - selected.y });
                     }
                 } else {
-                    // Clear selection if clicking on empty space
+                    // Deselect all
                     onShapesChange(prev => prev.map(shape => ({
                         ...shape,
                         selected: false,
@@ -206,27 +208,8 @@ export const useShapeInteraction = ({
                                     break;
                             }
 
-                            // Enforce minimum dimensions
                             newWidth = Math.max(MIN_SHAPE_WIDTH, newWidth);
                             newHeight = Math.max(MIN_SHAPE_HEIGHT, newHeight);
-
-                            // Adjust position for top-left and bottom-left handles to maintain minimum size
-                            if (resizeHandle === 'top-left') {
-                                if (shape.x + shape.width - newX < MIN_SHAPE_WIDTH) {
-                                    newX = shape.x + shape.width - MIN_SHAPE_WIDTH;
-                                }
-                                if (shape.y + shape.height - newY < MIN_SHAPE_HEIGHT) {
-                                    newY = shape.y + shape.height - MIN_SHAPE_HEIGHT;
-                                }
-                            } else if (resizeHandle === 'bottom-left') {
-                                if (shape.x + shape.width - newX < MIN_SHAPE_WIDTH) {
-                                    newX = shape.x + shape.width - MIN_SHAPE_WIDTH;
-                                }
-                            } else if (resizeHandle === 'top-right') {
-                                if (shape.y + shape.height - newY < MIN_SHAPE_HEIGHT) {
-                                    newY = shape.y + shape.height - MIN_SHAPE_HEIGHT;
-                                }
-                            }
 
                             return {
                                 ...shape,
@@ -245,10 +228,7 @@ export const useShapeInteraction = ({
                 setDragging(false);
                 setResizing(false);
                 setResizeHandle(null);
-                // Save state after shape interaction ends
-                if (onSaveState) {
-                    onSaveState();
-                }
+                if (onSaveState) onSaveState();
             };
 
             canvas.addEventListener("mousedown", handleMouseDown);
@@ -268,8 +248,12 @@ export const useShapeInteraction = ({
             cleanupFns.forEach(fn => fn());
         };
     }, [
-        selectedShape, splitMode, onShapeSelect, shapes, pencilActive, eraserActive, fillActive, textActive,
-        uploadedImageUrl, loadedImage, currentImageId, onImageUsed, borderActive, borderColor, borderSize, borderType, zoomLevel,
-        onShapesChange, setDragging, setResizing, setDragOffset, setResizeHandle, dragging, resizing, resizeHandle, dragOffset, onSaveState
+        selectedShape, splitMode, shapes,
+        pencilActive, eraserActive, fillActive, textActive,
+        uploadedImageUrl, loadedImage, currentImageId,
+        borderActive, borderColor, borderSize, borderType,
+        zoomLevel, dragging, resizing, resizeHandle, dragOffset,
+        onShapesChange, onShapeSelect, onSaveState,
+        setDragging, setResizing, setDragOffset, setResizeHandle
     ]);
 };

@@ -1,8 +1,25 @@
+// src/types/index.ts
 export interface FontStyles {
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
   strikethrough?: boolean;
+}
+
+export type TextColor =
+  | string
+  | {
+      type: 'solid' | 'gradient';
+      value: string | { start: string; end: string };
+    };
+
+export interface FontFeatures {
+  fontFamily: string;
+  fontSize: number;
+  fontStyles: FontStyles;
+  alignment: 'left' | 'center' | 'right' | 'justify';
+  listType: 'bullet' | 'number' | 'none';
+  textColor: TextColor;
 }
 
 export interface Shape {
@@ -25,18 +42,25 @@ export interface Shape {
   fontSize?: number;
   isEditing?: boolean;
   fontFamily?: string;
-  textColor?: string | { type: 'solid' | 'gradient'; value: string | { start: string; end: string } };
+  textColor?: TextColor;
   fontStyles?: FontStyles;
   textAlignment?: 'left' | 'center' | 'right' | 'justify';
   listType?: 'bullet' | 'number' | 'none';
+}
+
+export interface DrawingPath {
+  points: Array<{ x: number; y: number }>;
+  tool: 'pencil' | 'eraser';
+  color?: string;
+  size?: number;
 }
 
 export interface CanvasData {
   shapes: Shape[];
   backgroundColor: Record<string, string | { start: string; end: string }>;
   splitMode: string;
-  drawings: { panelId: string, paths: Array<{ points: { x: number, y: number }[], tool: 'pencil' | 'eraser', color?: string, size?: number }> }[];
-  filledImages: { panelId: string, imageData: string }[]; // base64 encoded
+  drawings: { panelId: string; paths: DrawingPath[] }[];
+  filledImages: { panelId: string; imageData: string }[]; // base64 encoded
   uploadedImageUrl?: string | null;
   loadedImageData?: string | null;
   currentImageId?: string | null;

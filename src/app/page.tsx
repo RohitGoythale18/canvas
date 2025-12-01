@@ -1,10 +1,10 @@
 'use client';
-import React, { useState, useCallback } from "react";
+import { useState, useCallback } from "react";
+import { Box } from "@mui/material";
+import { Shape, DrawingPath, FontFeatures, CanvasData } from "../types";
 
 import Menu from "./components/MenuBar";
 import Canvas from "./components/Canvas";
-import { Box } from "@mui/material";
-import { Shape, FontStyles, CanvasData } from "../types";
 import { useStoredImageLoader } from "../hooks/useStoredImageLoader";
 
 export default function Home() {
@@ -23,34 +23,24 @@ export default function Home() {
 
   // Load image from localStorage on component mount
   useStoredImageLoader(setUploadedImageUrl, setCurrentImageId, setLoadedImage);
-  
+
   const [canvasBackground, setCanvasBackground] = useState<Record<string, string | { start: string; end: string }>>({ default: "#ffffff" });
   const [selectedPanel, setSelectedPanel] = useState<string>("default");
   const [borderActive, setBorderActive] = useState(false);
   const [borderType, setBorderType] = useState<'solid' | 'dashed' | 'dotted'>('solid');
   const [borderSize, setBorderSize] = useState(2);
   const [borderColor, setBorderColor] = useState('#000000');
-  const [fontFeatures, setFontFeatures] = useState<{
-    fontFamily: string;
-    fontSize: number;
-    fontStyles: FontStyles;
-    alignment: 'left' | 'center' | 'right' | 'justify';
-    listType: 'bullet' | 'number' | 'none';
-    textColor: string | { type: 'solid' | 'gradient'; value: string | { start: string; end: string } };
-  }>({
+  const [fontFeatures, setFontFeatures] = useState<FontFeatures>({
     fontFamily: "Arial, sans-serif",
     fontSize: 16,
     fontStyles: {},
-    alignment: 'left' as 'left' | 'center' | 'right' | 'justify',
-    listType: 'none' as 'bullet' | 'number' | 'none',
+    alignment: 'left',
+    listType: 'none',
     textColor: "#000000"
   });
 
-  // Add shapes state here
   const [shapes, setShapes] = useState<Shape[]>([]);
-
-  // Add drawings and filledImages state here for centralized management
-  const [drawings, setDrawings] = useState<{ panelId: string, paths: Array<{ points: { x: number, y: number }[], tool: 'pencil' | 'eraser', color?: string, size?: number }> }[]>([]);
+  const [drawings, setDrawings] = useState<{ panelId: string, paths: DrawingPath[] }[]>([]);
   const [filledImages, setFilledImages] = useState<{ panelId: string, imageData: ImageData }[]>([]);
 
   // History state for undo/redo
@@ -61,38 +51,57 @@ export default function Home() {
     backgroundColor: typeof canvasBackground;
     splitMode: string;
     uploadedImageUrl: string | null;
-    loadedImage: HTMLImageElement | null;
+    loadedImageId: string | null;
   }>>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
-  // Function to save current state to history
+  const safeStructuredClone = (obj: unknown) => {
+    if (obj === undefined) return undefined;
+    try {
+      if (typeof (globalThis).structuredClone === 'function') {
+        return (globalThis).structuredClone(obj);
+      }
+    } catch { }
+    try {
+      return JSON.parse(JSON.stringify(obj));
+    } catch {
+      return obj;
+    }
+  };
+
   const saveState = useCallback(() => {
+    const sanitizedShapes = shapes.map(s => {
+      const { imageElement: _imageElement, ...rest } = s as Shape & { imageElement?: HTMLImageElement };
+      return rest as Shape;
+    });
+
     const currentState = {
-      shapes,
-      drawings,
-      filledImages,
-      backgroundColor: canvasBackground,
+      shapes: safeStructuredClone(sanitizedShapes),
+      drawings: safeStructuredClone(drawings),
+      filledImages: safeStructuredClone(filledImages),
+      backgroundColor: safeStructuredClone(canvasBackground),
       splitMode,
       uploadedImageUrl,
-      loadedImage
+      loadedImageId: currentImageId ?? null
     };
 
     setHistory(prev => {
       const newHistory = prev.slice(0, historyIndex + 1);
       newHistory.push(currentState);
-      // Limit history to 50 snapshots
+
       if (newHistory.length > 50) {
         newHistory.shift();
-        setHistoryIndex(49);
-      } else {
-        setHistoryIndex(newHistory.length - 1);
       }
+
+      const newIdx = newHistory.length - 1;
+      setHistoryIndex(newIdx);
+
       return newHistory;
     });
-  }, [shapes, drawings, filledImages, canvasBackground, splitMode, historyIndex, uploadedImageUrl, loadedImage]);
+  }, [shapes, drawings, filledImages, canvasBackground, splitMode, historyIndex, uploadedImageUrl, currentImageId]);
 
-  // Undo function
-  const handleUndo = () => {
+  // Undo/Redo
+  const handleUndo = async () => {
     if (historyIndex > 0) {
       const prevState = history[historyIndex - 1];
       setShapes(prevState.shapes);
@@ -100,42 +109,179 @@ export default function Home() {
       setFilledImages(prevState.filledImages);
       setCanvasBackground(prevState.backgroundColor);
       setSplitMode(prevState.splitMode);
-      setUploadedImageUrl(prevState.uploadedImageUrl);
-      setLoadedImage(prevState.loadedImage);
+      setUploadedImageUrl(prevState.uploadedImageUrl ?? null);
+      setCurrentImageId(prevState.loadedImageId ?? null);
+
+      // reload image element if we have an id or url
+      if (prevState.loadedImageId) {
+        try {
+          const { imageStorage } = await import('../lib/imageStorage');
+          const blob = await imageStorage.getImage(prevState.loadedImageId);
+          if (blob) {
+            const blobUrl = URL.createObjectURL(blob);
+            const img = new Image();
+            img.onload = () => {
+              setLoadedImage(img);
+              URL.revokeObjectURL(blobUrl);
+            };
+            img.onerror = () => {
+              setLoadedImage(null);
+              URL.revokeObjectURL(blobUrl);
+            };
+            img.src = blobUrl;
+          } else {
+            setLoadedImage(null);
+          }
+        } catch {
+          setLoadedImage(null);
+        }
+      } else {
+        setLoadedImage(null);
+      }
+
       setHistoryIndex(historyIndex - 1);
     }
   };
 
-  // Redo function
-  const handleRedo = () => {
+  const handleRedo = async () => {
     if (historyIndex < history.length - 1) {
       const nextState = history[historyIndex + 1];
+
       setShapes(nextState.shapes);
       setDrawings(nextState.drawings);
       setFilledImages(nextState.filledImages);
       setCanvasBackground(nextState.backgroundColor);
       setSplitMode(nextState.splitMode);
-      setUploadedImageUrl(nextState.uploadedImageUrl);
-      setLoadedImage(nextState.loadedImage);
+      setUploadedImageUrl(nextState.uploadedImageUrl ?? null);
+      setCurrentImageId(nextState.loadedImageId ?? null);
+
+      if (nextState.loadedImageId) {
+        try {
+          const { imageStorage } = await import('../lib/imageStorage');
+          const blob = await imageStorage.getImage(nextState.loadedImageId);
+          if (blob) {
+            const blobUrl = URL.createObjectURL(blob);
+            const img = new Image();
+            img.onload = () => {
+              setLoadedImage(img);
+              URL.revokeObjectURL(blobUrl);
+            };
+            img.onerror = () => {
+              setLoadedImage(null);
+              URL.revokeObjectURL(blobUrl);
+            };
+            img.src = blobUrl;
+          } else {
+            setLoadedImage(null);
+          }
+        } catch {
+          setLoadedImage(null);
+        }
+      } else {
+        setLoadedImage(null);
+      }
+
       setHistoryIndex(historyIndex + 1);
     }
   };
 
+
+  // New Canvas
   const handleNewCanvas = () => {
     setSplitMode("none");
     setCanvasBackground({ default: "#ffffff" });
     setSelectedPanel("default");
-    setShapes([]); // Clear shapes when creating new canvas
-    setDrawings([]); // Clear drawings
-    setFilledImages([]); // Clear filled images
-    setUploadedImageUrl(null); // Clear uploaded image
-    setLoadedImage(null); // Clear loaded image
-    setCurrentImageId(null); // Clear current image ID
-    setHistory([]); // Clear history
-    setHistoryIndex(-1); // Reset history index
+    setShapes([]);
+    setDrawings([]);
+    setFilledImages([]);
+    setUploadedImageUrl(null);
+    setLoadedImage(null);
+    setCurrentImageId(null);
+    setHistory([]);
+    setHistoryIndex(-1);
     setResetKey(prev => prev + 1);
-    localStorage.removeItem('currentImageId'); // Clear stored image data
+    localStorage.removeItem('currentImageId');
   };
+
+  // Apply image to selected shape
+  const applyImageToSelectedShape = (img: HTMLImageElement, imageId?: string, imageUrl?: string) => {
+    setShapes(prev =>
+      prev.map(shape =>
+        shape.selected
+          ? {
+            ...shape,
+            imageElement: img,
+            imageId: imageId || undefined,
+            imageUrl: imageUrl || undefined
+          }
+          : shape
+      )
+    );
+    saveState();
+  };
+
+  // NEW — Updated image upload workflow
+  const handleImageUpload = (imageUrl: string, imageId?: string) => {
+    const selected = shapes.find(s => s.selected);
+    if (!selected) {
+      window.alert("Please select a shape first.");
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      setUploadedImageUrl(imageUrl);
+      setLoadedImage(img);
+      setCurrentImageId(imageId || null);
+
+      applyImageToSelectedShape(img, imageId, imageUrl);
+    };
+    img.onerror = () => {
+      console.error("Failed to load image");
+    };
+    img.src = imageUrl;
+  };
+
+  const handleImageUsed = () => {
+    setUploadedImageUrl(null);
+    setLoadedImage(null);
+    setCurrentImageId(null);
+    saveState();
+  };
+
+  // Clear image from selected shape
+  const handleClearImage = () => {
+    const selected = shapes.find(s => s.selected);
+    if (!selected) {
+      window.alert("Please select a shape first.");
+      return;
+    }
+
+    setShapes(prev =>
+      prev.map(shape =>
+        shape.selected
+          ? {
+            ...shape,
+            imageElement: undefined,
+            imageId: undefined,
+            imageUrl: undefined
+          }
+          : shape
+      )
+    );
+
+    saveState();
+  };
+
+  const handleCanvasBackgroundChange = (color: { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }, panelId: string = 'default') => {
+    setCanvasBackground(prev => ({
+      ...prev,
+      [panelId]: color.value
+    }));
+    saveState();
+  };
+
+  const handlePanelSelect = (panelId: string) => setSelectedPanel(panelId);
 
   const handlePencilToggle = (enabled: boolean) => {
     setPencilActive(enabled);
@@ -185,76 +331,7 @@ export default function Home() {
     }
   };
 
-  const handleImageUpload = (imageUrl: string, imageId?: string) => {
-    setUploadedImageUrl(imageUrl);
-    setCurrentImageId(imageId || null);
-    const img = new Image();
-    img.onload = () => {
-      setLoadedImage(img);
-      saveState(); 
-    };
-    img.onerror = () => {
-      console.error("Failed to load image");
-      setUploadedImageUrl(null);
-      setLoadedImage(null);
-      setCurrentImageId(null);
-    };
-    img.src = imageUrl;
-  };
-
-  const handleImageUsed = () => {
-    setUploadedImageUrl(null);
-    setLoadedImage(null);
-    setCurrentImageId(null);
-    saveState();
-  };
-
-  const handleCanvasBackgroundChange = (color: { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }, panelId: string = 'default') => {
-    setCanvasBackground(prev => ({
-      ...prev,
-      [panelId]: color.value
-    }));
-    saveState();
-  };
-
-  const handlePanelSelect = (panelId: string) => {
-    setSelectedPanel(panelId);
-  };
-
-  const handleBorderToggle = (enabled: boolean) => {
-    setBorderActive(enabled);
-  };
-
-  const handleBorderChange = (border: { type: 'solid' | 'dashed' | 'dotted'; size: number; color: string }) => {
-    setBorderType(border.type);
-    setBorderSize(border.size);
-    setBorderColor(border.color);
-  };
-
-  const handleFontFamilyChange = (fontFamily: string) => {
-    setFontFeatures(prev => ({ ...prev, fontFamily }));
-  };
-
-  const handleFontSizeChange = (fontSize: number) => {
-    setFontFeatures(prev => ({ ...prev, fontSize }));
-  };
-
-  const handleFontStyleChange = (styles: FontStyles) => {
-    setFontFeatures(prev => ({ ...prev, fontStyles: styles }));
-  };
-
-  const handleTextAlignmentChange = (alignment: 'left' | 'center' | 'right' | 'justify') => {
-    setFontFeatures(prev => ({ ...prev, alignment }));
-  };
-
-  const handleListTypeChange = (listType: 'bullet' | 'number' | 'none') => {
-    setFontFeatures(prev => ({ ...prev, listType }));
-  };
-
-  const handleTextColorChange = (color: string | { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }) => {
-    setFontFeatures(prev => ({ ...prev, textColor: color }));
-  };
-
+  // SAVE CANVAS EXPORT AS PNG
   const handleSaveCanvas = (): string => {
     const canvas = document.querySelector('canvas');
     if (canvas) {
@@ -266,9 +343,22 @@ export default function Home() {
   const handleLoadCanvas = async (canvasData: CanvasData) => {
     saveState();
 
+    // Normalize shapes (ensure text/font props exist) BEFORE setShapes
+    let normalizedShapes: Shape[] = [];
     if (canvasData.shapes) {
-      setShapes(canvasData.shapes);
+      normalizedShapes = (canvasData.shapes as Shape[]).map((shape) => ({
+        ...shape,
+        fontFamily: shape.fontFamily ?? "Arial, sans-serif",
+        fontSize: shape.fontSize ?? 16,
+        fontStyles: shape.fontStyles ?? { bold: false, italic: false, underline: false, strikethrough: false },
+        textColor: shape.textColor ?? "#000000",
+        textAlignment: shape.textAlignment ?? "left",
+        listType: shape.listType ?? "none"
+      }));
+
+      setShapes(normalizedShapes);
     }
+
     if (canvasData.backgroundColor) {
       setCanvasBackground(canvasData.backgroundColor);
     }
@@ -279,7 +369,7 @@ export default function Home() {
       setDrawings(canvasData.drawings);
     }
     if (canvasData.filledImages) {
-      const convertedFilledImages = canvasData.filledImages.map(fi => {
+      const convertedFilledImages = canvasData.filledImages.map((fi) => {
         const img = new Image();
         img.src = fi.imageData as string;
         return new Promise<{ panelId: string; imageData: ImageData }>((resolve) => {
@@ -395,12 +485,13 @@ export default function Home() {
       }
     }
 
-    if (canvasData.shapes) {
-      const updatedShapes = [...canvasData.shapes];
+    // Load shape images (if any). Use normalizedShapes so text/font props are preserved.
+    if (normalizedShapes.length > 0) {
+      const updatedShapes = [...normalizedShapes];
       const loadPromises: Promise<void>[] = [];
 
       for (const shape of updatedShapes) {
-        if (shape.imageUrl && !shape.imageElement) {
+        if (shape.imageUrl && !(shape).imageElement) {
           const loadPromise = new Promise<void>((resolve) => {
             const shapeImg = new Image();
             shapeImg.onload = () => {
@@ -419,7 +510,7 @@ export default function Home() {
             shapeImg.src = shape.imageUrl!;
           });
           loadPromises.push(loadPromise);
-        } else if (shape.imageId && !shape.imageElement) {
+        } else if (shape.imageId && !(shape).imageElement) {
           const loadPromise = new Promise<void>(async (resolve) => {
             try {
               const { imageStorage } = await import('../lib/imageStorage');
@@ -456,7 +547,8 @@ export default function Home() {
       }
 
       Promise.all(loadPromises).then(() => {
-        setShapes(updatedShapes);
+        // setShapes with updatedShapes (which include loaded imageElement if any)
+        setShapes(updatedShapes as Shape[]);
         console.log('All shape images loaded');
       });
     }
@@ -488,7 +580,7 @@ export default function Home() {
               return '';
             })()
           })),
-          uploadedImageUrl: uploadedImageUrl, // Add this to pass current image state
+          uploadedImageUrl: uploadedImageUrl,
           currentImageId: currentImageId
         }}
         onNewCanvas={handleNewCanvas}
@@ -508,23 +600,28 @@ export default function Home() {
         textActive={textActive}
         onImageUpload={handleImageUpload}
         onImageUsed={handleImageUsed}
+        onClearImage={handleClearImage}
         onCanvasBackgroundChange={handleCanvasBackgroundChange}
         selectedPanel={selectedPanel}
-        onBorderToggle={handleBorderToggle}
-        onBorderChange={handleBorderChange}
         borderActive={borderActive}
+        onBorderToggle={setBorderActive}
+        onBorderChange={(b) => {
+          setBorderType(b.type);
+          setBorderSize(b.size);
+          setBorderColor(b.color);
+        }}
         currentFontFamily={fontFeatures.fontFamily}
         currentFontSize={fontFeatures.fontSize}
         currentFontStyles={fontFeatures.fontStyles}
         currentTextAlignment={fontFeatures.alignment}
         currentListType={fontFeatures.listType}
         currentTextColor={fontFeatures.textColor}
-        onFontFamilyChange={handleFontFamilyChange}
-        onFontSizeChange={handleFontSizeChange}
-        onFontStyleChange={handleFontStyleChange}
-        onTextAlignmentChange={handleTextAlignmentChange}
-        onListTypeChange={handleListTypeChange}
-        onTextColorChange={handleTextColorChange}
+        onFontFamilyChange={(v) => setFontFeatures(prev => ({ ...prev, fontFamily: v }))}
+        onFontSizeChange={(v) => setFontFeatures(prev => ({ ...prev, fontSize: v }))}
+        onFontStyleChange={(v) => setFontFeatures(prev => ({ ...prev, fontStyles: v }))}
+        onTextAlignmentChange={(v) => setFontFeatures(prev => ({ ...prev, alignment: v }))}
+        onListTypeChange={(v) => setFontFeatures(prev => ({ ...prev, listType: v }))}
+        onTextColorChange={(v) => setFontFeatures(prev => ({ ...prev, textColor: v }))}
         onUndo={handleUndo}
         onRedo={handleRedo}
       />
@@ -540,10 +637,12 @@ export default function Home() {
           selectedShape={selectedShape}
           onShapeSelect={handleShapeSelect}
           textActive={textActive}
+          onTextToggle={handleTextToggle}
           uploadedImageUrl={uploadedImageUrl}
           loadedImage={loadedImage}
           currentImageId={currentImageId}
           onImageUsed={handleImageUsed}
+          onClearImage={handleClearImage}
           backgroundColor={canvasBackground}
           onPanelSelect={handlePanelSelect}
           borderActive={borderActive}
@@ -551,7 +650,6 @@ export default function Home() {
           borderSize={borderSize}
           borderColor={borderColor}
           currentFontFeatures={fontFeatures}
-          // Pass shapes and setShapes as props to Canvas
           shapes={shapes}
           onShapesChange={setShapes}
           drawings={drawings}
@@ -559,6 +657,8 @@ export default function Home() {
           filledImages={filledImages}
           onFilledImagesChange={setFilledImages}
           onSaveState={saveState}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
         />
       </Box>
     </Box>
