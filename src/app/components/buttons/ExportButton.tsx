@@ -1,3 +1,4 @@
+// src/app/components/ExportButton.tsx
 'use client';
 import { useState } from "react";
 import { Button, Menu as MuiMenu, MenuItem, Tooltip } from "@mui/material";
@@ -63,8 +64,61 @@ const ExportButton = ({ targetId = "main-canvas" }: ExportButtonProps) => {
     };
 
     const handleSaveAsPin = async () => {
-        alert("Share functionality coming soon!");
-        handleMenuClose();
+        const node = document.getElementById(targetId);
+        if (!node) {
+            alert("Main canvas not found!");
+            return;
+        }
+
+        try {
+            const originalTransform = node.style.transform;
+            const originalOrigin = node.style.transformOrigin;
+
+            node.style.transform = "none";
+            node.style.transformOrigin = "top left";
+
+            const dataUrl = await toPng(node, {
+                width: 1920,
+                height: 1080,
+                style: {
+                    width: "1920px",
+                    height: "1080px",
+                    transform: "none",
+                    backgroundColor: "white",
+                },
+                pixelRatio: 1,
+                cacheBust: true,
+            });
+
+            node.style.transform = originalTransform;
+            node.style.transformOrigin = originalOrigin;
+
+            // POST to /api/stored-images (server persists it)
+            const res = await fetch('/api/stored-images', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    fileName: `snapcanvas_${Date.now()}.png`,
+                    mimeType: 'image/png',
+                    base64Data: dataUrl
+                })
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text || 'Failed to save pin');
+            }
+
+            const saved = await res.json();
+            console.log(saved);
+            alert('Saved pin to server successfully.');
+        } catch (err) {
+            console.error('Save as pin failed:', err);
+            alert('Save as pin failed. Check console for details.');
+        } finally {
+            handleMenuClose();
+        }
     };
 
     return (
@@ -86,7 +140,7 @@ const ExportButton = ({ targetId = "main-canvas" }: ExportButtonProps) => {
                 onClose={handleMenuClose}
             >
                 <MenuItem onClick={handleExportPNG}>Export to PNG</MenuItem>
-                <MenuItem onClick={handleSaveAsPin}>Share</MenuItem>
+                <MenuItem onClick={handleSaveAsPin}>Share / Save as Pin</MenuItem>
             </MuiMenu>
         </>
     );

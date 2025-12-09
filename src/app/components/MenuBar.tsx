@@ -1,3 +1,4 @@
+// src/app/components/MenuBar.tsx
 'use client';
 import Image from "next/image"
 import { Box, Divider, List, Typography } from "@mui/material";
@@ -39,7 +40,8 @@ interface MenuBarProps {
     onShapeSelect?: (shape: string) => void;
     onTextToggle?: (enabled: boolean) => void;
     textActive?: boolean;
-    onImageUpload?: (imageUrl: string) => void;
+    // updated: imageId optional now
+    onImageUpload?: (imageUrl: string, imageId?: string) => void;
     onImageUsed?: () => void;
     onClearImage?: () => void;
     onCanvasBackgroundChange?: (color: { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }, panelId?: string) => void;
@@ -152,4 +154,4 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
     )
 }
 
-export default MenuBar
+export default MenuBar;
