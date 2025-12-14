@@ -5,7 +5,6 @@ import { Shape, DrawingPath, FontFeatures, CanvasData } from "../types";
 
 import Menu from "./components/MenuBar";
 import Canvas from "./components/Canvas";
-import { useStoredImageLoader } from "../hooks/useStoredImageLoader";
 
 export default function Home() {
   const [resetKey, setResetKey] = useState<number>(0);
@@ -17,12 +16,10 @@ export default function Home() {
   const [eraserSize, setEraserSize] = useState(10);
   const [selectedShape, setSelectedShape] = useState<string | null>(null);
   const [textActive, setTextActive] = useState(false);
+
+  // Image handling (only by URL / data URI — no IndexedDB/localStorage)
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
-  const [currentImageId, setCurrentImageId] = useState<string | null>(null);
-
-  // Load image from localStorage on component mount
-  useStoredImageLoader(setUploadedImageUrl, setCurrentImageId, setLoadedImage);
 
   const [canvasBackground, setCanvasBackground] = useState<Record<string, string | { start: string; end: string }>>({ default: "#ffffff" });
   const [selectedPanel, setSelectedPanel] = useState<string>("default");
@@ -51,7 +48,7 @@ export default function Home() {
     backgroundColor: typeof canvasBackground;
     splitMode: string;
     uploadedImageUrl: string | null;
-    loadedImageId: string | null;
+    loadedImageUrl: string | null;
   }>>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
@@ -82,7 +79,7 @@ export default function Home() {
       backgroundColor: safeStructuredClone(canvasBackground),
       splitMode,
       uploadedImageUrl,
-      loadedImageId: currentImageId ?? null
+      loadedImageUrl: uploadedImageUrl ?? null
     };
 
     setHistory(prev => {
@@ -98,7 +95,7 @@ export default function Home() {
 
       return newHistory;
     });
-  }, [shapes, drawings, filledImages, canvasBackground, splitMode, historyIndex, uploadedImageUrl, currentImageId]);
+  }, [shapes, drawings, filledImages, canvasBackground, splitMode, historyIndex, uploadedImageUrl]);
 
   // Undo/Redo
   const handleUndo = async () => {
@@ -110,31 +107,17 @@ export default function Home() {
       setCanvasBackground(prevState.backgroundColor);
       setSplitMode(prevState.splitMode);
       setUploadedImageUrl(prevState.uploadedImageUrl ?? null);
-      setCurrentImageId(prevState.loadedImageId ?? null);
 
-      // reload image element if we have an id or url
-      if (prevState.loadedImageId) {
-        try {
-          const { imageStorage } = await import('../lib/imageStorage');
-          const blob = await imageStorage.getImage(prevState.loadedImageId);
-          if (blob) {
-            const blobUrl = URL.createObjectURL(blob);
-            const img = new Image();
-            img.onload = () => {
-              setLoadedImage(img);
-              URL.revokeObjectURL(blobUrl);
-            };
-            img.onerror = () => {
-              setLoadedImage(null);
-              URL.revokeObjectURL(blobUrl);
-            };
-            img.src = blobUrl;
-          } else {
-            setLoadedImage(null);
-          }
-        } catch {
+      // reload image element from URL/data URI if provided
+      if (prevState.loadedImageUrl) {
+        const img = new Image();
+        img.onload = () => {
+          setLoadedImage(img);
+        };
+        img.onerror = () => {
           setLoadedImage(null);
-        }
+        };
+        img.src = prevState.loadedImageUrl;
       } else {
         setLoadedImage(null);
       }
@@ -153,30 +136,16 @@ export default function Home() {
       setCanvasBackground(nextState.backgroundColor);
       setSplitMode(nextState.splitMode);
       setUploadedImageUrl(nextState.uploadedImageUrl ?? null);
-      setCurrentImageId(nextState.loadedImageId ?? null);
 
-      if (nextState.loadedImageId) {
-        try {
-          const { imageStorage } = await import('../lib/imageStorage');
-          const blob = await imageStorage.getImage(nextState.loadedImageId);
-          if (blob) {
-            const blobUrl = URL.createObjectURL(blob);
-            const img = new Image();
-            img.onload = () => {
-              setLoadedImage(img);
-              URL.revokeObjectURL(blobUrl);
-            };
-            img.onerror = () => {
-              setLoadedImage(null);
-              URL.revokeObjectURL(blobUrl);
-            };
-            img.src = blobUrl;
-          } else {
-            setLoadedImage(null);
-          }
-        } catch {
+      if (nextState.loadedImageUrl) {
+        const img = new Image();
+        img.onload = () => {
+          setLoadedImage(img);
+        };
+        img.onerror = () => {
           setLoadedImage(null);
-        }
+        };
+        img.src = nextState.loadedImageUrl;
       } else {
         setLoadedImage(null);
       }
@@ -196,22 +165,19 @@ export default function Home() {
     setFilledImages([]);
     setUploadedImageUrl(null);
     setLoadedImage(null);
-    setCurrentImageId(null);
     setHistory([]);
     setHistoryIndex(-1);
     setResetKey(prev => prev + 1);
-    localStorage.removeItem('currentImageId');
   };
 
   // Apply image to selected shape
-  const applyImageToSelectedShape = (img: HTMLImageElement, imageId?: string, imageUrl?: string) => {
+  const applyImageToSelectedShape = (img: HTMLImageElement, imageUrl?: string) => {
     setShapes(prev =>
       prev.map(shape =>
         shape.selected
           ? {
             ...shape,
             imageElement: img,
-            imageId: imageId || undefined,
             imageUrl: imageUrl || undefined
           }
           : shape
@@ -220,8 +186,7 @@ export default function Home() {
     saveState();
   };
 
-  // NEW — Updated image upload workflow
-  const handleImageUpload = (imageUrl: string, imageId?: string) => {
+  const handleImageUpload = (imageUrl: string) => {
     const selected = shapes.find(s => s.selected);
     if (!selected) {
       window.alert("Please select a shape first.");
@@ -232,9 +197,8 @@ export default function Home() {
     img.onload = () => {
       setUploadedImageUrl(imageUrl);
       setLoadedImage(img);
-      setCurrentImageId(imageId || null);
 
-      applyImageToSelectedShape(img, imageId, imageUrl);
+      applyImageToSelectedShape(img, imageUrl);
     };
     img.onerror = () => {
       console.error("Failed to load image");
@@ -245,7 +209,6 @@ export default function Home() {
   const handleImageUsed = () => {
     setUploadedImageUrl(null);
     setLoadedImage(null);
-    setCurrentImageId(null);
     saveState();
   };
 
@@ -263,7 +226,6 @@ export default function Home() {
           ? {
             ...shape,
             imageElement: undefined,
-            imageId: undefined,
             imageUrl: undefined
           }
           : shape
@@ -397,95 +359,28 @@ export default function Home() {
       });
     }
 
-    if (canvasData.currentImageId) {
-      try {
-        const { imageStorage } = await import('../lib/imageStorage');
-        const blob = await imageStorage.getImage(canvasData.currentImageId);
-        if (blob) {
-          const blobUrl = URL.createObjectURL(blob);
-          setUploadedImageUrl(blobUrl);
-          setCurrentImageId(canvasData.currentImageId);
+    // Image loading only via URL or embedded data uri
+    const imageUrlToLoad = canvasData.uploadedImageUrl || canvasData.loadedImageData;
+    if (imageUrlToLoad) {
+      setUploadedImageUrl(imageUrlToLoad);
 
-          const img = new Image();
-          img.onload = () => {
-            setLoadedImage(img);
-            console.log('Image loaded successfully from IndexedDB');
-          };
-          img.onerror = () => {
-            console.error("Failed to load image from IndexedDB");
-            setUploadedImageUrl(null);
-            setLoadedImage(null);
-            setCurrentImageId(null);
-          };
-          img.src = blobUrl;
-        } else {
-          console.warn("Image not found in IndexedDB, falling back to URL");
-          const imageUrlToLoad = canvasData.uploadedImageUrl || canvasData.loadedImageData;
-          if (imageUrlToLoad) {
-            setUploadedImageUrl(imageUrlToLoad);
-            setCurrentImageId(null);
-
-            const img = new Image();
-            img.onload = () => {
-              setLoadedImage(img);
-              console.log('Image loaded successfully from URL fallback');
-            };
-            img.onerror = () => {
-              console.error("Failed to load image from URL fallback");
-              setUploadedImageUrl(null);
-              setLoadedImage(null);
-              setCurrentImageId(null);
-            };
-            img.src = imageUrlToLoad;
-          }
-        }
-      } catch (error) {
-        console.error('Error loading image from IndexedDB:', error);
-        const imageUrlToLoad = canvasData.uploadedImageUrl || canvasData.loadedImageData;
-        if (imageUrlToLoad) {
-          setUploadedImageUrl(imageUrlToLoad);
-          setCurrentImageId(null);
-
-          const img = new Image();
-          img.onload = () => {
-            setLoadedImage(img);
-            console.log('Image loaded successfully from URL fallback');
-          };
-          img.onerror = () => {
-            console.error("Failed to load image from URL fallback");
-            setUploadedImageUrl(null);
-            setLoadedImage(null);
-            setCurrentImageId(null);
-          };
-          img.src = imageUrlToLoad;
-        }
-      }
-    } else {
-      const imageUrlToLoad = canvasData.uploadedImageUrl || canvasData.loadedImageData;
-      if (imageUrlToLoad) {
-        setUploadedImageUrl(imageUrlToLoad);
-        setCurrentImageId(null);
-
-        const img = new Image();
-        img.onload = () => {
-          setLoadedImage(img);
-          console.log('Image loaded successfully from URL');
-        };
-        img.onerror = () => {
-          console.error("Failed to load image from URL");
-          setUploadedImageUrl(null);
-          setLoadedImage(null);
-          setCurrentImageId(null);
-        };
-        img.src = imageUrlToLoad;
-      } else {
+      const img = new Image();
+      img.onload = () => {
+        setLoadedImage(img);
+        console.log('Image loaded successfully from URL/data URI');
+      };
+      img.onerror = () => {
+        console.error("Failed to load image from URL/data URI");
         setUploadedImageUrl(null);
         setLoadedImage(null);
-        setCurrentImageId(null);
-      }
+      };
+      img.src = imageUrlToLoad;
+    } else {
+      setUploadedImageUrl(null);
+      setLoadedImage(null);
     }
 
-    // Load shape images (if any). Use normalizedShapes so text/font props are preserved.
+    // Load shape (if any). Use normalizedShapes so text/font props are preserved.
     if (normalizedShapes.length > 0) {
       const updatedShapes = [...normalizedShapes];
       const loadPromises: Promise<void>[] = [];
@@ -498,7 +393,6 @@ export default function Home() {
               const index = updatedShapes.findIndex(s => s.id === shape.id);
               if (index !== -1) {
                 updatedShapes[index] = { ...updatedShapes[index], imageElement: shapeImg };
-                console.log('Shape image loaded:', shape.imageUrl);
               }
               resolve();
             };
@@ -510,46 +404,12 @@ export default function Home() {
             shapeImg.src = shape.imageUrl!;
           });
           loadPromises.push(loadPromise);
-        } else if (shape.imageId && !(shape).imageElement) {
-          const loadPromise = new Promise<void>(async (resolve) => {
-            try {
-              const { imageStorage } = await import('../lib/imageStorage');
-              const blob = await imageStorage.getImage(shape.imageId!);
-              if (blob) {
-                const blobUrl = URL.createObjectURL(blob);
-                const shapeImg = new Image();
-                shapeImg.onload = () => {
-                  const index = updatedShapes.findIndex(s => s.id === shape.id);
-                  if (index !== -1) {
-                    updatedShapes[index] = { ...updatedShapes[index], imageElement: shapeImg };
-                    console.log('Shape image loaded from IndexedDB:', shape.imageId);
-                  }
-                  URL.revokeObjectURL(blobUrl);
-                  resolve();
-                };
-                shapeImg.onerror = () => {
-                  console.error('Failed to load shape image from IndexedDB:', shape.imageId);
-                  URL.revokeObjectURL(blobUrl);
-                  resolve();
-                };
-                shapeImg.src = blobUrl;
-              } else {
-                console.warn('No blob found for shape imageId:', shape.imageId);
-                resolve();
-              }
-            } catch (error) {
-              console.error('Error loading shape image from IndexedDB:', error);
-              resolve();
-            }
-          });
-          loadPromises.push(loadPromise);
         }
       }
 
       Promise.all(loadPromises).then(() => {
-        // setShapes with updatedShapes (which include loaded imageElement if any)
         setShapes(updatedShapes as Shape[]);
-        console.log('All shape images loaded');
+        console.log('All shape images (URLs/data URIs) loaded');
       });
     }
 
@@ -580,8 +440,7 @@ export default function Home() {
               return '';
             })()
           })),
-          uploadedImageUrl: uploadedImageUrl,
-          currentImageId: currentImageId
+          uploadedImageUrl: uploadedImageUrl
         }}
         onNewCanvas={handleNewCanvas}
         onSplitChange={setSplitMode}
@@ -640,7 +499,6 @@ export default function Home() {
           onTextToggle={handleTextToggle}
           uploadedImageUrl={uploadedImageUrl}
           loadedImage={loadedImage}
-          currentImageId={currentImageId}
           onImageUsed={handleImageUsed}
           onClearImage={handleClearImage}
           backgroundColor={canvasBackground}

@@ -186,7 +186,7 @@ export const useDrawingTools = ({
               default: {
                 // try generic draw function, e.g. 'Star (5-point)' -> drawStar5pointShape
                 const fnName = `draw${shape.type.replace(/\s+/g, '')}Shape`;
-                const maybeFn = (Shapes as any )[fnName];
+                const maybeFn = (Shapes as Record<string, unknown>)[fnName];
                 if (typeof maybeFn === 'function') {
                   try {
                     maybeFn(

@@ -2,7 +2,6 @@
 import { useState, useRef } from "react";
 import { Tooltip, Button, Menu, MenuItem, Divider } from "@mui/material";
 import ImageIcon from '@mui/icons-material/Image';
-import { imageStorage } from '../../../lib/imageStorage';
 
 interface UploadImageButtonProps {
     active?: boolean;
@@ -29,26 +28,38 @@ const UploadImageButton = ({ onImageUpload }: UploadImageButtonProps) => {
 
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-        if (file) {
-            try {
-                const imageId = await imageStorage.storeImage(file);
-                const blobUrl = URL.createObjectURL(file);
-
-                localStorage.setItem('currentImageId', imageId);
-
-                onImageUpload?.(blobUrl, imageId);
-            } catch (error) {
-                console.error('Error storing image:', error);
-            }
+        if (!file) {
+            if (event.target) event.target.value = '';
+            return;
         }
-        event.target.value = '';
+
+        try {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const result = reader.result as string; // data URL
+                onImageUpload?.(result, undefined);
+            };
+            reader.onerror = (e) => {
+                console.error('FileReader error', e);
+                alert('Failed to read file.');
+            };
+            reader.readAsDataURL(file);
+        } catch (error) {
+            console.error('Error handling file change', error);
+            alert('Error processing image file.');
+        } finally {
+            if (event.target) event.target.value = '';
+        }
     };
 
-    const handleUrlInput = () => {
+    const handleUrlInput = async () => {
         const url = prompt("Enter image URL:");
-        if (url && url.trim()) {
-            onImageUpload?.(url.trim());
+        if (!url || !url.trim()) {
+            closeMenu();
+            return;
         }
+        const trimmed = url.trim();
+        onImageUpload?.(trimmed, undefined);
         closeMenu();
     };
 

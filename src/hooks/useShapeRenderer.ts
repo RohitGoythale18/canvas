@@ -62,31 +62,43 @@ export const useShapeRenderer = ({
 
             // Draw drawings for this panel
             const panelDrawings = drawings.find(d => d.panelId === panelId);
-            if (panelDrawings) {
+            if (panelDrawings && Array.isArray(panelDrawings.paths)) {
                 panelDrawings.paths.forEach(path => {
-                    if (path.points.length < 2) return;
+                    // defensive checks
+                    if (!path) return;
+                    if (!Array.isArray(path.points)) return;
+
+                    // filter out any malformed points
+                    const points = path.points.filter(p => p && typeof p.x === 'number' && typeof p.y === 'number');
+                    if (points.length < 2) return;
+
                     ctx.beginPath();
-                    ctx.moveTo(path.points[0].x, path.points[0].y);
-                    for (let i = 1; i < path.points.length; i++) {
-                        ctx.lineTo(path.points[i].x, path.points[i].y);
+                    ctx.moveTo(points[0].x, points[0].y);
+                    for (let i = 1; i < points.length; i++) {
+                        ctx.lineTo(points[i].x, points[i].y);
                     }
+
+                    // common style
+                    ctx.lineCap = "round";
+
                     if (path.tool === 'eraser') {
+                        // use destination-out for erasing, with a safe default size
+                        ctx.save();
                         ctx.globalCompositeOperation = "destination-out";
-                        ctx.lineWidth = path.size || 10;
-                        ctx.lineCap = "round";
+                        ctx.lineWidth = path.size ?? 10;
                         ctx.stroke();
-                        ctx.globalCompositeOperation = "source-over";
+                        ctx.restore();
+                        // restore composite operation explicitly (save/restore above handles it)
                     } else {
+                        ctx.save();
                         ctx.globalCompositeOperation = "source-over";
-                        ctx.lineWidth = path.size || 2;
-                        ctx.lineCap = "round";
-                        ctx.strokeStyle = path.color || "#000";
+                        ctx.lineWidth = path.size ?? 2;
+                        ctx.strokeStyle = path.color ?? "#000";
                         ctx.stroke();
+                        ctx.restore();
                     }
                 });
             }
-
-
 
             // Draw shapes for this panel only
             shapes.filter(shape => shape.panelId === panelId).forEach((shape) => {

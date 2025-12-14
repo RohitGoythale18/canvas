@@ -1,6 +1,7 @@
 // src/app/components/buttons/BoardButton.tsx
 'use client';
-import React, { useCallback, useEffect, useState } from "react";
+
+import React, { useState } from 'react';
 import {
   Button,
   Tooltip,
@@ -14,306 +15,379 @@ import {
   ListItemIcon,
   ListItemText,
   Snackbar,
-  Alert
-} from "@mui/material";
+  Alert,
+  Divider,
+  IconButton,
+  List,
+  ListItem,
+  FormControl,
+  FormLabel,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+} from '@mui/material';
+
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import AddIcon from '@mui/icons-material/Add';
 import SaveIcon from '@mui/icons-material/Save';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import DeleteIcon from '@mui/icons-material/Delete';
-import Image from "next/image";
+import ShareIcon from '@mui/icons-material/Share';
+import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 
-import { CanvasData, Shape } from "../../../types";
+import Image from 'next/image';
+import { useBoards } from '@/hooks/useBoards';
+import { CanvasData } from '@/types';
 
-interface Board {
-  id: string;
-  name: string;
-  description: string;
-  createdAt: string;
-  pins: Pin[] | undefined;
-}
-
-interface Pin {
-  id: string;
-  title: string;
-  imageUrl: string;
-  canvasData: CanvasData;
-  boardId: string;
-  createdAt: string;
-  updatedAt?: string;
-  order: number;
-}
-
-interface BoardsData {
-  boards: Board[];
-  currentBoardId: string | null;
-}
-
-interface BoardButtonProps {
+interface Props {
   canvasData?: CanvasData;
-  onLoadCanvas?: (canvasData: CanvasData) => void;
+  onLoadCanvas?: (d: CanvasData) => void;
   getCurrentCanvasImage?: () => string;
+  currentUserId?: string | null;
 }
 
-const STORAGE_KEY = "snapcanvas-boards";
+// IMPORTANT: `id` here is the SharedDesign record id
+type SharedUser = {
+  id: string; // share record id (SharedDesign.id)
+  email: string;
+  role: 'viewer' | 'editor';
+};
 
-const BoardButton = ({ canvasData, onLoadCanvas, getCurrentCanvasImage }: BoardButtonProps) => {
-  const [boards, setBoards] = useState<Board[]>([]);
-  const [currentBoardId, setCurrentBoardId] = useState<string | null>(null);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const [newBoardName, setNewBoardName] = useState("");
-  const [newBoardDescription, setNewBoardDescription] = useState("");
-  const [pinTitle, setPinTitle] = useState("");
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
+const BoardButton: React.FC<Props> = ({
+  canvasData,
+  onLoadCanvas,
+  getCurrentCanvasImage,
+  currentUserId,
+}) => {
+  const {
+    boards,
+    currentBoardId,
+    setCurrentBoardId,
+    effectiveUserId,
+    loadingUser,
+    snackbar,
+    setSnackbar,
+    createBoard,
+    deleteBoard,
+    saveDesignToBoard,
+    deleteDesign,
+  } = useBoards(currentUserId);
 
-  const showSnackbar = useCallback((message: string, severity: "success" | "error") => {
-    setSnackbar({ open: true, message, severity });
-  }, []);
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const [openCreate, setOpenCreate] = useState(false);
+  const [openSave, setOpenSave] = useState(false);
 
-  const saveBoards = useCallback((updatedBoards: Board[], updatedCurrentBoardId: string | null = null) => {
+  const [newBoardName, setNewBoardName] = useState('');
+  const [newBoardDesc, setNewBoardDesc] = useState('');
+  const [pinTitle, setPinTitle] = useState('');
+
+  // Design (pin) action menu + share / manage access
+  const [designMenuAnchor, setDesignMenuAnchor] = useState<HTMLElement | null>(
+    null,
+  );
+  const [selectedDesign, setSelectedDesign] = useState<{
+    boardId: string;
+    designId: string;
+  } | null>(null);
+
+  // Share URL for the design
+  const [shareUrl, setShareUrl] = useState('');
+
+  // Share dialog (email + list of users)
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareEmail, setShareEmail] = useState('');
+  const [sharedUsers, setSharedUsers] = useState<SharedUser[]>([]);
+
+  // Manage access dialog – for a specific user
+  const [manageAccessOpen, setManageAccessOpen] = useState(false);
+  const [selectedUserForAccess, setSelectedUserForAccess] =
+    useState<SharedUser | null>(null);
+
+  const disabled = loadingUser || !effectiveUserId;
+
+  const showSnackbar = (message: string, severity: 'success' | 'error') => {
+    setSnackbar({ open: true, severity, message });
+  };
+
+  // --- SHARE HELPERS -------------------------------------------------------
+
+  // load all users that have access to this design
+  const loadSharedUsers = async (designId: string) => {
     try {
-      const data: BoardsData = {
-        boards: updatedBoards,
-        currentBoardId: updatedCurrentBoardId !== null ? updatedCurrentBoardId : currentBoardId
-      };
+      const res = await fetch(`/api/designs/${designId}/shares`, {
+        method: 'GET',
+        credentials: 'same-origin',
+      });
 
-      const dataString = JSON.stringify(data);
-      const sizeInBytes = new Blob([dataString]).size;
-      const maxSize = 5 * 1024 * 1024; // 5MB
-
-      if (sizeInBytes > maxSize) {
-        showSnackbar("Storage limit exceeded. Please delete some boards.", "error");
+      if (!res.ok) {
+        console.error(await res.text());
+        showSnackbar('Failed to load shared users', 'error');
+        setSharedUsers([]);
         return;
       }
 
-      localStorage.setItem(STORAGE_KEY, dataString);
-      setBoards(updatedBoards);
-      if (updatedCurrentBoardId !== null) {
-        setCurrentBoardId(updatedCurrentBoardId);
-      }
-    } catch (error) {
-      console.error("Error saving boards:", error);
-      showSnackbar("Error saving boards", "error");
+      const records: Array<{
+        id: string;
+        permission: string;
+        sharedWith: { id: string; email: string | null };
+      }> = await res.json();
+
+      const normalized: SharedUser[] = (records || [])
+        .filter((rec) => !!rec.sharedWith?.email)
+        .map((rec) => ({
+          id: rec.id, // share record id
+          email: rec.sharedWith.email as string,
+          role: rec.permission === 'WRITE' ? 'editor' : 'viewer',
+        }));
+
+      setSharedUsers(normalized);
+    } catch (err) {
+      console.error(err);
+      showSnackbar('Failed to load shared users', 'error');
+      setSharedUsers([]);
     }
-  }, [currentBoardId, showSnackbar]);
-
-  useEffect(() => {
-    const loadBoards = () => {
-      try {
-        const data = localStorage.getItem(STORAGE_KEY);
-        if (data) {
-          const parsedData: BoardsData = JSON.parse(data);
-          requestAnimationFrame(() => {
-            setBoards(parsedData.boards || []);
-            setCurrentBoardId(parsedData.currentBoardId || null);
-          });
-        }
-      } catch (error) {
-        console.error("Error loading boards:", error);
-        setTimeout(() => {
-          showSnackbar("Error loading boards", "error");
-        }, 0);
-      }
-    };
-
-    loadBoards();
-  }, [showSnackbar]);
-
-  const handleBoardMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
   };
 
-  const handleBoardMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleCreateBoard = () => {
-    if (!newBoardName.trim()) {
-      showSnackbar("Board name is required", "error");
-      return;
+  const shareDesignWithEmail = async (designId: string, email: string) => {
+    if (!effectiveUserId) {
+      showSnackbar('No user available to share from', 'error');
+      return null;
     }
 
-    const newBoard: Board = {
-      id: `board-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      name: newBoardName,
-      description: newBoardDescription,
-      createdAt: new Date().toISOString(),
-      pins: []
-    };
+    const res = await fetch(`/api/designs/${designId}/shares`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        email,
+        role: 'viewer', // default; can be upgraded in manage access
+        sharedById: effectiveUserId,
+      }),
+    });
 
-    const updatedBoards = [...boards, newBoard];
-    saveBoards(updatedBoards, newBoard.id);
+    if (!res.ok) {
+      console.error(await res.text());
+      showSnackbar('Failed to share design', 'error');
+      return null;
+    }
 
-    setCreateDialogOpen(false);
-    setNewBoardName("");
-    setNewBoardDescription("");
-    showSnackbar(`Board "${newBoardName}" created successfully`, "success");
+    const rec: {
+      id: string;
+      permission: string;
+      sharedWith: { id: string; email: string | null };
+    } = await res.json();
+
+    return rec;
   };
 
-  const handleSaveToBoard = () => {
+  const updateDesignPermission = async (
+    designId: string,
+    shareId: string,
+    role: 'viewer' | 'editor',
+  ) => {
+    try {
+      const res = await fetch(`/api/designs/${designId}/shares`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ shareId, role }),
+      });
+
+      if (!res.ok) {
+        console.error(await res.text());
+        showSnackbar('Failed to update permission', 'error');
+        return;
+      }
+
+      // optional: read updated record, but we already updated local state
+      await res.json();
+      showSnackbar('Permission updated', 'success');
+    } catch (err) {
+      console.error(err);
+      showSnackbar('Failed to update permission', 'error');
+    }
+  };
+
+  // ------------------------------------------------------------------------
+
+  const handleSave = async () => {
     if (!currentBoardId || !getCurrentCanvasImage) {
-      showSnackbar("No board selected or canvas not available", "error");
-      return;
+      return setSnackbar({
+        open: true,
+        severity: 'error',
+        message: 'No board selected',
+      });
     }
 
-    if (!pinTitle.trim()) {
-      showSnackbar("Pin title is required", "error");
-      return;
+    const img = getCurrentCanvasImage();
+    if (!img) {
+      return setSnackbar({
+        open: true,
+        severity: 'error',
+        message: 'Canvas empty',
+      });
     }
 
-    const currentBoard = boards.find(board => board.id === currentBoardId);
-    if (!currentBoard) {
-      showSnackbar("No board selected", "error");
-      return;
-    }
-
-    const canvasImage = getCurrentCanvasImage();
-    if (!canvasImage) {
-      showSnackbar("Could not capture canvas image", "error");
-      return;
-    }
-
-    const existingPinIndex = (currentBoard.pins || []).findIndex(pin => pin.title === pinTitle.trim());
-
-    const canvasDataToSave: CanvasData = {
+    const cloned: CanvasData = {
       shapes: canvasData?.shapes || [],
-      backgroundColor: canvasData?.backgroundColor || { default: "#ffffff" },
-      splitMode: canvasData?.splitMode || "none",
       drawings: canvasData?.drawings || [],
       filledImages: canvasData?.filledImages || [],
+      backgroundColor: canvasData?.backgroundColor || { default: '#fff' },
+      splitMode: canvasData?.splitMode || 'none',
       uploadedImageUrl: canvasData?.uploadedImageUrl || null,
-      loadedImageData: canvasData?.uploadedImageUrl || null,
-      currentImageId: canvasData?.currentImageId || null
+      loadedImageData: canvasData?.loadedImageData || null,
+      currentImageId: canvasData?.currentImageId ?? null,
+      images: [],
     };
 
-    // Strip DOM-only props (imageElement) and normalize textual/font fields using Shape type
-    canvasDataToSave.shapes = (canvasDataToSave.shapes as Shape[]).map((shape) => {
-      // Destructure and keep imageElement into an intentionally unused var prefixed with _
-      const { imageElement: _imageElement, ...rest } = shape as Shape & { imageElement?: HTMLImageElement };
+    cloned.images = [
+      {
+        id: `img_${Date.now()}`,
+        mimeType: 'image/png',
+        fileName: `thumb_${Date.now()}.png`,
+        url: img,
+        size: img.length,
+        metadata: {
+          createdBy: effectiveUserId,
+          createdAt: new Date().toISOString(),
+        },
+      },
+    ];
 
-      const normalized: Shape = {
-        // basic shape props (rest should already have them)
-        id: rest.id,
-        type: rest.type,
-        x: rest.x,
-        y: rest.y,
-        width: rest.width,
-        height: rest.height,
-        selected: rest.selected ?? false,
-        panelId: rest.panelId ?? 'default',
-        // optional visual props - preserve if present, otherwise undefined
-        fillColor: rest.fillColor ?? undefined,
-        imageUrl: rest.imageUrl ?? undefined,
-        imageId: rest.imageId ?? undefined,
-        borderType: rest.borderType ?? undefined,
-        borderSize: rest.borderSize ?? undefined,
-        borderColor: rest.borderColor ?? undefined,
-        // Text / font props - ensure defaults exist so later rendering keeps styles
-        text: rest.text ?? undefined,
-        fontSize: rest.fontSize ?? 16,
-        fontFamily: rest.fontFamily ?? "Arial, sans-serif",
-        textColor: rest.textColor ?? "#000000",
-        fontStyles: rest.fontStyles ?? { bold: false, italic: false, underline: false, strikethrough: false },
-        isEditing: rest.isEditing ?? false,
-        textAlignment: rest.textAlignment ?? "left",
-        listType: rest.listType ?? "none"
-      };
+    try {
+      await saveDesignToBoard({
+        boardId: currentBoardId,
+        title: pinTitle,
+        thumbnailUrl: img,
+        canvasData: cloned,
+      });
 
-      return normalized;
-    });
-
-    const newPin: Pin = {
-      id: existingPinIndex >= 0 ? (currentBoard.pins || [])[existingPinIndex].id : `pin-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      title: pinTitle.trim(),
-      imageUrl: canvasImage,
-      canvasData: canvasDataToSave,
-      boardId: currentBoardId,
-      createdAt: existingPinIndex >= 0 ? (currentBoard.pins || [])[existingPinIndex].createdAt : new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      order: existingPinIndex >= 0 ? (currentBoard.pins || [])[existingPinIndex].order : (currentBoard.pins?.length ?? 0)
-    };
-
-    const updatedBoards = boards.map(board => {
-      if (board.id === currentBoardId) {
-        const updatedPins = [...(board.pins || [])];
-        if (existingPinIndex >= 0) {
-          updatedPins[existingPinIndex] = newPin;
-        } else {
-          updatedPins.push(newPin);
-        }
-        return {
-          ...board,
-          pins: updatedPins
-        };
-      }
-      return board;
-    });
-
-    saveBoards(updatedBoards);
-    setSaveDialogOpen(false);
-    setPinTitle("");
-    showSnackbar(existingPinIndex >= 0 ? `Design updated in "${currentBoard.name}"` : `Design saved to "${currentBoard.name}"`, "success");
-  };
-
-  const handleSelectBoard = (boardId: string) => {
-    saveBoards(boards, boardId);
-    handleBoardMenuClose();
-    showSnackbar(`Board selected successfully`, "success");
-  };
-
-  const handleDeleteBoard = (boardId: string, event: React.MouseEvent) => {
-    event.stopPropagation();
-
-    const updatedBoards = boards.filter(board => board.id !== boardId);
-    const newCurrentBoardId = currentBoardId === boardId ?
-      (updatedBoards.length > 0 ? updatedBoards[0].id : null) :
-      currentBoardId;
-
-    saveBoards(updatedBoards, newCurrentBoardId);
-    showSnackbar("Board deleted successfully", "success");
-  };
-
-  const handleLoadPin = (pin: Pin) => {
-    if (onLoadCanvas && pin.canvasData) {
-      onLoadCanvas(pin.canvasData);
-      showSnackbar(`Loaded design: ${pin.title}`, "success");
-    } else {
-      showSnackbar("Could not load design - missing canvas data", "error");
+      setOpenSave(false);
+      setPinTitle('');
+    } catch {
+      setSnackbar({
+        open: true,
+        severity: 'error',
+        message: 'An unexpected error occurred',
+      });
     }
   };
 
-  const getCurrentBoard = () => {
-    return boards.find(board => board.id === currentBoardId);
+  const handleOpenDesignMenu = (
+    e: React.MouseEvent<HTMLElement>,
+    boardId: string,
+    designId: string,
+  ) => {
+    e.stopPropagation();
+    setDesignMenuAnchor(e.currentTarget);
+    setSelectedDesign({ boardId, designId });
+
+    if (typeof window !== 'undefined') {
+      const url = `${window.location.origin}/boards/${boardId}/designs/${designId}`;
+      setShareUrl(url);
+    }
+
+    // load shared users for this design from your backend
+    loadSharedUsers(designId);
+  };
+
+  const handleCloseDesignMenu = () => {
+    setDesignMenuAnchor(null);
+  };
+
+  // Share clicked from design menu → open share dialog
+  const handleShareDesign = () => {
+    if (!selectedDesign) return;
+
+    setShareEmail('');
+    setShareDialogOpen(true);
+    handleCloseDesignMenu();
+  };
+
+  const handleDeleteDesign = async () => {
+    if (!selectedDesign) return;
+    const confirmed = confirm('Delete this design?');
+    if (!confirmed) return;
+
+    try {
+      await deleteDesign(selectedDesign.designId);
+    } catch (err) {
+      console.error(err);
+      setSnackbar({
+        open: true,
+        severity: 'error',
+        message: 'An unexpected error occurred',
+      });
+    } finally {
+      handleCloseDesignMenu();
+    }
+  };
+
+  const handleAddShareUser = async () => {
+    if (!shareEmail.trim() || !selectedDesign) return;
+
+    const email = shareEmail.trim();
+
+    const rec = await shareDesignWithEmail(selectedDesign.designId, email);
+    if (!rec) return;
+
+    const role: 'viewer' | 'editor' =
+      rec.permission === 'WRITE' ? 'editor' : 'viewer';
+
+    setSharedUsers((prev) => {
+      // avoid duplicate for same email
+      if (prev.some((u) => u.email === email)) return prev;
+      return [
+        ...prev,
+        {
+          id: rec.id,
+          email: email,
+          role,
+        },
+      ];
+    });
+
+    setShareEmail('');
+    setSnackbar({
+      open: true,
+      severity: 'success',
+      message: 'Design shared successfully',
+    });
+  };
+
+  const handleOpenManageAccess = (user: SharedUser) => {
+    setSelectedUserForAccess(user);
+    setManageAccessOpen(true);
   };
 
   return (
     <>
-      <Tooltip title="Boards" arrow>
+      <Tooltip title="Boards">
         <Button
           variant="outlined"
-          onClick={handleBoardMenuOpen}
+          onClick={(e) => setAnchorEl(e.currentTarget)}
+          disabled={disabled}
           size="small"
         >
-          <DashboardIcon sx={{ fontSize: 20 }}>
-            {getCurrentBoard()?.name}
-          </DashboardIcon>
+          <DashboardIcon sx={{ fontSize: 20 }} />
         </Button>
       </Tooltip>
 
+      {/* BOARDS MENU */}
       <Menu
         anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleBoardMenuClose}
-        PaperProps={{
-          style: {
-            maxHeight: 400,
-            width: 300,
-          },
-        }}
+        open={!!anchorEl}
+        onClose={() => setAnchorEl(null)}
+        PaperProps={{ style: { maxHeight: 400, width: 360 } }}
       >
-        <MenuItem onClick={() => { setCreateDialogOpen(true); handleBoardMenuClose(); }}>
+        <MenuItem
+          disabled={disabled}
+          onClick={() => {
+            setOpenCreate(true);
+            setAnchorEl(null);
+          }}
+        >
           <ListItemIcon>
             <AddIcon fontSize="small" />
           </ListItemIcon>
@@ -321,8 +395,11 @@ const BoardButton = ({ canvasData, onLoadCanvas, getCurrentCanvasImage }: BoardB
         </MenuItem>
 
         <MenuItem
-          onClick={() => { setSaveDialogOpen(true); handleBoardMenuClose(); }}
-          disabled={!currentBoardId || !getCurrentCanvasImage}
+          disabled={!currentBoardId || disabled}
+          onClick={() => {
+            setOpenSave(true);
+            setAnchorEl(null);
+          }}
         >
           <ListItemIcon>
             <SaveIcon fontSize="small" />
@@ -330,128 +407,341 @@ const BoardButton = ({ canvasData, onLoadCanvas, getCurrentCanvasImage }: BoardB
           <ListItemText>Save Current Design</ListItemText>
         </MenuItem>
 
-        {boards.length > 0 && <hr className="my-1" />}
+        {boards.length > 0 && <Divider />}
 
         {boards.map((board) => (
           <div key={board.id}>
             <MenuItem
               selected={board.id === currentBoardId}
-              onClick={() => handleSelectBoard(board.id)}
-              sx={{ justifyContent: 'space-between' }}
+              onClick={() => {
+                setCurrentBoardId(board.id);
+                setAnchorEl(null);
+                setSnackbar({
+                  open: true,
+                  severity: 'success',
+                  message: 'Board selected',
+                });
+              }}
             >
-              <div className="flex items-center">
-                <FolderOpenIcon fontSize="small" sx={{ mr: 1 }} />
-                <div className="flex flex-col">
-                  <span className="font-medium">{board.name}</span>
-                  <span className="text-xs text-gray-500">
-                    {(board.pins || []).length} designs
-                  </span>
+              <FolderOpenIcon sx={{ mr: 1 }} />
+              <div style={{ flexGrow: 1 }}>
+                <div>{board.name}</div>
+                <div style={{ fontSize: 12, color: '#888' }}>
+                  {(board.pins || []).length} designs
                 </div>
               </div>
+
               <Button
                 size="small"
                 color="error"
-                onClick={(e) => handleDeleteBoard(board.id, e)}
-                sx={{ minWidth: 'auto', p: 0.5 }}
+                sx={{ p: 0.4 }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm('Delete this board?')) deleteBoard(board.id);
+                }}
               >
                 <DeleteIcon fontSize="small" />
               </Button>
             </MenuItem>
-            {/* Display pins for this board */}
-            {(board.pins || []).map((pin) => (
+
+            {(board.pins || []).map((p) => (
               <MenuItem
-                key={pin.id}
-                onClick={() => handleLoadPin(pin)}
-                sx={{ pl: 2, fontSize: '0.875rem' }}
+                key={p.id}
+                sx={{ pl: 5 }}
+                onClick={() => {
+                  if (onLoadCanvas && p.canvasData) {
+                    onLoadCanvas(p.canvasData);
+                    setSnackbar({
+                      open: true,
+                      message: `Loaded: ${p.title}`,
+                      severity: 'success',
+                    });
+                  }
+                }}
               >
-                <div className="flex items-center w-full">
-                  <Image
-                    src={pin.imageUrl}
-                    alt={pin.title}
-                    width={100}
-                    height={100}
-                    style={{
-                      border: '1px solid black',
-                      margin: 2,
-                      marginRight: 8,
-                      borderRadius: 4,
-                      objectFit: 'cover'
-                    }}
-                  />
-                  <span>{pin.title}</span>
+                <Image
+                  src={p.imageUrl ?? ''}
+                  alt={p.title}
+                  width={80}
+                  height={60}
+                  style={{
+                    objectFit: 'cover',
+                    borderRadius: 4,
+                    border: '1px solid #000',
+                    marginRight: 8,
+                  }}
+                />
+                <div
+                  style={{
+                    flexGrow: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                >
+                  <span>{p.title}</span>
+                  <span style={{ fontSize: 11, color: '#888' }}>
+                    Click to load
+                  </span>
                 </div>
+
+                <IconButton
+                  size="small"
+                  onClick={(e) => handleOpenDesignMenu(e, board.id, p.id)}
+                >
+                  <MoreVertIcon fontSize="small" />
+                </IconButton>
               </MenuItem>
             ))}
+            <Divider />
           </div>
         ))}
-
-        {boards.length === 0 && (
-          <MenuItem disabled>
-            <ListItemText primary="No boards created yet" />
-          </MenuItem>
-        )}
       </Menu>
 
-      {/* Create Board Dialog */}
-      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)}>
-        <DialogTitle>Create New Board</DialogTitle>
+      {/* DESIGN ACTION MENU (Share / Delete) */}
+      <Menu
+        anchorEl={designMenuAnchor}
+        open={!!designMenuAnchor}
+        onClose={handleCloseDesignMenu}
+      >
+        <MenuItem onClick={handleShareDesign}>
+          <ListItemIcon>
+            <ShareIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Share</ListItemText>
+        </MenuItem>
+
+        <MenuItem onClick={handleDeleteDesign}>
+          <ListItemIcon>
+            <DeleteIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Delete</ListItemText>
+        </MenuItem>
+      </Menu>
+
+      {/* SHARE DIALOG – email + list of users */}
+      <Dialog
+        open={shareDialogOpen}
+        onClose={() => setShareDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Share design</DialogTitle>
         <DialogContent>
           <TextField
-            autoFocus
-            margin="dense"
-            label="Board Name"
+            label="Enter email to share with"
             fullWidth
-            variant="outlined"
-            value={newBoardName}
-            onChange={(e) => setNewBoardName(e.target.value)}
+            sx={{ mt: 2 }}
+            value={shareEmail}
+            onChange={(e) => setShareEmail(e.target.value)}
           />
-          <TextField
-            margin="dense"
-            label="Description (Optional)"
-            fullWidth
-            variant="outlined"
-            value={newBoardDescription}
-            onChange={(e) => setNewBoardDescription(e.target.value)}
-          />
+          <Button sx={{ mt: 2 }} variant="contained" onClick={handleAddShareUser}>
+            Share
+          </Button>
 
+          <Divider sx={{ mt: 3, mb: 1 }} />
+
+          <p style={{ fontSize: 14, marginTop: 8, marginBottom: 4 }}>
+            People with access:
+          </p>
+
+          <List sx={{ maxHeight: 200, overflowY: 'auto' }}>
+            {sharedUsers.length === 0 && (
+              <ListItem>
+                <ListItemText primary="No one has access yet." />
+              </ListItem>
+            )}
+
+            {sharedUsers.map((user) => (
+              <ListItem
+                key={user.id}
+                sx={{ cursor: 'pointer' }}
+                onClick={() => handleOpenManageAccess(user)}
+              >
+                <ListItemIcon>
+                  <ManageAccountsIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary={user.email}
+                  secondary={user.role === 'editor' ? 'Editor' : 'Viewer'}
+                />
+              </ListItem>
+            ))}
+          </List>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleCreateBoard} variant="contained">Create</Button>
+          <Button onClick={() => setShareDialogOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
 
-      {/* Save to Board Dialog */}
-      <Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)}>
-        <DialogTitle>Save Current Design</DialogTitle>
+      {/* MANAGE ACCESS DIALOG – per user, with Viewer / Editor */}
+      <Dialog
+        open={manageAccessOpen}
+        onClose={() => setManageAccessOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Manage access
+          {selectedUserForAccess ? ` for ${selectedUserForAccess.email}` : ''}
+        </DialogTitle>
+        <DialogContent>
+          <p style={{ fontSize: 14, marginTop: 8 }}>
+            Share this link with {selectedUserForAccess?.email} if you want them
+            to open this design directly.
+          </p>
+          <TextField
+            label="Share link"
+            fullWidth
+            sx={{ mt: 2 }}
+            value={shareUrl}
+            InputProps={{ readOnly: true }}
+          />
+          <Button
+            sx={{ mt: 2 }}
+            variant="outlined"
+            onClick={async () => {
+              try {
+                if (navigator.clipboard) {
+                  await navigator.clipboard.writeText(shareUrl);
+                  setSnackbar({
+                    open: true,
+                    severity: 'success',
+                    message: 'Link copied to clipboard',
+                  });
+                } else {
+                  setSnackbar({
+                    open: true,
+                    severity: 'error',
+                    message: 'Clipboard not supported',
+                  });
+                }
+              } catch (err) {
+                console.error(err);
+                setSnackbar({
+                  open: true,
+                  severity: 'error',
+                  message: 'Failed to copy link',
+                });
+              }
+            }}
+          >
+            Copy link
+          </Button>
+        </DialogContent>
+
+        {/* Viewer / Editor permissions */}
+        <FormControl sx={{ mt: 3, paddingX: 3 }}>
+          <FormLabel>Permission</FormLabel>
+          <RadioGroup
+            value={selectedUserForAccess?.role ?? 'viewer'}
+            onChange={(e) => {
+              const newRole = e.target.value as 'viewer' | 'editor';
+              if (!selectedUserForAccess) return;
+
+              const shareId = selectedUserForAccess.id;
+
+              // update local state immediately
+              setSelectedUserForAccess((prev) =>
+                prev ? { ...prev, role: newRole } : prev,
+              );
+
+              setSharedUsers((prev) =>
+                prev.map((u) =>
+                  u.id === shareId ? { ...u, role: newRole } : u,
+                ),
+              );
+
+              // persist to backend
+              if (selectedDesign) {
+                updateDesignPermission(
+                  selectedDesign.designId,
+                  shareId,
+                  newRole,
+                );
+              }
+            }}
+          >
+            <FormControlLabel
+              value="viewer"
+              control={<Radio />}
+              label="Viewer (can view only)"
+            />
+            <FormControlLabel
+              value="editor"
+              control={<Radio />}
+              label="Editor (can edit)"
+            />
+          </RadioGroup>
+        </FormControl>
+        <DialogActions>
+          <Button onClick={() => setManageAccessOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* CREATE BOARD DIALOG */}
+      <Dialog open={openCreate} onClose={() => setOpenCreate(false)}>
+        <DialogTitle>Create Board</DialogTitle>
         <DialogContent>
           <TextField
-            autoFocus
-            margin="dense"
-            label="Design Title"
+            label="Board Name"
             fullWidth
-            variant="outlined"
-            value={pinTitle}
-            onChange={(e) => setPinTitle(e.target.value)}
-            placeholder="Enter a title for this design"
+            value={newBoardName}
+            onChange={(e) => setNewBoardName(e.target.value)}
+            sx={{ mt: 2 }}
           />
-          <div className="mt-2 text-sm text-gray-600">
-            Saving to: <strong>{getCurrentBoard()?.name}</strong>
-          </div>
+          <TextField
+            label="Description"
+            fullWidth
+            sx={{ mt: 2 }}
+            value={newBoardDesc}
+            onChange={(e) => setNewBoardDesc(e.target.value)}
+          />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => setOpenCreate(false)}>Cancel</Button>
           <Button
-            onClick={handleSaveToBoard}
             variant="contained"
-            disabled={!pinTitle.trim()}
+            onClick={async () => {
+              try {
+                await createBoard(newBoardName, newBoardDesc);
+                setNewBoardName('');
+                setNewBoardDesc('');
+                setOpenCreate(false);
+              } catch {
+                setSnackbar({
+                  open: true,
+                  severity: 'error',
+                  message: 'An unexpected error occurred',
+                });
+              }
+            }}
           >
+            Create
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* SAVE DESIGN DIALOG */}
+      <Dialog open={openSave} onClose={() => setOpenSave(false)}>
+        <DialogTitle>Save Design</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Design title"
+            fullWidth
+            sx={{ mt: 2 }}
+            value={pinTitle}
+            onChange={(e) => setPinTitle(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenSave(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleSave}>
             Save
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Snackbar for notifications */}
+      {/* SNACKBAR */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={3000}
