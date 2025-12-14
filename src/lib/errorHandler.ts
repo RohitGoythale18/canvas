@@ -1,10 +1,8 @@
-// src/lib/errorHandler.ts
 import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 
 /**
  * Prisma error codes
- * Reference: https://www.prisma.io/docs/reference/api-reference/error-reference
  */
 const PRISMA_ERROR_CODES = {
   UNIQUE_CONSTRAINT: 'P2002',
@@ -26,76 +24,57 @@ interface ErrorResponse {
 }
 
 /**
- * Extracts field name from Prisma unique constraint error
+ * Extract unique constraint field
  */
-function getUniqueConstraintField(error: Prisma.PrismaClientKnownRequestError): string | null {
-  if (error.meta && typeof error.meta === 'object' && 'target' in error.meta) {
-    const target = error.meta.target;
-    if (Array.isArray(target) && target.length > 0) {
-      return target[0] as string;
+function getUniqueConstraintField(
+  error: Prisma.PrismaClientKnownRequestError
+): string | null {
+  if (error.meta && typeof error.meta === 'object') {
+    const meta = error.meta as { target?: unknown };
+    if (Array.isArray(meta.target) && meta.target.length > 0) {
+      return meta.target[0] as string;
     }
   }
   return null;
 }
 
 /**
- * Handles Prisma-specific errors and returns appropriate HTTP responses
+ * Central error handler
  */
-export function handlePrismaError(error: unknown, context: string): ErrorResponse {
-  // Log the error for debugging
-  console.error(`[${context}] Error:`, error);
+export function handlePrismaError(
+  error: unknown,
+  context: string
+): ErrorResponse {
+  console.error(`[${context}]`, error);
 
-  // Check if it's a Prisma error
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     switch (error.code) {
       case PRISMA_ERROR_CODES.UNIQUE_CONSTRAINT: {
         const field = getUniqueConstraintField(error);
-        const fieldName = field ? field.replace(/([A-Z])/g, ' $1').toLowerCase() : 'field';
         return {
-          error: `A record with this ${fieldName} already exists`,
-          status: 409, // Conflict
-          details: `Unique constraint violation on ${field || 'unknown field'}`,
+          error: `A record with this ${field ?? 'field'} already exists`,
+          status: 409,
         };
       }
 
       case PRISMA_ERROR_CODES.RECORD_NOT_FOUND:
-        return {
-          error: 'Record not found',
-          status: 404,
-          details: error.meta?.cause as string | undefined,
-        };
+        return { error: 'Record not found', status: 404 };
 
       case PRISMA_ERROR_CODES.FOREIGN_KEY_CONSTRAINT:
         return {
-          error: 'Invalid reference: related record does not exist',
+          error: 'Invalid reference',
           status: 400,
-          details: error.meta?.field_name as string | undefined,
-        };
-
-      case PRISMA_ERROR_CODES.REQUIRED_VALUE_MISSING:
-        return {
-          error: 'Required field is missing',
-          status: 400,
-          details: error.meta?.path as string | undefined,
-        };
-
-      case PRISMA_ERROR_CODES.VALUE_OUT_OF_RANGE:
-        return {
-          error: 'Invalid value provided',
-          status: 400,
-          details: error.message,
         };
 
       default:
         return {
-          error: 'Database operation failed',
+          error: 'Database error',
           status: 500,
           details: error.message,
         };
     }
   }
 
-  // Check if it's a Prisma validation error
   if (error instanceof Prisma.PrismaClientValidationError) {
     return {
       error: 'Invalid data provided',
@@ -104,40 +83,32 @@ export function handlePrismaError(error: unknown, context: string): ErrorRespons
     };
   }
 
-  // Check if it's a JSON parsing error
   if (error instanceof SyntaxError) {
     return {
-      error: 'Invalid JSON in request body',
+      error: 'Invalid JSON body',
       status: 400,
-      details: error.message,
     };
   }
 
-  // Generic error handling
   if (error instanceof Error) {
     return {
-      error: 'An error occurred',
+      error: 'Internal server error',
       status: 500,
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      details:
+        process.env.NODE_ENV === 'development'
+          ? error.message
+          : undefined,
     };
   }
 
-  // Unknown error type
   return {
-    error: 'An unexpected error occurred',
+    error: 'Unexpected error',
     status: 500,
   };
 }
 
 /**
- * Wraps an API handler with consistent error handling
- * Usage:
- *   export async function GET() {
- *     return handleApiError(async () => {
- *       const data = await prisma.user.findMany();
- *       return NextResponse.json(data);
- *     }, 'GET /api/users');
- *   }
+ * API error wrapper
  */
 export async function handleApiError<T>(
   handler: () => Promise<NextResponse<T>>,
@@ -145,33 +116,29 @@ export async function handleApiError<T>(
 ): Promise<NextResponse<ErrorResponseBody | T>> {
   try {
     return await handler();
-  } catch (error) {
-    const errorResponse = handlePrismaError(error, context);
+  } catch (error: unknown) {
+    const res = handlePrismaError(error, context);
     return NextResponse.json(
-      {
-        error: errorResponse.error,
-        ...(errorResponse.details && { details: errorResponse.details }),
-      },
-      { status: errorResponse.status }
+      { error: res.error, ...(res.details && { details: res.details }) },
+      { status: res.status }
     );
   }
 }
 
 /**
- * Helper to create error responses directly
+ * Helper for catch blocks
  */
 export function createErrorResponse(
   error: unknown,
   context: string,
   defaultMessage?: string
 ): NextResponse<ErrorResponseBody> {
-  const errorResponse = handlePrismaError(error, context);
+  const res = handlePrismaError(error, context);
   return NextResponse.json(
     {
-      error: defaultMessage || errorResponse.error,
-      ...(errorResponse.details && { details: errorResponse.details }),
+      error: defaultMessage ?? res.error,
+      ...(res.details && { details: res.details }),
     },
-    { status: errorResponse.status }
+    { status: res.status }
   );
 }
-
