@@ -1,32 +1,83 @@
 // src/app/api/boards/route.ts
 import prisma from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { createErrorResponse } from '@/lib/errorHandler';
 
-export async function GET() {
+export async function GET(req: Request) {
     try {
+        const { searchParams } = new URL(req.url);
+        const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100); // Default 20, max 100
+        const offset = parseInt(searchParams.get('offset') || '0', 10);
+        const includeDesigns = searchParams.get('includeDesigns') !== 'false'; // Default true
+        const designsLimit = parseInt(searchParams.get('designsLimit') || '10', 10); // Limit designs per board
+
         const boards = await prisma.board.findMany({
             where: { deletedAt: null },
+            take: limit,
+            skip: offset,
             include: {
-                owner: { select: { id: true, name: true } },
-                members: { include: { user: { select: { id: true, name: true } } } },
-                designs: {
-                    where: { deletedAt: null },
-                    // don't include storedImages (no such relation). include only valid relations/fields:
-                    include: {
-                        owner: { select: { id: true, name: true } },
-                        board: { select: { id: true, name: true } },
-                        sharedRecords: true
-                    },
-                    orderBy: { updatedAt: 'desc' }
-                }
+                owner: { 
+                    select: { id: true, name: true, deletedAt: true }
+                },
+                members: { 
+                    include: { 
+                        user: { 
+                            select: { id: true, name: true, deletedAt: true }
+                        } 
+                    } 
+                },
+                ...(includeDesigns ? {
+                    designs: {
+                        where: { deletedAt: null },
+                        take: designsLimit,
+                        select: {
+                            id: true,
+                            title: true,
+                            description: true,
+                            thumbnailUrl: true,
+                            isPublished: true,
+                            createdAt: true,
+                            updatedAt: true,
+                            ownerId: true,
+                            boardId: true,
+                            owner: { 
+                                select: { id: true, name: true, deletedAt: true }
+                            },
+                            board: { 
+                                select: { id: true, name: true, deletedAt: true }
+                            },
+                            // Exclude large data field and sharedRecords for list view
+                        },
+                        orderBy: { updatedAt: 'desc' }
+                    }
+                } : {})
             },
             orderBy: { updatedAt: 'desc' }
         });
 
-        return NextResponse.json(boards);
-    } catch (err) {
-        console.error('Failed to fetch boards', err);
-        return NextResponse.json({ error: 'Failed to fetch boards' }, { status: 500 });
+        // Filter out boards where owner is deleted, and filter members/users
+        const validBoards = boards
+            .filter(board => !board.owner.deletedAt)
+            .map(board => {
+                const baseResult = {
+                    ...board,
+                    members: board.members.filter(member => !member.user.deletedAt),
+                };
+                if (includeDesigns && 'designs' in board && Array.isArray(board.designs)) {
+                    return {
+                        ...baseResult,
+                        designs: board.designs.filter((design: any) => 
+                            design.owner && !design.owner.deletedAt && 
+                            (!design.board || !design.board.deletedAt)
+                        ),
+                    };
+                }
+                return baseResult;
+            });
+
+        return NextResponse.json(validBoards);
+    } catch (error) {
+        return createErrorResponse(error, 'GET /api/boards', 'Failed to fetch boards');
     }
 }
 
@@ -35,6 +86,26 @@ export async function POST(req: Request) {
         const body = await req.json();
         if (!body?.name || !body?.ownerId) {
             return NextResponse.json({ error: 'Missing name or ownerId' }, { status: 400 });
+        }
+
+        // Validate foreign key: ownerId must exist
+        const owner = await prisma.user.findUnique({
+            where: { id: body.ownerId },
+            select: { id: true, deletedAt: true },
+        });
+
+        if (!owner) {
+            return NextResponse.json(
+                { error: `User with id ${body.ownerId} not found` },
+                { status: 404 }
+            );
+        }
+
+        if (owner.deletedAt) {
+            return NextResponse.json(
+                { error: `User with id ${body.ownerId} has been deleted` },
+                { status: 404 }
+            );
         }
 
         const created = await prisma.board.create({
@@ -57,8 +128,7 @@ export async function POST(req: Request) {
         };
 
         return NextResponse.json(normalized, { status: 201 });
-    } catch (err) {
-        console.error('Failed to create board', err);
-        return NextResponse.json({ error: 'Failed to create board' }, { status: 500 });
+    } catch (error) {
+        return createErrorResponse(error, 'POST /api/boards', 'Failed to create board');
     }
 }

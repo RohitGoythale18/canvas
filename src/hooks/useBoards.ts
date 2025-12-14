@@ -207,6 +207,29 @@ export function useBoards(initialUserId?: string | null) {
         showSnackbar('Design saved', 'success');
     };
 
+    const deleteDesign = async (designId: string) => {
+        const res = await fetch(`/api/designs/${designId}`, {
+            method: 'DELETE',
+        });
+
+        if (!res.ok) {
+            setSnackbar({
+                open: true,
+                severity: 'error',
+                message: 'Failed to delete design',
+            });
+            return;
+        }
+
+        setSnackbar({
+            open: true,
+            severity: 'success',
+            message: 'Design deleted',
+        });
+
+        await refreshBoards();
+    };
+
     return {
         boards,
         currentBoardId,
@@ -219,5 +242,6 @@ export function useBoards(initialUserId?: string | null) {
         createBoard,
         deleteBoard,
         saveDesignToBoard,
+        deleteDesign,
     } as const;
 }

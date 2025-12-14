@@ -125,7 +125,7 @@ const Canvas = ({
         onShapesChange,
         setTextInput,
         setEditingShapeId,
-        onTextToggle // <-- pass the toggle callback into the hook
+        onTextToggle,
     });
 
     useShapeInteraction({
@@ -171,7 +171,9 @@ const Canvas = ({
     useKeyboardShortcuts({
         shapes,
         onShapesChange,
-        onSaveState
+        onSaveState,
+        onUndo: onUndo,
+        onRedo: onRedo,
     });
 
     useCanvasCleanup({
@@ -189,14 +191,6 @@ const Canvas = ({
         editingShapeId,
         loadedImage,
         backgroundColor,
-    });
-
-    useKeyboardShortcuts({
-        shapes,
-        onShapesChange,
-        onSaveState,
-        onUndo: onUndo,
-        onRedo: onRedo
     });
 
     const getBackgroundStyle = (panelId: string) => {

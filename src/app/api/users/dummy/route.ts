@@ -1,6 +1,7 @@
 // src/app/api/users/dummy/route.ts
 import prisma from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { createErrorResponse } from '@/lib/errorHandler';
 
 const DUMMY_EMAIL = 'user@gmail.com';
 const DUMMY_NAME = 'User1';
@@ -26,9 +27,8 @@ export async function GET() {
     }
 
     return NextResponse.json({ id: user.id, email: user.email, name: user.name });
-  } catch (err) {
-    console.error('GET /api/users/dummy error:', err);
-    return NextResponse.json({ error: 'Failed to retrieve dummy user' }, { status: 500 });
+  } catch (error) {
+    return createErrorResponse(error, 'GET /api/users/dummy', 'Failed to retrieve dummy user');
   }
 }
 
@@ -49,7 +49,7 @@ export async function POST() {
     }
 
     return NextResponse.json({ id: user.id, email: user.email, name: user.name });
-  } catch {
-    return NextResponse.json({ error: 'Failed to create/retrieve dummy user' }, { status: 500 });
+  } catch (error) {
+    return createErrorResponse(error, 'POST /api/users/dummy', 'Failed to create/retrieve dummy user');
   }
 }
