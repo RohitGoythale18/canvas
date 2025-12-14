@@ -98,7 +98,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
             data: {
                 name: body.name,
                 description: body.description,
-                isPublic: body.isPublic
+                isPublic: body.isPublic,
             }
         });
 
