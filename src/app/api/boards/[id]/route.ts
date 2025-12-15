@@ -1,9 +1,10 @@
 // src/app/api/boards/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { createErrorResponse } from '@/lib/errorHandler';
 
-// GET /api/boards/[id]
+/**
+ * GET /api/boards/[id]
+ */
 export async function GET(
     req: NextRequest,
     context: { params: Promise<{ id: string }> }
@@ -13,12 +14,8 @@ export async function GET(
     try {
         const { searchParams } = new URL(req.url);
 
-        const includeDesigns =
-            searchParams.get('includeDesigns') !== 'false'; // default true
-        const designsLimit = parseInt(
-            searchParams.get('designsLimit') || '20',
-            10
-        );
+        const includeDesigns = searchParams.get('includeDesigns') !== 'false'; // default true
+        const designsLimit = parseInt(searchParams.get('designsLimit') || '20', 10);
         const includeDesignData =
             searchParams.get('includeDesignData') === 'true';
 
@@ -33,7 +30,7 @@ export async function GET(
                     },
                 },
 
-                // ✅ Filter soft-deleted users at DB level
+                // filter soft-deleted users at DB level
                 members: {
                     where: {
                         user: { deletedAt: null },
@@ -106,15 +103,17 @@ export async function GET(
 
         return NextResponse.json(board, { status: 200 });
     } catch (error) {
-        return createErrorResponse(
-            error,
-            `GET /api/boards/${id}`,
-            'Failed to fetch board'
+        console.error(`GET /api/boards/${id} failed:`, error);
+        return NextResponse.json(
+            { error: 'Failed to fetch board' },
+            { status: 500 }
         );
     }
 }
 
-// PUT /api/boards/[id]
+/**
+ * PUT /api/boards/[id]
+ */
 export async function PUT(
     req: NextRequest,
     context: { params: Promise<{ id: string }> }
@@ -154,15 +153,17 @@ export async function PUT(
 
         return NextResponse.json(updated, { status: 200 });
     } catch (error) {
-        return createErrorResponse(
-            error,
-            `PUT /api/boards/${id}`,
-            'Failed to update board'
+        console.error(`PUT /api/boards/${id} failed:`, error);
+        return NextResponse.json(
+            { error: 'Failed to update board' },
+            { status: 500 }
         );
     }
 }
 
-// DELETE /api/boards/[id]
+/**
+ * DELETE /api/boards/[id]
+ */
 export async function DELETE(
     _req: NextRequest,
     context: { params: Promise<{ id: string }> }
@@ -196,10 +197,10 @@ export async function DELETE(
 
         return NextResponse.json({ ok: true }, { status: 200 });
     } catch (error) {
-        return createErrorResponse(
-            error,
-            `DELETE /api/boards/${id}`,
-            'Failed to delete board'
+        console.error(`DELETE /api/boards/${id} failed:`, error);
+        return NextResponse.json(
+            { error: 'Failed to delete board' },
+            { status: 500 }
         );
     }
 }

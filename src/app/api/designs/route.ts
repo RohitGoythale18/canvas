@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { createErrorResponse } from '@/lib/errorHandler';
 
+/**
+ * GET /api/designs
+ */
 export async function GET(req: Request) {
     try {
         const { searchParams } = new URL(req.url);
@@ -19,10 +21,10 @@ export async function GET(req: Request) {
             where: {
                 deletedAt: null,
 
-                // ✅ filter deleted owners
+                // filter deleted owners
                 owner: { deletedAt: null },
 
-                // ✅ filter deleted boards (or allow null board)
+                // filter deleted boards (or allow null board)
                 OR: [
                     { boardId: null },
                     { board: { deletedAt: null } },
@@ -89,14 +91,17 @@ export async function GET(req: Request) {
 
         return NextResponse.json(designs, { status: 200 });
     } catch (error) {
-        return createErrorResponse(
-            error,
-            'GET /api/designs',
-            'Failed to list designs'
+        console.error('GET /api/designs failed:', error);
+        return NextResponse.json(
+            { error: 'Failed to list designs' },
+            { status: 500 }
         );
     }
 }
 
+/**
+ * POST /api/designs
+ */
 export async function POST(req: Request) {
     try {
         const body = await req.json();
@@ -160,10 +165,10 @@ export async function POST(req: Request) {
 
         return NextResponse.json(design, { status: 201 });
     } catch (error) {
-        return createErrorResponse(
-            error,
-            'POST /api/designs',
-            'Failed to create design'
+        console.error('POST /api/designs failed:', error);
+        return NextResponse.json(
+            { error: 'Failed to create design' },
+            { status: 500 }
         );
     }
 }

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { createErrorResponse } from '@/lib/errorHandler';
 
 type RoleString = 'viewer' | 'editor';
 
@@ -18,7 +17,9 @@ function permissionToRole(permission: string): RoleString {
     return 'viewer';
 }
 
-// GET /api/designs/[id]/shares
+/**
+ * GET /api/designs/[id]/shares
+ */
 export async function GET(req: Request, context: RouteContext) {
     const { id: designId } = await context.params;
 
@@ -40,11 +41,9 @@ export async function GET(req: Request, context: RouteContext) {
             return NextResponse.json({ error: 'Design not found' }, { status: 404 });
         }
 
-        // ✅ FILTER DELETED USERS IN PRISMA (NO JS FILTER)
         const shares = await prisma.sharedDesign.findMany({
             where: {
                 designId,
-
                 sharedWith: { deletedAt: null },
                 sharedBy: { deletedAt: null },
             },
@@ -53,33 +52,27 @@ export async function GET(req: Request, context: RouteContext) {
             orderBy: { createdAt: 'asc' },
             include: {
                 sharedWith: {
-                    select: {
-                        id: true,
-                        email: true,
-                        name: true,
-                    },
+                    select: { id: true, email: true, name: true },
                 },
                 sharedBy: {
-                    select: {
-                        id: true,
-                        email: true,
-                        name: true,
-                    },
+                    select: { id: true, email: true, name: true },
                 },
             },
         });
 
         return NextResponse.json(shares, { status: 200 });
     } catch (error) {
-        return createErrorResponse(
-            error,
-            `GET /api/designs/${designId}/shares`,
-            'Failed to load shares'
+        console.error(`GET /api/designs/${designId}/shares failed:`, error);
+        return NextResponse.json(
+            { error: 'Failed to load shares' },
+            { status: 500 }
         );
     }
 }
 
-// POST /api/designs/[id]/shares
+/**
+ * POST /api/designs/[id]/shares
+ */
 export async function POST(req: Request, context: RouteContext) {
     const { id: designId } = await context.params;
 
@@ -106,6 +99,7 @@ export async function POST(req: Request, context: RouteContext) {
         if (!email?.trim()) {
             return NextResponse.json({ error: 'email is required' }, { status: 400 });
         }
+
         if (!sharedById) {
             return NextResponse.json(
                 { error: 'sharedById is required' },
@@ -158,7 +152,7 @@ export async function POST(req: Request, context: RouteContext) {
 
         const permission = roleToPermission(role);
 
-        const rec = await prisma.sharedDesign.upsert({
+        const record = await prisma.sharedDesign.upsert({
             where: {
                 designId_sharedWithId: {
                     designId,
@@ -184,17 +178,19 @@ export async function POST(req: Request, context: RouteContext) {
             },
         });
 
-        return NextResponse.json(rec, { status: 201 });
+        return NextResponse.json(record, { status: 201 });
     } catch (error) {
-        return createErrorResponse(
-            error,
-            `POST /api/designs/${designId}/shares`,
-            'Failed to create share'
+        console.error(`POST /api/designs/${designId}/shares failed:`, error);
+        return NextResponse.json(
+            { error: 'Failed to create share' },
+            { status: 500 }
         );
     }
 }
 
-// PATCH /api/designs/[id]/shares
+/**
+ * PATCH /api/designs/[id]/shares
+ */
 export async function PATCH(req: Request, context: RouteContext) {
     const { id: designId } = await context.params;
 
@@ -204,8 +200,7 @@ export async function PATCH(req: Request, context: RouteContext) {
 
     try {
         const body = await req.json();
-        const { shareId, role }: { shareId?: string; role?: RoleString } =
-            body || {};
+        const { shareId, role }: { shareId?: string; role?: RoleString } = body || {};
 
         if (!shareId || !role) {
             return NextResponse.json(
@@ -235,10 +230,10 @@ export async function PATCH(req: Request, context: RouteContext) {
 
         return NextResponse.json(updated, { status: 200 });
     } catch (error) {
-        return createErrorResponse(
-            error,
-            `PATCH /api/designs/${designId}/shares`,
-            'Failed to update permission'
+        console.error(`PATCH /api/designs/${designId}/shares failed:`, error);
+        return NextResponse.json(
+            { error: 'Failed to update permission' },
+            { status: 500 }
         );
     }
 }

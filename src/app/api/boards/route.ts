@@ -1,7 +1,9 @@
 import prisma from '@/lib/prisma';
 import { NextResponse } from 'next/server';
-import { createErrorResponse } from '@/lib/errorHandler';
 
+/**
+ * GET /api/boards
+ */
 export async function GET(req: Request) {
     try {
         const { searchParams } = new URL(req.url);
@@ -21,7 +23,7 @@ export async function GET(req: Request) {
             where: {
                 deletedAt: null,
 
-                // ✅ filter out boards whose owner is deleted
+                // filter out boards whose owner is deleted
                 owner: { deletedAt: null },
             },
             take: limit,
@@ -36,7 +38,7 @@ export async function GET(req: Request) {
                     },
                 },
 
-                // ✅ filter deleted users at DB level
+                // filter deleted users at DB level
                 members: {
                     where: {
                         user: { deletedAt: null },
@@ -57,10 +59,10 @@ export async function GET(req: Request) {
                             where: {
                                 deletedAt: null,
 
-                                // ✅ filter deleted design owners
+                                // filter deleted design owners
                                 owner: { deletedAt: null },
 
-                                // ✅ filter designs whose board is deleted
+                                // filter designs whose board is deleted
                                 OR: [
                                     { boardId: null },
                                     { board: { deletedAt: null } },
@@ -101,14 +103,17 @@ export async function GET(req: Request) {
 
         return NextResponse.json(boards, { status: 200 });
     } catch (error) {
-        return createErrorResponse(
-            error,
-            'GET /api/boards',
-            'Failed to fetch boards'
+        console.error('GET /api/boards failed:', error);
+        return NextResponse.json(
+            { error: 'Failed to fetch boards' },
+            { status: 500 }
         );
     }
 }
 
+/**
+ * POST /api/boards
+ */
 export async function POST(req: Request) {
     try {
         const body = await req.json();
@@ -159,10 +164,10 @@ export async function POST(req: Request) {
             { status: 201 }
         );
     } catch (error) {
-        return createErrorResponse(
-            error,
-            'POST /api/boards',
-            'Failed to create board'
+        console.error('POST /api/boards failed:', error);
+        return NextResponse.json(
+            { error: 'Failed to create board' },
+            { status: 500 }
         );
     }
 }
