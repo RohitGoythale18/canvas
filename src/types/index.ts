@@ -9,9 +9,9 @@ export interface FontStyles {
 export type TextColor =
   | string
   | {
-    type: 'solid' | 'gradient';
-    value: string | { start: string; end: string };
-  };
+      type: 'solid' | 'gradient';
+      value: string | { start: string; end: string };
+    };
 
 export interface FontFeatures {
   fontFamily: string;
@@ -35,6 +35,7 @@ export interface Shape {
   imageUrl?: string;
   imageId?: string;
   imageElement?: HTMLImageElement;
+  imageBase64?: string;
   borderType?: 'solid' | 'dashed' | 'dotted';
   borderSize?: number;
   borderColor?: string;
@@ -64,29 +65,5 @@ export interface CanvasData {
   uploadedImageUrl?: string | null;
   loadedImageData?: string | null;
   currentImageId?: string | null;
-  images?: unknown[];
+  uploadedImageBase64?: string | null;
 }
-
-export interface Pin {
-  id: string;
-  title: string;
-  imageUrl?: string | null;
-  canvasData?: CanvasData;
-  boardId?: string;
-  createdAt?: string;
-  order?: number;
-}
-
-export interface Board {
-  id: string;
-  name: string;
-  description?: string | null;
-  createdAt: string;
-  pins?: Pin[];
-}
-
-export type SnackbarState = {
-  open: boolean;
-  message: string;
-  severity: 'success' | 'error';
-};

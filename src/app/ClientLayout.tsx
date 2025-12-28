@@ -1,6 +1,7 @@
 'use client';
 import { CacheProvider } from '@emotion/react';
 import createEmotionCache from '../lib/emotion-cache';
+import { AuthProvider } from '@/context/AuthContext';
 
 const clientSideEmotionCache = createEmotionCache();
 
@@ -11,7 +12,9 @@ export default function ClientLayout({
 }) {
   return (
     <CacheProvider value={clientSideEmotionCache}>
-      {children}
+      <AuthProvider>
+        {children}
+      </AuthProvider>
     </CacheProvider>
   );
 }

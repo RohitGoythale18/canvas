@@ -1,224 +1,170 @@
-// src/app/api/designs/[id]/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { authenticateRequest } from '@/lib/auth';
 
-interface Params {
-    params: Promise<{
-        id: string;
-    }>;
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: designId } = await params;
+
+    if (!designId) {
+      return NextResponse.json(
+        { error: 'Design ID missing' },
+        { status: 400 }
+      );
+    }
+
+    // authenticate user
+    const authRequest = authenticateRequest(request);
+    const userId = authRequest.user!.userId;
+
+    // fetch design + shared access info
+    const design = await prisma.design.findUnique({
+      where: { id: designId },
+      include: {
+        board: true,
+        sharedWith: {
+          where: { sharedWithId: userId },
+          select: {
+            permission: true,
+            sharedWithId: true,
+          },
+        },
+      },
+    });
+
+    if (!design) {
+      return NextResponse.json(
+        { error: 'Design not found' },
+        { status: 404 }
+      );
+    }
+
+    // access rules
+    const isOwner = design.ownerId === userId;
+    const sharedEntry = design.sharedWith[0]; // at most one per user
+    const isShared = Boolean(sharedEntry);
+
+    if (!isOwner && !isShared /* && !isPublic */) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
+
+    // attach permission info for frontend
+    const permission = isOwner ? 'OWNER' : sharedEntry?.permission ?? 'READ';
+
+    // include image inside canvas data if present
+    const designWithImage = {
+      ...design,
+      permission, // IMPORTANT for frontend (READ / WRITE / OWNER)
+      data: design.image
+        ? {
+          ...design.data,
+          uploadedImageBase64: design.image,
+        }
+        : design.data,
+    };
+
+    return NextResponse.json(designWithImage);
+  } catch (error) {
+    console.error('Get design error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
 }
 
-/**
- * GET /api/designs/[id]
- */
-export async function GET(req: Request, { params }: Params) {
-    const { id } = await params;
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const authRequest = authenticateRequest(request);
+    const userId = authRequest.user!.userId;
+    const designId = params.id;
+    const { title, description, data } = await request.json();
 
-    if (!id) {
-        return NextResponse.json(
-            { error: 'Missing design id' },
-            { status: 400 }
-        );
+    const design = await prisma.design.updateMany({
+      where: { id: designId, ownerId: userId },
+      data: { title, description, data },
+    });
+
+    if (design.count === 0) {
+      return NextResponse.json(
+        { error: 'Design not found' },
+        { status: 404 }
+      );
     }
 
-    try {
-        const { searchParams } = new URL(req.url);
-        const includeSharedRecords =
-            searchParams.get('includeSharedRecords') !== 'false'; // default true
-        const sharedRecordsLimit = parseInt(
-            searchParams.get('sharedRecordsLimit') || '20',
-            10
-        );
+    const updatedDesign = await prisma.design.findUnique({
+      where: { id: designId },
+      include: { board: true },
+    });
 
-        const design = await prisma.design.findUnique({
-            where: { id },
-            select: {
-                id: true,
-                title: true,
-                description: true,
-                data: true,
-                thumbnailUrl: true,
-                isPublished: true,
-                createdAt: true,
-                updatedAt: true,
-                ownerId: true,
-                boardId: true,
-                deletedAt: true,
-                owner: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                        deletedAt: true,
-                    },
-                },
-                board: {
-                    select: {
-                        id: true,
-                        name: true,
-                        deletedAt: true,
-                    },
-                },
-                ...(includeSharedRecords
-                    ? {
-                        sharedRecords: {
-                            take: sharedRecordsLimit,
-                            orderBy: { createdAt: 'desc' },
-                            select: {
-                                id: true,
-                                permission: true,
-                                message: true,
-                                expiresAt: true,
-                                createdAt: true,
-                                sharedWith: {
-                                    select: { id: true, email: true, name: true },
-                                },
-                                sharedBy: {
-                                    select: { id: true, email: true, name: true },
-                                },
-                            },
-                        },
-                    }
-                    : {}),
-            },
-        });
-
-        if (!design || design.deletedAt) {
-            return NextResponse.json(
-                { error: 'Design not found' },
-                { status: 404 }
-            );
-        }
-
-        return NextResponse.json(design, { status: 200 });
-    } catch (error) {
-        console.error(`GET /api/designs/${id} failed:`, error);
-        return NextResponse.json(
-            { error: 'Failed to fetch design' },
-            { status: 500 }
-        );
-    }
+    return NextResponse.json(updatedDesign);
+  } catch (error) {
+    console.error('Update design error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
 }
 
-/**
- * PUT /api/designs/[id]
- */
-export async function PUT(req: Request, { params }: Params) {
-    const { id } = await params;
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const authRequest = authenticateRequest(request);
+    const userId = authRequest.user!.userId;
 
-    if (!id) {
-        return NextResponse.json(
-            { error: 'Missing design id' },
-            { status: 400 }
-        );
+    const { id: designId } = await params;
+
+    if (!designId) {
+      return NextResponse.json(
+        { error: 'Design ID missing' },
+        { status: 400 }
+      );
     }
 
-    try {
-        const existing = await prisma.design.findUnique({
-            where: { id },
-            select: { id: true, deletedAt: true },
-        });
+    const design = await prisma.design.findUnique({
+      where: { id: designId },
+      select: { id: true, ownerId: true },
+    });
 
-        if (!existing) {
-            return NextResponse.json(
-                { error: 'Design not found' },
-                { status: 404 }
-            );
-        }
-
-        if (existing.deletedAt) {
-            return NextResponse.json(
-                { error: 'Design has been deleted' },
-                { status: 404 }
-            );
-        }
-
-        const body = await req.json();
-
-        // validate boardId if provided
-        if (body.boardId !== null && body.boardId !== undefined) {
-            const board = await prisma.board.findUnique({
-                where: { id: body.boardId },
-                select: { id: true, deletedAt: true },
-            });
-
-            if (!board) {
-                return NextResponse.json(
-                    { error: `Board with id ${body.boardId} not found` },
-                    { status: 404 }
-                );
-            }
-
-            if (board.deletedAt) {
-                return NextResponse.json(
-                    { error: `Board with id ${body.boardId} has been deleted` },
-                    { status: 404 }
-                );
-            }
-        }
-
-        const updated = await prisma.design.update({
-            where: { id },
-            data: {
-                title: body.title,
-                description: body.description,
-                data: body.data,
-                thumbnailUrl: body.thumbnailUrl ?? null,
-                isPublished: body.isPublished ?? false,
-                boardId: body.boardId ?? null,
-            },
-        });
-
-        return NextResponse.json(updated, { status: 200 });
-    } catch (error) {
-        console.error(`PUT /api/designs/${id} failed:`, error);
-        return NextResponse.json(
-            { error: 'Failed to update design' },
-            { status: 500 }
-        );
+    if (!design) {
+      return NextResponse.json(
+        { error: 'Design not found' },
+        { status: 404 }
+      );
     }
+
+    if (design.ownerId !== userId) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
+
+    await prisma.design.delete({
+      where: { id: designId },
+    });
+
+    return NextResponse.json({
+      message: 'Design deleted successfully',
+    });
+  } catch (error) {
+    console.error('Delete design error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
 }
 
-/**
- * DELETE /api/designs/[id]
- * Soft delete (sets deletedAt)
- */
-export async function DELETE(_req: Request, { params }: Params) {
-    const { id } = await params;
-
-    if (!id) {
-        return NextResponse.json(
-            { error: 'Missing design id' },
-            { status: 400 }
-        );
-    }
-
-    try {
-        const existing = await prisma.design.findUnique({
-            where: { id },
-        });
-
-        if (!existing || existing.deletedAt) {
-            return NextResponse.json(
-                { error: 'Design not found' },
-                { status: 404 }
-            );
-        }
-
-        await prisma.design.update({
-            where: { id },
-            data: {
-                deletedAt: new Date(),
-                isPublished: false, // unpublish on delete
-            },
-        });
-
-        return NextResponse.json({ ok: true }, { status: 200 });
-    } catch (error) {
-        console.error(`DELETE /api/designs/${id} failed:`, error);
-        return NextResponse.json(
-            { error: 'Failed to delete design' },
-            { status: 500 }
-        );
-    }
-}

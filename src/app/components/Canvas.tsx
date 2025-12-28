@@ -26,7 +26,7 @@ interface CanvasProps {
     selectedShape?: string | null;
     onShapeSelect: (shape: string) => void;
     textActive?: boolean;
-    onTextToggle?: (enabled: boolean) => void; // <-- added
+    onTextToggle?: (enabled: boolean) => void;
     uploadedImageUrl?: string | null;
     loadedImage?: HTMLImageElement | null;
     currentImageId?: string | null;
@@ -125,7 +125,7 @@ const Canvas = ({
         onShapesChange,
         setTextInput,
         setEditingShapeId,
-        onTextToggle,
+        onTextToggle // <-- pass the toggle callback into the hook
     });
 
     useShapeInteraction({
@@ -171,9 +171,7 @@ const Canvas = ({
     useKeyboardShortcuts({
         shapes,
         onShapesChange,
-        onSaveState,
-        onUndo: onUndo,
-        onRedo: onRedo,
+        onSaveState
     });
 
     useCanvasCleanup({
@@ -191,6 +189,14 @@ const Canvas = ({
         editingShapeId,
         loadedImage,
         backgroundColor,
+    });
+
+    useKeyboardShortcuts({
+        shapes,
+        onShapesChange,
+        onSaveState,
+        onUndo: onUndo,
+        onRedo: onRedo
     });
 
     const getBackgroundStyle = (panelId: string) => {

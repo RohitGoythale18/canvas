@@ -1,206 +1,103 @@
-// src/app/api/boards/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { PrismaClient } from '@prisma/client';
+import { authenticateRequest } from '@/lib/auth';
 
-/**
- * GET /api/boards/[id]
- */
+const prisma = new PrismaClient();
+
 export async function GET(
-    req: NextRequest,
-    context: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
-    const { id } = await context.params;
+  try {
+    const authRequest = authenticateRequest(request);
+    const userId = authRequest.user!.userId;
+    const boardId = params.id;
 
-    try {
-        const { searchParams } = new URL(req.url);
+    const board = await prisma.board.findFirst({
+      where: { id: boardId, ownerId: userId },
+      include: { designs: true },
+    });
 
-        const includeDesigns = searchParams.get('includeDesigns') !== 'false'; // default true
-        const designsLimit = parseInt(searchParams.get('designsLimit') || '20', 10);
-        const includeDesignData =
-            searchParams.get('includeDesignData') === 'true';
-
-        const board = await prisma.board.findUnique({
-            where: { id },
-            include: {
-                owner: {
-                    select: {
-                        id: true,
-                        name: true,
-                        deletedAt: true,
-                    },
-                },
-
-                // filter soft-deleted users at DB level
-                members: {
-                    where: {
-                        user: { deletedAt: null },
-                    },
-                    include: {
-                        user: {
-                            select: {
-                                id: true,
-                                name: true,
-                                email: true,
-                                deletedAt: true,
-                            },
-                        },
-                    },
-                },
-
-                ...(includeDesigns
-                    ? {
-                        designs: {
-                            where: { deletedAt: null },
-                            take: designsLimit,
-                            orderBy: { updatedAt: 'desc' },
-                            select: {
-                                id: true,
-                                title: true,
-                                description: true,
-                                thumbnailUrl: true,
-                                isPublished: true,
-                                createdAt: true,
-                                updatedAt: true,
-                                ownerId: true,
-                                boardId: true,
-
-                                ...(includeDesignData ? { data: true } : {}),
-
-                                owner: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        deletedAt: true,
-                                    },
-                                },
-                            },
-                        },
-                    }
-                    : {}),
-            },
-        });
-
-        if (!board) {
-            return NextResponse.json(
-                { error: 'Board not found' },
-                { status: 404 }
-            );
-        }
-
-        if (board.deletedAt) {
-            return NextResponse.json(
-                { error: 'Board has been deleted' },
-                { status: 404 }
-            );
-        }
-
-        if (board.owner?.deletedAt) {
-            return NextResponse.json(
-                { error: 'Board owner has been deleted' },
-                { status: 404 }
-            );
-        }
-
-        return NextResponse.json(board, { status: 200 });
-    } catch (error) {
-        console.error(`GET /api/boards/${id} failed:`, error);
-        return NextResponse.json(
-            { error: 'Failed to fetch board' },
-            { status: 500 }
-        );
+    if (!board) {
+      return NextResponse.json(
+        { error: 'Board not found' },
+        { status: 404 }
+      );
     }
+
+    return NextResponse.json(board);
+  } catch (error) {
+    console.error('Get board error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
 }
 
-/**
- * PUT /api/boards/[id]
- */
 export async function PUT(
-    req: NextRequest,
-    context: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
-    const { id } = await context.params;
+  try {
+    const authRequest = authenticateRequest(request);
+    const userId = authRequest.user!.userId;
+    const boardId = params.id;
+    const { name, description, isPublic } = await request.json();
 
-    try {
-        const existing = await prisma.board.findUnique({
-            where: { id },
-            select: { id: true, deletedAt: true },
-        });
+    const board = await prisma.board.updateMany({
+      where: { id: boardId, ownerId: userId },
+      data: { name, description, isPublic },
+    });
 
-        if (!existing) {
-            return NextResponse.json(
-                { error: 'Board not found' },
-                { status: 404 }
-            );
-        }
-
-        if (existing.deletedAt) {
-            return NextResponse.json(
-                { error: 'Board has been deleted' },
-                { status: 404 }
-            );
-        }
-
-        const body = await req.json();
-
-        const updated = await prisma.board.update({
-            where: { id },
-            data: {
-                name: body.name,
-                description: body.description,
-                isPublic: body.isPublic,
-            },
-        });
-
-        return NextResponse.json(updated, { status: 200 });
-    } catch (error) {
-        console.error(`PUT /api/boards/${id} failed:`, error);
-        return NextResponse.json(
-            { error: 'Failed to update board' },
-            { status: 500 }
-        );
+    if (board.count === 0) {
+      return NextResponse.json(
+        { error: 'Board not found' },
+        { status: 404 }
+      );
     }
+
+    const updatedBoard = await prisma.board.findUnique({
+      where: { id: boardId },
+      include: { designs: true },
+    });
+
+    return NextResponse.json(updatedBoard);
+  } catch (error) {
+    console.error('Update board error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
 }
 
-/**
- * DELETE /api/boards/[id]
- */
 export async function DELETE(
-    _req: NextRequest,
-    context: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
-    const { id } = await context.params;
+  try {
+    const authRequest = authenticateRequest(request);
+    const userId = authRequest.user!.userId;
+    const boardId = params.id;
 
-    try {
-        const existing = await prisma.board.findUnique({
-            where: { id },
-            select: { id: true, deletedAt: true },
-        });
+    const board = await prisma.board.deleteMany({
+      where: { id: boardId, ownerId: userId },
+    });
 
-        if (!existing) {
-            return NextResponse.json(
-                { error: 'Board not found' },
-                { status: 404 }
-            );
-        }
-
-        if (existing.deletedAt) {
-            return NextResponse.json(
-                { error: 'Board already deleted' },
-                { status: 404 }
-            );
-        }
-
-        await prisma.board.update({
-            where: { id },
-            data: { deletedAt: new Date() },
-        });
-
-        return NextResponse.json({ ok: true }, { status: 200 });
-    } catch (error) {
-        console.error(`DELETE /api/boards/${id} failed:`, error);
-        return NextResponse.json(
-            { error: 'Failed to delete board' },
-            { status: 500 }
-        );
+    if (board.count === 0) {
+      return NextResponse.json(
+        { error: 'Board not found' },
+        { status: 404 }
+      );
     }
+
+    return NextResponse.json({ message: 'Board deleted successfully' });
+  } catch (error) {
+    console.error('Delete board error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
 }
