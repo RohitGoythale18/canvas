@@ -9,6 +9,7 @@ webpush.setVapidDetails(
 interface PushPayload {
     title: string;
     body: string;
+    designId?: string;
 }
 
 export async function sendPushNotification(

@@ -16,7 +16,7 @@ export default function ProtectedRoute({
         if (!loading && !isAuthenticated) {
             router.replace('/login');
         }
-    }, [loading, isAuthenticated]);
+    }, [loading, isAuthenticated, router]);
 
     if (loading) return null;
     return <>{children}</>;

@@ -1,4 +1,4 @@
-import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 interface RegisterData {
@@ -17,9 +17,9 @@ interface RegisterResponse {
 }
 
 export const useRegister = () => {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { login } = useAuth();
 
   const register = async (data: RegisterData): Promise<RegisterResponse | null> => {
     setLoading(true);
@@ -40,9 +40,7 @@ export const useRegister = () => {
         throw new Error(result.error || 'Registration failed');
       }
 
-      // After successful registration, automatically log the user in
-      // For now, we'll just return the result. In a real app, you might want to
-      // send a verification email or require email verification before login
+      router.push('/login');
 
       return result;
     } catch (err) {

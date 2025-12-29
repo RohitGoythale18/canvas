@@ -20,28 +20,30 @@ import {
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import SaveIcon from '@mui/icons-material/Save';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
-import DeleteIcon from '@mui/icons-material/Delete';
 
 import { CanvasData, Shape } from "../../../types";
 import { useAuth } from "@/context/AuthContext";
 
-interface Board {
+interface BoardAPI {
   id: string;
   name: string;
   description: string;
   createdAt: string;
-  pins: Pin[] | undefined;
+  designs?: DesignAPI[];
 }
 
-interface Pin {
+interface DesignAPI {
   id: string;
   title: string;
-  imageUrl: string;
-  canvasData: CanvasData;
-  boardId: string;
+  thumbnailUrl: string;
+  data: CanvasData;
   createdAt: string;
-  updatedAt?: string;
-  order: number;
+  ownerId: string;
+  owner?: {
+    id: string;
+    name: string;
+    email: string;
+  };
 }
 
 interface BoardButtonProps {
@@ -52,24 +54,16 @@ interface BoardButtonProps {
 
 const BoardButton = ({
   canvasData,
-  onLoadCanvas,
   getCurrentCanvasImage
 }: BoardButtonProps) => {
   const router = useRouter();
   const { token, isAuthenticated } = useAuth();
 
-  const [boards, setBoards] = useState<Board[]>([]);
+  const [boards, setBoards] = useState<BoardAPI[]>([]);
   const [currentBoardId, setCurrentBoardId] = useState<string | null>(null);
-
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-
-  const [newBoardName, setNewBoardName] = useState("");
-  const [newBoardDescription, setNewBoardDescription] = useState("");
   const [pinTitle, setPinTitle] = useState("");
-
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -84,76 +78,48 @@ const BoardButton = ({
   );
 
   // ================= LOAD BOARDS =================
-  const loadBoards = async () => {
+  const loadBoards = useCallback(async () => {
     if (!isAuthenticated || !token) return;
 
     try {
       const res = await fetch("/api/boards", {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       if (!res.ok) throw new Error();
 
       const data = await res.json();
 
-      const normalized: Board[] = data.map((b: any) => ({
+      const normalized: BoardAPI[] = (data as BoardAPI[]).map((b) => ({
         id: b.id,
         name: b.name,
         description: b.description,
         createdAt: b.createdAt,
-        pins: (b.designs || []).map((d: any) => ({
+        pins: (b.designs ?? []).map((d) => ({
           id: d.id,
           title: d.title,
           imageUrl: d.thumbnailUrl,
           canvasData: d.data,
           createdAt: d.createdAt,
+          ownerId: d.ownerId,
+          owner: d.owner,
         })),
       }));
 
+
       setBoards(normalized);
+
       if (!currentBoardId && normalized.length > 0) {
         setCurrentBoardId(normalized[0].id);
       }
     } catch {
       showSnackbar("Failed to load boards", "error");
     }
-  };
+  }, [isAuthenticated, token, currentBoardId, showSnackbar]);
 
   useEffect(() => {
     loadBoards();
-  }, []);
-
-  // ================= CREATE BOARD =================
-  const handleCreateBoard = async () => {
-    if (!newBoardName.trim()) {
-      showSnackbar("Board name is required", "error");
-      return;
-    }
-
-    try {
-      const res = await fetch("/api/boards", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: newBoardName,
-          description: newBoardDescription,
-        }),
-      });
-
-      if (!res.ok) throw new Error();
-
-      setCreateDialogOpen(false);
-      setNewBoardName("");
-      setNewBoardDescription("");
-      await loadBoards();
-
-      showSnackbar("Board created successfully", "success");
-    } catch {
-      showSnackbar("Failed to create board", "error");
-    }
-  };
+  }, [loadBoards]);
 
   // ================= SAVE DESIGN =================
   const handleSaveToBoard = async () => {
@@ -174,7 +140,7 @@ const BoardButton = ({
     }
 
     const cleanedShapes = (canvasData.shapes as Shape[]).map(
-      ({ imageElement: _img, ...rest }: any) => ({
+      ({ imageElement: _img, ...rest }: Shape) => ({
         ...rest,
         fontSize: rest.fontSize ?? 16,
         fontFamily: rest.fontFamily ?? "Arial, sans-serif",
@@ -231,25 +197,6 @@ const BoardButton = ({
     setCurrentBoardId(boardId);
     handleBoardMenuClose();
     showSnackbar("Board selected", "success");
-  };
-
-  const handleLoadPin = async (pin: Pin) => {
-    try {
-      // Load the design data from API
-      const res = await fetch(`/api/design/${pin.id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (res.ok) {
-        const design = await res.json();
-        onLoadCanvas?.(design.data);
-        showSnackbar(`Loaded: ${pin.title}`, "success");
-      }
-    } catch (error) {
-      console.error("Failed to load pin:", error);
-      showSnackbar("Failed to load design", "error");
-    }
   };
 
   // ================= RENDER =================

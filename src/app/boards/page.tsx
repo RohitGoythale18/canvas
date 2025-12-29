@@ -1,31 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import {
-  Box,
-  Typography,
-  Button,
-  Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Snackbar,
-  Alert,
-  Divider,
-  List,
-  ListItemButton,
-  ListItemText,
-  ListItemIcon,
-  Collapse,
-  ListItemAvatar,
-  Avatar,
-  IconButton,
-  Menu,
-  MenuItem,
-  ListItemSecondaryAction,
-} from '@mui/material';
+import { Box, Typography, Button, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Snackbar, Alert, Divider, List, ListItemButton, ListItemText, ListItemIcon, Collapse, ListItemAvatar, Avatar, IconButton, Menu, MenuItem, ListItemSecondaryAction, } from '@mui/material';
 
 import { useRouter } from 'next/navigation';
 import AddIcon from '@mui/icons-material/Add';
@@ -39,8 +15,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { CanvasData } from '../../types';
 import { useAuth } from '@/context/AuthContext';
 import ShareDesignDialog from '../components/ShareDesignDialog';
-
-/* ================= TYPES ================= */
 
 interface BoardAPI {
   id: string;
@@ -86,8 +60,6 @@ interface Pin {
   };
 }
 
-/* ================= COMPONENT ================= */
-
 export default function BoardsPage() {
   const { token, isAuthenticated, user } = useAuth();
   const router = useRouter();
@@ -96,43 +68,20 @@ export default function BoardsPage() {
   const [boards, setBoards] = useState<Board[]>([]);
   const [sharedDesigns, setSharedDesigns] = useState<Pin[]>([]);
   const [loading, setLoading] = useState(true);
-
-  /* Create board dialog */
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newBoardName, setNewBoardName] = useState('');
   const [newBoardDescription, setNewBoardDescription] = useState('');
-
-  /* Expand / collapse */
   const [openBoards, setOpenBoards] = useState<Record<string, boolean>>({});
-
-  /* Design menu */
   const [designMenuAnchor, setDesignMenuAnchor] = useState<null | HTMLElement>(null);
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
-
-  // Share design dialog
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
-
-  /* Snackbar */
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
     severity: 'success' | 'error';
   }>({ open: false, message: '', severity: 'success' });
 
-  /* ================= EFFECTS ================= */
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.replace('/login');
-      return;
-    }
-    fetchBoards();
-    fetchSharedDesigns();
-  }, [isAuthenticated]);
-
-  /* ================= API ================= */
-
-  const fetchBoards = async () => {
+  const fetchBoards = React.useCallback(async () => {
     if (!token) return;
 
     try {
@@ -146,12 +95,12 @@ export default function BoardsPage() {
 
       const data = await res.json();
 
-      const normalized: Board[] = data.map((b: BoardAPI) => ({
+      const normalized: Board[] = (data as BoardAPI[]).map((b) => ({
         id: b.id,
         name: b.name,
         description: b.description,
         createdAt: b.createdAt,
-        pins: (b.designs || []).map((d: DesignAPI) => ({
+        pins: (b.designs ?? []).map((d) => ({
           id: d.id,
           title: d.title,
           imageUrl: d.thumbnailUrl,
@@ -172,9 +121,9 @@ export default function BoardsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
-  const fetchSharedDesigns = async () => {
+  const fetchSharedDesigns = React.useCallback(async () => {
     if (!token) return;
 
     try {
@@ -195,9 +144,16 @@ export default function BoardsPage() {
         severity: 'error',
       });
     }
-  };
+  }, [token]);
 
-  /* ================= ACTIONS ================= */
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/login');
+      return;
+    }
+    fetchBoards();
+    fetchSharedDesigns();
+  }, [isAuthenticated, fetchBoards, fetchSharedDesigns, router]);
 
   const toggleBoard = (boardId: string) => {
     setOpenBoards((prev) => ({
@@ -254,8 +210,6 @@ export default function BoardsPage() {
     router.push(`/?designId=${pin.id}`);
   };
 
-  /* ===== Design menu handlers ===== */
-
   const openDesignMenu = (e: React.MouseEvent<HTMLElement>, pin: Pin) => {
     e.stopPropagation();
     setDesignMenuAnchor(e.currentTarget);
@@ -275,7 +229,6 @@ export default function BoardsPage() {
   const handleDeleteDesign = async () => {
     if (!selectedPin) return;
 
-    // Extra safety (frontend)
     if (selectedPin.ownerId !== authUserId) {
       setSnackbar({
         open: true,
@@ -323,7 +276,6 @@ export default function BoardsPage() {
     }
   };
 
-  /* ================= UI ================= */
   if (loading) {
     return (
       <Box sx={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

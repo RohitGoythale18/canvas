@@ -170,11 +170,9 @@ export const useDrawingTools = ({
                 // simple text rendering for rasterization
                 ctx.fillStyle =
                   typeof shape.textColor === 'string' ? shape.textColor : '#000';
-                ctx.font = `${
-                  shape.fontStyles?.italic ? 'italic ' : ''
-                }${shape.fontStyles?.bold ? 'bold ' : ''}${
-                  shape.fontSize ?? 16
-                }px ${shape.fontFamily ?? 'Arial'}`;
+                ctx.font = `${shape.fontStyles?.italic ? 'italic ' : ''
+                  }${shape.fontStyles?.bold ? 'bold ' : ''}${shape.fontSize ?? 16
+                  }px ${shape.fontFamily ?? 'Arial'}`;
                 ctx.textBaseline = 'top';
                 const lines = ((shape.text || '') as string).split('\n');
                 let ty = 4;
@@ -185,8 +183,24 @@ export const useDrawingTools = ({
                 break;
               default: {
                 // try generic draw function, e.g. 'Star (5-point)' -> drawStar5pointShape
+                type ShapeDrawFn = (
+                  ctx: CanvasRenderingContext2D,
+                  x: number,
+                  y: number,
+                  w: number,
+                  h: number,
+                  fillColor?: string,
+                  imageElement?: HTMLImageElement,
+                  borderType?: string,
+                  borderSize?: number,
+                  borderColor?: string
+                ) => void;
+
+                type ShapeDrawMap = Record<string, ShapeDrawFn>;
+                const drawMap = Shapes as unknown as ShapeDrawMap;
                 const fnName = `draw${shape.type.replace(/\s+/g, '')}Shape`;
-                const maybeFn = (Shapes as any )[fnName];
+                const maybeFn = drawMap[fnName];
+
                 if (typeof maybeFn === 'function') {
                   try {
                     maybeFn(
@@ -321,7 +335,7 @@ export const useDrawingTools = ({
         const pos = getPos(e);
         const last =
           currentPathRef.current.points[
-            currentPathRef.current.points.length - 1
+          currentPathRef.current.points.length - 1
           ];
         if (distance(last, pos) < 1) return;
 

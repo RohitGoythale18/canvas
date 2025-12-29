@@ -1,5 +1,5 @@
 'use client';
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Box } from "@mui/material";
 import { Shape, DrawingPath, FontFeatures, CanvasData } from "../types";
@@ -8,10 +8,10 @@ import { useAuth } from "@/context/AuthContext";
 import Menu from "./components/MenuBar";
 import Canvas from "./components/Canvas";
 
-export default function Home() {
+function HomeContent() {
   const { token, isAuthenticated, loading } = useAuth();
   const router = useRouter();
-  const params = useParams();
+  const _params = useParams();
   const searchParams = useSearchParams();
   const designId = searchParams.get('designId');
 
@@ -44,16 +44,16 @@ export default function Home() {
   const [shapes, setShapes] = useState<Shape[]>([]);
   const [drawings, setDrawings] = useState<{ panelId: string, paths: DrawingPath[] }[]>([]);
   const [filledImages, setFilledImages] = useState<{ panelId: string, imageData: ImageData }[]>([]);
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<CanvasData[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
-  const safeClone = (obj: any) => {
+  const safeClone = useCallback(<T,>(obj: T): T => {
     try {
       return structuredClone(obj);
     } catch {
       return JSON.parse(JSON.stringify(obj));
     }
-  };
+  }, []);
 
   const base64ToImageData = async (base64: string): Promise<ImageData> => {
     return new Promise((resolve, reject) => {
@@ -63,7 +63,7 @@ export default function Home() {
         canvas.width = img.width;
         canvas.height = img.height;
         const ctx = canvas.getContext("2d");
-        if (!ctx) return reject();
+        if (!ctx) return reject(new Error("Failed to get canvas context"));
         ctx.drawImage(img, 0, 0);
         resolve(ctx.getImageData(0, 0, canvas.width, canvas.height));
       };
@@ -72,19 +72,36 @@ export default function Home() {
     });
   };
 
+  // Helper function to convert ImageData to base64 string
+  const imageDataToBase64 = useCallback((imageData: ImageData): string => {
+    const canvas = document.createElement("canvas");
+    canvas.width = imageData.width;
+    canvas.height = imageData.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return "";
+    ctx.putImageData(imageData, 0, 0);
+    return canvas.toDataURL("image/png");
+  }, []);
+
   const saveState = useCallback(() => {
     const sanitizedShapes = shapes.map(s => {
-      const { imageElement, ...rest } = s as any;
-      return rest;
+      const { ...rest } = s as Partial<Shape> & { imageElement?: HTMLImageElement };
+      return rest as Shape;
     });
 
-    const state = {
+    // Convert filledImages to base64 strings for saving
+    const filledImagesBase64 = filledImages.map(fi => ({
+      panelId: fi.panelId,
+      imageData: imageDataToBase64(fi.imageData)
+    }));
+
+    const state: CanvasData = {
       shapes: safeClone(sanitizedShapes),
       drawings: safeClone(drawings),
-      filledImages: safeClone(filledImages),
+      filledImages: filledImagesBase64,
       backgroundColor: safeClone(canvasBackground),
       splitMode,
-      uploadedImageBase64: uploadedImageUrl,
+      uploadedImageBase64: uploadedImageUrl || undefined,
     };
 
     setHistory(prev => {
@@ -93,25 +110,25 @@ export default function Home() {
       setHistoryIndex(copy.length - 1);
       return copy;
     });
-  }, [shapes, drawings, filledImages, canvasBackground, splitMode, uploadedImageUrl, historyIndex]);
+  }, [shapes, drawings, filledImages, canvasBackground, splitMode, uploadedImageUrl, historyIndex, safeClone, imageDataToBase64]);
 
-  const handleLoadCanvas = async (canvasData: CanvasData) => {
+  const handleLoadCanvas = useCallback(async (canvasData: CanvasData) => {
     saveState();
 
     const shapesWithImages = await Promise.all(
-      (canvasData.shapes || []).map(async (s: any) => {
+      (canvasData.shapes || []).map(async (s: Shape) => {
         if (s.imageBase64) {
           const img = new Image();
           img.src = s.imageBase64;
           await img.decode();
-          return { ...s, imageElement: img };
+          return { ...s, imageElement: img } as Shape & { imageElement: HTMLImageElement };
         }
         return s;
       })
     );
 
     const loadedFilledImages = await Promise.all(
-      (canvasData.filledImages || []).map(async (fi: any) => ({
+      (canvasData.filledImages || []).map(async (fi: { panelId: string; imageData: string }) => ({
         panelId: fi.panelId,
         imageData: await base64ToImageData(fi.imageData),
       }))
@@ -132,16 +149,18 @@ export default function Home() {
 
     setUploadedImageUrl(canvasData.uploadedImageBase64 || null);
     setLoadedImage(uploadedImg);
-  };
+  }, [saveState]);
 
-  const loadDesignFromId = async (id: string) => {
+  const loadDesignFromId = useCallback(async (id: string) => {
+    if (!token) return;
+
     const res = await fetch(`/api/designs/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return;
     const design = await res.json();
-    handleLoadCanvas(design.data);
-  };
+    await handleLoadCanvas(design.data);
+  }, [token, handleLoadCanvas]);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -150,10 +169,14 @@ export default function Home() {
   }, [loading, isAuthenticated, router]);
 
   useEffect(() => {
-    if (designId && isAuthenticated && !loading) {
-      loadDesignFromId(designId);
-    }
-  }, [designId, params, isAuthenticated, loading]);
+    const loadDesign = async () => {
+      if (designId && isAuthenticated && !loading) {
+        await loadDesignFromId(designId);
+      }
+    };
+
+    loadDesign();
+  }, [designId, isAuthenticated, loading, loadDesignFromId]);
 
   const handleImageUpload = (base64: string) => {
     const selected = shapes.find(s => s.selected);
@@ -193,12 +216,21 @@ export default function Home() {
   const handleUndo = async () => {
     if (historyIndex <= 0) return;
     const prev = history[historyIndex - 1];
+
+    // Convert base64 strings back to ImageData objects
+    const filledImagesWithImageData = await Promise.all(
+      (prev.filledImages || []).map(async (fi: { panelId: string; imageData: string }) => ({
+        panelId: fi.panelId,
+        imageData: await base64ToImageData(fi.imageData),
+      }))
+    );
+
     setShapes(prev.shapes);
     setDrawings(prev.drawings);
-    setFilledImages(prev.filledImages);
+    setFilledImages(filledImagesWithImageData);
     setCanvasBackground(prev.backgroundColor);
     setSplitMode(prev.splitMode);
-    setUploadedImageUrl(prev.uploadedImageBase64);
+    setUploadedImageUrl(prev.uploadedImageBase64 || null);
     setHistoryIndex(i => i - 1);
   };
 
@@ -206,12 +238,21 @@ export default function Home() {
   const handleRedo = async () => {
     if (historyIndex >= history.length - 1) return;
     const next = history[historyIndex + 1];
+
+    // Convert base64 strings back to ImageData objects
+    const filledImagesWithImageData = await Promise.all(
+      (next.filledImages || []).map(async (fi: { panelId: string; imageData: string }) => ({
+        panelId: fi.panelId,
+        imageData: await base64ToImageData(fi.imageData),
+      }))
+    );
+
     setShapes(next.shapes);
     setDrawings(next.drawings);
-    setFilledImages(next.filledImages);
+    setFilledImages(filledImagesWithImageData);
     setCanvasBackground(next.backgroundColor);
     setSplitMode(next.splitMode);
-    setUploadedImageUrl(next.uploadedImageBase64);
+    setUploadedImageUrl(next.uploadedImageBase64 || null);
     setHistoryIndex(i => i + 1);
   };
 
@@ -239,7 +280,7 @@ export default function Home() {
   };
 
   // Apply image to selected shape
-  const applyImageToSelectedShape = (img: HTMLImageElement, imageId?: string, imageUrl?: string) => {
+  const _applyImageToSelectedShape = (img: HTMLImageElement, imageId?: string, imageUrl?: string) => {
     setShapes(prev =>
       prev.map(shape =>
         shape.selected
@@ -254,7 +295,6 @@ export default function Home() {
     );
     saveState();
   };
-
 
   const handleImageUsed = () => {
     setUploadedImageUrl(null);
@@ -336,24 +376,17 @@ export default function Home() {
         onLoadCanvas={handleLoadCanvas}
         canvasData={{
           shapes: shapes.map(s => {
-            const { imageElement, ...rest } = s as any;
+            const { imageElement: _, ...rest } = s as Shape & { imageElement?: HTMLImageElement };
             return rest;
           }),
           backgroundColor: canvasBackground,
           splitMode,
           drawings,
-          filledImages: filledImages.map(fi => {
-            const c = document.createElement("canvas");
-            c.width = fi.imageData.width;
-            c.height = fi.imageData.height;
-            const ctx = c.getContext("2d");
-            ctx?.putImageData(fi.imageData, 0, 0);
-            return {
-              panelId: fi.panelId,
-              imageData: c.toDataURL("image/png"),
-            };
-          }),
-          uploadedImageBase64: uploadedImageUrl,
+          filledImages: filledImages.map(fi => ({
+            panelId: fi.panelId,
+            imageData: imageDataToBase64(fi.imageData),
+          })),
+          uploadedImageBase64: uploadedImageUrl || undefined,
         }}
         onNewCanvas={handleNewCanvas}
         onSplitChange={setSplitMode}
@@ -433,5 +466,13 @@ export default function Home() {
         />
       </Box>
     </Box>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <HomeContent />
+    </Suspense>
   );
 }

@@ -2,15 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
-import {
-    Box,
-    TextField,
-    Button,
-    MenuItem,
-    Typography,
-    Snackbar,
-    Alert,
-} from '@mui/material';
+import { Box, TextField, Button, MenuItem, Typography, Snackbar, Alert } from '@mui/material';
 import { useAuth } from '@/context/AuthContext';
 
 export default function ShareDesignPage() {
@@ -20,7 +12,11 @@ export default function ShareDesignPage() {
 
     const [email, setEmail] = useState('');
     const [permission, setPermission] = useState('READ');
-    const [snackbar, setSnackbar] = useState<any>(null);
+    const [snackbar, setSnackbar] = useState<{
+        open: boolean;
+        message: string;
+        severity: 'success' | 'error';
+    }>({ open: false, message: '', severity: 'success' });
 
     const handleShare = async () => {
         const res = await fetch(`/api/designs/${id}/shares`, {
@@ -34,11 +30,19 @@ export default function ShareDesignPage() {
 
         if (!res.ok) {
             const data = await res.json();
-            setSnackbar({ msg: data.error, type: 'error' });
+            setSnackbar({
+                open: true,
+                message: data.error || 'Failed to share design',
+                severity: 'error',
+            })
             return;
         }
 
-        setSnackbar({ msg: 'Design shared successfully', type: 'success' });
+        setSnackbar({
+            open: true,
+            message: 'Design shared successfully',
+            severity: 'success',
+        });
         setTimeout(() => router.back(), 1000);
     };
 
@@ -75,7 +79,7 @@ export default function ShareDesignPage() {
 
             {snackbar && (
                 <Snackbar open autoHideDuration={3000}>
-                    <Alert severity={snackbar.type}>{snackbar.msg}</Alert>
+                    <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
                 </Snackbar>
             )}
         </Box>

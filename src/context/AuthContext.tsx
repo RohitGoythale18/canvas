@@ -1,12 +1,6 @@
 'use client';
 
-import React, {
-    createContext,
-    useContext,
-    useState,
-    useEffect,
-    ReactNode,
-} from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { subscribeToPush } from '@/lib/push';
 
@@ -39,56 +33,71 @@ export const useAuth = () => {
     return ctx;
 };
 
+const getInitialAuthState = (): {
+    user: User | null;
+    token: string | null;
+} => {
+    if (typeof window === 'undefined') {
+        return { user: null, token: null };
+    }
+
+    const storedToken = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+
+    if (!storedToken || !storedUser) {
+        return { user: null, token: null };
+    }
+
+    try {
+        const decoded = jwtDecode<DecodedToken>(storedToken);
+
+        if (decoded.exp * 1000 <= Date.now()) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            return { user: null, token: null };
+        }
+
+        return {
+            token: storedToken,
+            user: JSON.parse(storedUser),
+        };
+    } catch {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        return { user: null, token: null };
+    }
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-    const [user, setUser] = useState<User | null>(null);
-    const [token, setToken] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [{ user, token }, setAuth] = useState(getInitialAuthState);
 
     const logout = () => {
-        setUser(null);
-        setToken(null);
+        setAuth({ user: null, token: null });
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         window.location.href = '/login';
     };
 
-    // 🔑 Restore auth on refresh
-    useEffect(() => {
-        const storedToken = localStorage.getItem('token');
-        const storedUser = localStorage.getItem('user');
-
-        if (storedToken && storedUser) {
-            try {
-                const decoded = jwtDecode<DecodedToken>(storedToken);
-
-                if (decoded.exp * 1000 < Date.now()) {
-                    logout();
-                } else {
-                    const parsedUser = JSON.parse(storedUser);
-
-                    setToken(storedToken);
-                    setUser(parsedUser);
-                    setTimeout(logout, decoded.exp * 1000 - Date.now());
-                }
-            } catch {
-                logout();
-            }
-        }
-        setLoading(false);
-    }, []);
-
     const login = (newToken: string, userData: User) => {
         const decoded = jwtDecode<DecodedToken>(newToken);
         const expiryMs = decoded.exp * 1000 - Date.now();
 
-        setToken(newToken);
-        setUser(userData);
+        setAuth({ token: newToken, user: userData });
 
         localStorage.setItem('token', newToken);
         localStorage.setItem('user', JSON.stringify(userData));
 
         setTimeout(logout, expiryMs);
     };
+
+    useEffect(() => {
+        if (!token) return;
+
+        const decoded = jwtDecode<DecodedToken>(token);
+        const timeoutId = setTimeout(logout, decoded.exp * 1000 - Date.now());
+
+        return () => clearTimeout(timeoutId);
+    }, [token]);
 
     useEffect(() => {
         if (token) {
@@ -104,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 login,
                 logout,
                 isAuthenticated: !!token,
-                loading,
+                loading: false, // always resolved immediately
             }}
         >
             {children}

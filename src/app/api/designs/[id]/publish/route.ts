@@ -1,25 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { authenticateRequest } from '@/lib/auth';
-
-const prisma = new PrismaClient();
+import prisma from '@/lib/prisma';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const authRequest = authenticateRequest(request);
     const userId = authRequest.user!.userId;
-    const designId = params.id;
+
+    const { id: designId } = await context.params;
     const { isPublished } = await request.json();
 
-    const design = await prisma.design.updateMany({
-      where: { id: designId, ownerId: userId },
-      data: { isPublished },
+    const result = await prisma.design.updateMany({
+      where: {
+        id: designId,
+        ownerId: userId,
+      },
+      data: {
+        isPublished,
+      },
     });
 
-    if (design.count === 0) {
+    if (result.count === 0) {
       return NextResponse.json(
         { error: 'Design not found' },
         { status: 404 }

@@ -91,7 +91,7 @@ export async function POST(
         });
 
         if (subscription) {
-            sendPushNotification(subscription.data, {
+            sendPushNotification(subscription.data as unknown as webpush.PushSubscription, {
                 title: 'Design Shared',
                 body: `A design "${design.title}" was shared with you`,
                 designId: designId,

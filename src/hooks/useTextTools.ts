@@ -1,5 +1,5 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { Shape, FontStyles } from '../types';
 
 const MIN_SHAPE_WIDTH = 20;
@@ -51,8 +51,7 @@ export const useTextTools = ({
 }: UseTextToolsProps) => {
     const fontFeatures = currentFontFeatures ?? DEFAULT_FONT_FEATURES;
 
-    // Helper: commit current textInput into the editing shape and stop editing
-    const commitEditing = (id: string | null) => {
+    const commitEditing = useCallback((id: string | null) => {
         if (!id) return;
         onShapesChange(prev => prev.map(shape =>
             shape.id === id
@@ -66,7 +65,6 @@ export const useTextTools = ({
                     fontStyles: fontFeatures.fontStyles,
                     textAlignment: fontFeatures.alignment,
                     listType: fontFeatures.listType,
-                    // keep border props intact (we set them on creation)
                     borderType: shape.borderType ?? 'solid',
                     borderSize: shape.borderSize ?? 1,
                     borderColor: shape.borderColor ?? '#000000'
@@ -74,9 +72,8 @@ export const useTextTools = ({
                 : shape
         ));
         setEditingShapeId(null);
-    };
+    }, [textInput, fontFeatures.fontSize, fontFeatures.fontFamily, fontFeatures.fontStyles, fontFeatures.alignment, fontFeatures.listType, fontFeatures.textColor, onShapesChange, setEditingShapeId]);
 
-    // Create / click-to-edit logic
     useEffect(() => {
         if (typeof document === 'undefined') return;
 
@@ -91,7 +88,6 @@ export const useTextTools = ({
                 const mouseX = (e.clientX - rect.left) * scaleX;
                 const mouseY = (e.clientY - rect.top) * scaleY;
 
-                // 1) Check if clicking on existing text — allow entering edit mode even if textActive is false.
                 let clickedOnText = false;
                 for (const shape of shapes) {
                     if (shape.type === "text") {
@@ -99,14 +95,12 @@ export const useTextTools = ({
                             mouseY >= shape.y && mouseY <= shape.y + shape.height) {
                             clickedOnText = true;
 
-                            // Start editing existing text (always allowed)
                             onShapesChange(prev => prev.map(s =>
                                 s.id === shape.id
                                     ? {
                                         ...s,
                                         isEditing: true,
                                         selected: true,
-                                        // ensure the border props exist (if missing add defaults)
                                         borderType: s.borderType ?? 'solid',
                                         borderSize: s.borderSize ?? 1,
                                         borderColor: s.borderColor ?? '#000000'
@@ -116,19 +110,17 @@ export const useTextTools = ({
                             setTextInput(shape.text || "");
                             setEditingShapeId(shape.id);
 
-                            break; // stop after first match
+                            break; 
                         }
                     }
                 }
 
-                // 2) If not clicking on existing text, only create a new textbox when text tool is active.
                 if (!clickedOnText) {
                     if (!textActive) {
-                        // text tool not active and not clicking on existing text -> ignore
                         return;
                     }
 
-                    // Create new text shape (text tool is active)
+                    // Create new text shape 
                     const panelId = canvas.getAttribute("data-panel-id") || "default";
                     const newShape: Shape = {
                         id: `text-${Date.now()}-${Math.random()}`,
@@ -147,7 +139,6 @@ export const useTextTools = ({
                         textAlignment: fontFeatures.alignment,
                         listType: fontFeatures.listType,
                         isEditing: true,
-                        // <-- NEW: ensure textbox has a 1px black border by default
                         borderType: 'solid',
                         borderSize: 1,
                         borderColor: '#000000'
@@ -157,7 +148,6 @@ export const useTextTools = ({
                     setTextInput("");
                     setEditingShapeId(newShape.id);
 
-                    // Auto-deactivate text tool after creating a new textbox (existing UX)
                     if (typeof onTextToggle === 'function') {
                         onTextToggle(false);
                     }
@@ -175,7 +165,6 @@ export const useTextTools = ({
         fontFeatures.fontSize, fontFeatures.fontFamily, fontFeatures.fontStyles,
         fontFeatures.alignment, fontFeatures.listType, fontFeatures.textColor, onTextToggle]);
 
-    // Finish editing when clicking outside the active editing shape — use textInput to commit
     useEffect(() => {
         if (typeof document === 'undefined') return;
 
@@ -183,7 +172,6 @@ export const useTextTools = ({
             const editingShape = shapes.find(s => s.isEditing && s.type === 'text' && s.id === editingShapeId);
             if (!editingShape) return;
 
-            // Find canvas for that panel (if available)
             const canvas = document.querySelector<HTMLCanvasElement>(`.drawing-panel[data-panel-id="${editingShape.panelId || 'default'}"]`);
             if (!canvas) {
                 commitEditing(editingShape.id);
@@ -202,27 +190,23 @@ export const useTextTools = ({
                 e.target && (e.target as HTMLElement).closest('.drawing-panel');
 
             if (!clickedInsideShape) {
-                // Commit using current textInput
                 commitEditing(editingShape.id);
             }
         };
 
         window.addEventListener('mousedown', handleOutsideMouseDown);
         return () => window.removeEventListener('mousedown', handleOutsideMouseDown);
-    }, [shapes, editingShapeId, onShapesChange, setEditingShapeId, textInput, fontFeatures]);
+    }, [shapes, editingShapeId, commitEditing]);
 
-    // If the editing shape becomes deselected (e.g., toolbar toggles selection), commit its text.
     useEffect(() => {
         if (!editingShapeId) return;
         const editingShape = shapes.find(s => s.id === editingShapeId);
         if (!editingShape) return;
         if (!editingShape.selected) {
-            // commit current textInput if shape got deselected elsewhere
             commitEditing(editingShapeId);
         }
-    }, [shapes, editingShapeId, textInput]);
+    }, [shapes, editingShapeId, textInput, commitEditing]);
 
-    // Key handling — only accept input while editing and selected
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             const editingShape = shapes.find(shape => shape.isEditing && shape.type === "text" && shape.selected && shape.id === editingShapeId);
@@ -243,9 +227,8 @@ export const useTextTools = ({
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [shapes, textInput, setTextInput, onShapesChange, setEditingShapeId, fontFeatures, editingShapeId]);
+    }, [shapes, textInput, setTextInput, editingShapeId, commitEditing]);
 
-    // Focus management for text input
     useEffect(() => {
         if (!editingShapeId) return;
         if (typeof document === 'undefined') return;
@@ -263,7 +246,6 @@ export const useTextTools = ({
         }
     }, [editingShapeId, shapes]);
 
-    // Force re-render during text editing for smooth cursor
     useEffect(() => {
         if (!editingShapeId) return;
 

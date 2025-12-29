@@ -458,8 +458,7 @@ const renderTextShape = (
     (ctx.fillStyle as unknown) = textFillStyle as unknown;
 
     // Helper to get x pos based on alignment and metrics
-    const getXForLine = (line: string) => {
-        const metrics = ctx.measureText(line);
+    const getXForLine = () => {
         if (canvasTextAlign === 'center') {
             return shape.x + shape.width / 2;
         } else if (canvasTextAlign === 'right') {
@@ -474,7 +473,7 @@ const renderTextShape = (
     for (const line of lines) {
         if (y > shape.y + shape.height - textHeight) break;
 
-        const xPos = getXForLine(line);
+        const xPos = getXForLine();
 
         // draw text
         ctx.fillText(line, xPos, y);

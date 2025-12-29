@@ -29,6 +29,9 @@ export const useKeyboardShortcuts = ({
                 return;
             }
 
+            // Check if e.key exists before trying to use it
+            if (!e.key) return;
+
             const key = e.key.toLowerCase();
             const meta = e.ctrlKey || e.metaKey;
 

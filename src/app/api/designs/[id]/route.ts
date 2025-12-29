@@ -4,10 +4,10 @@ import { authenticateRequest } from '@/lib/auth';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: designId } = await params;
+    const { id: designId } = await context.params;
 
     if (!designId) {
       return NextResponse.json(
@@ -16,11 +16,9 @@ export async function GET(
       );
     }
 
-    // authenticate user
     const authRequest = authenticateRequest(request);
     const userId = authRequest.user!.userId;
 
-    // fetch design + shared access info
     const design = await prisma.design.findUnique({
       where: { id: designId },
       include: {
@@ -42,28 +40,27 @@ export async function GET(
       );
     }
 
-    // access rules
     const isOwner = design.ownerId === userId;
-    const sharedEntry = design.sharedWith[0]; // at most one per user
+    const sharedEntry = design.sharedWith[0];
     const isShared = Boolean(sharedEntry);
 
-    if (!isOwner && !isShared /* && !isPublic */) {
+    if (!isOwner && !isShared) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
       );
     }
 
-    // attach permission info for frontend
-    const permission = isOwner ? 'OWNER' : sharedEntry?.permission ?? 'READ';
+    const permission = isOwner
+      ? 'OWNER'
+      : sharedEntry?.permission ?? 'READ';
 
-    // include image inside canvas data if present
     const designWithImage = {
       ...design,
-      permission, // IMPORTANT for frontend (READ / WRITE / OWNER)
+      permission,
       data: design.image
         ? {
-          ...design.data,
+          ...(design.data as Record<string, unknown>),
           uploadedImageBase64: design.image,
         }
         : design.data,
@@ -81,20 +78,28 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const authRequest = authenticateRequest(request);
     const userId = authRequest.user!.userId;
-    const designId = params.id;
+
+    const { id: designId } = await context.params;
     const { title, description, data } = await request.json();
 
-    const design = await prisma.design.updateMany({
-      where: { id: designId, ownerId: userId },
-      data: { title, description, data },
+    const result = await prisma.design.updateMany({
+      where: {
+        id: designId,
+        ownerId: userId,
+      },
+      data: {
+        title,
+        description,
+        data,
+      },
     });
 
-    if (design.count === 0) {
+    if (result.count === 0) {
       return NextResponse.json(
         { error: 'Design not found' },
         { status: 404 }
@@ -118,13 +123,13 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const authRequest = authenticateRequest(request);
     const userId = authRequest.user!.userId;
 
-    const { id: designId } = await params;
+    const { id: designId } = await context.params;
 
     if (!designId) {
       return NextResponse.json(
@@ -167,4 +172,3 @@ export async function DELETE(
     );
   }
 }
-

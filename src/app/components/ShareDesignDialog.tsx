@@ -1,17 +1,6 @@
 'use client';
-
 import { useEffect, useState } from 'react';
-import {
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    TextField,
-    Button,
-    MenuItem,
-    Snackbar,
-    Alert,
-} from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, MenuItem, Snackbar, Alert, } from '@mui/material';
 import { useAuth } from '@/context/AuthContext';
 
 interface ShareDesignDialogProps {
@@ -28,13 +17,9 @@ export default function ShareDesignDialog({
     onShared,
 }: ShareDesignDialogProps) {
     const { token } = useAuth();
-
     const [email, setEmail] = useState('');
-    const [permission, setPermission] = useState<'READ' | 'COMMENT' | 'WRITE'>(
-        'READ'
-    );
+    const [permission, setPermission] = useState<'READ' | 'COMMENT' | 'WRITE'>('READ');
     const [loading, setLoading] = useState(false);
-
     const [snackbar, setSnackbar] = useState<{
         open: boolean;
         message: string;
@@ -45,7 +30,6 @@ export default function ShareDesignDialog({
         severity: 'success',
     });
 
-    /* ================= RESET ON CLOSE ================= */
     useEffect(() => {
         if (!open) {
             setEmail('');
@@ -54,10 +38,7 @@ export default function ShareDesignDialog({
         }
     }, [open]);
 
-    /* ================= HANDLERS ================= */
-
     const handleShare = async () => {
-        // ✅ Validate email
         if (!email.trim()) {
             setSnackbar({
                 open: true,
@@ -67,7 +48,6 @@ export default function ShareDesignDialog({
             return;
         }
 
-        // ✅ Validate designId
         if (!designId) {
             setSnackbar({
                 open: true,
@@ -106,22 +86,22 @@ export default function ShareDesignDialog({
 
             onShared?.();
 
-            // Close dialog AFTER success
             setTimeout(() => {
                 onClose();
             }, 500);
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const message =
+                err instanceof Error ? err.message : 'Failed to share design';
+
             setSnackbar({
                 open: true,
-                message: err.message || 'Failed to share design',
+                message,
                 severity: 'error',
             });
         } finally {
             setLoading(false);
         }
     };
-
-    /* ================= UI ================= */
 
     return (
         <>
@@ -176,7 +156,6 @@ export default function ShareDesignDialog({
                 </DialogActions>
             </Dialog>
 
-            {/* SNACKBAR */}
             <Snackbar
                 open={snackbar.open}
                 autoHideDuration={3000}
