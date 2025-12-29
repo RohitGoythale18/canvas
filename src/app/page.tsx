@@ -1,14 +1,22 @@
 'use client';
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, Suspense } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Box } from "@mui/material";
 import { Shape, DrawingPath, FontFeatures, CanvasData } from "../types";
+import { useAuth } from "@/context/AuthContext";
 
 import Menu from "./components/MenuBar";
 import Canvas from "./components/Canvas";
 
-export default function Home() {
-  const [resetKey, setResetKey] = useState<number>(0);
-  const [splitMode, setSplitMode] = useState<string>("none");
+function HomeContent() {
+  const { token, isAuthenticated, loading } = useAuth();
+  const router = useRouter();
+  const _params = useParams();
+  const searchParams = useSearchParams();
+  const designId = searchParams.get('designId');
+
+  const [resetKey, setResetKey] = useState(0);
+  const [splitMode, setSplitMode] = useState("none");
   const [pencilActive, setPencilActive] = useState(false);
   const [fillActive, setFillActive] = useState(false);
   const [fillColor, setFillColor] = useState("#ff0000");
@@ -16,13 +24,10 @@ export default function Home() {
   const [eraserSize, setEraserSize] = useState(10);
   const [selectedShape, setSelectedShape] = useState<string | null>(null);
   const [textActive, setTextActive] = useState(false);
-
-  // Image handling (only by URL / data URI — no IndexedDB/localStorage)
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
-
   const [canvasBackground, setCanvasBackground] = useState<Record<string, string | { start: string; end: string }>>({ default: "#ffffff" });
-  const [selectedPanel, setSelectedPanel] = useState<string>("default");
+  const [selectedPanel, setSelectedPanel] = useState("default");
   const [borderActive, setBorderActive] = useState(false);
   const [borderType, setBorderType] = useState<'solid' | 'dashed' | 'dotted'>('solid');
   const [borderSize, setBorderSize] = useState(2);
@@ -33,127 +38,231 @@ export default function Home() {
     fontStyles: {},
     alignment: 'left',
     listType: 'none',
-    textColor: "#000000"
+    textColor: "#000000",
   });
 
   const [shapes, setShapes] = useState<Shape[]>([]);
   const [drawings, setDrawings] = useState<{ panelId: string, paths: DrawingPath[] }[]>([]);
   const [filledImages, setFilledImages] = useState<{ panelId: string, imageData: ImageData }[]>([]);
-
-  // History state for undo/redo
-  const [history, setHistory] = useState<Array<{
-    shapes: Shape[];
-    drawings: typeof drawings;
-    filledImages: typeof filledImages;
-    backgroundColor: typeof canvasBackground;
-    splitMode: string;
-    uploadedImageUrl: string | null;
-    loadedImageUrl: string | null;
-  }>>([]);
+  const [history, setHistory] = useState<CanvasData[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
-  const safeStructuredClone = (obj: unknown) => {
-    if (obj === undefined) return undefined;
+  const safeClone = useCallback(<T,>(obj: T): T => {
     try {
-      if (typeof (globalThis).structuredClone === 'function') {
-        return (globalThis).structuredClone(obj);
-      }
-    } catch { }
-    try {
-      return JSON.parse(JSON.stringify(obj));
+      return structuredClone(obj);
     } catch {
-      return obj;
+      return JSON.parse(JSON.stringify(obj));
     }
+  }, []);
+
+  const base64ToImageData = async (base64: string): Promise<ImageData> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("Failed to get canvas context"));
+        ctx.drawImage(img, 0, 0);
+        resolve(ctx.getImageData(0, 0, canvas.width, canvas.height));
+      };
+      img.onerror = reject;
+      img.src = base64;
+    });
   };
+
+  // Helper function to convert ImageData to base64 string
+  const imageDataToBase64 = useCallback((imageData: ImageData): string => {
+    const canvas = document.createElement("canvas");
+    canvas.width = imageData.width;
+    canvas.height = imageData.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return "";
+    ctx.putImageData(imageData, 0, 0);
+    return canvas.toDataURL("image/png");
+  }, []);
 
   const saveState = useCallback(() => {
     const sanitizedShapes = shapes.map(s => {
-      const { imageElement: _imageElement, ...rest } = s as Shape & { imageElement?: HTMLImageElement };
+      const { ...rest } = s as Partial<Shape> & { imageElement?: HTMLImageElement };
       return rest as Shape;
     });
 
-    const currentState = {
-      shapes: safeStructuredClone(sanitizedShapes),
-      drawings: safeStructuredClone(drawings),
-      filledImages: safeStructuredClone(filledImages),
-      backgroundColor: safeStructuredClone(canvasBackground),
+    // Convert filledImages to base64 strings for saving
+    const filledImagesBase64 = filledImages.map(fi => ({
+      panelId: fi.panelId,
+      imageData: imageDataToBase64(fi.imageData)
+    }));
+
+    const state: CanvasData = {
+      shapes: safeClone(sanitizedShapes),
+      drawings: safeClone(drawings),
+      filledImages: filledImagesBase64,
+      backgroundColor: safeClone(canvasBackground),
       splitMode,
-      uploadedImageUrl,
-      loadedImageUrl: uploadedImageUrl ?? null
+      uploadedImageBase64: uploadedImageUrl || undefined,
     };
 
     setHistory(prev => {
-      const newHistory = prev.slice(0, historyIndex + 1);
-      newHistory.push(currentState);
-
-      if (newHistory.length > 50) {
-        newHistory.shift();
-      }
-
-      const newIdx = newHistory.length - 1;
-      setHistoryIndex(newIdx);
-
-      return newHistory;
+      const copy = prev.slice(0, historyIndex + 1);
+      copy.push(state);
+      setHistoryIndex(copy.length - 1);
+      return copy;
     });
-  }, [shapes, drawings, filledImages, canvasBackground, splitMode, historyIndex, uploadedImageUrl]);
+  }, [shapes, drawings, filledImages, canvasBackground, splitMode, uploadedImageUrl, historyIndex, safeClone, imageDataToBase64]);
 
-  // Undo/Redo
+  const handleLoadCanvas = useCallback(async (canvasData: CanvasData) => {
+    saveState();
+
+    const shapesWithImages = await Promise.all(
+      (canvasData.shapes || []).map(async (s: Shape) => {
+        if (s.imageBase64) {
+          const img = new Image();
+          img.src = s.imageBase64;
+          await img.decode();
+          return { ...s, imageElement: img } as Shape & { imageElement: HTMLImageElement };
+        }
+        return s;
+      })
+    );
+
+    const loadedFilledImages = await Promise.all(
+      (canvasData.filledImages || []).map(async (fi: { panelId: string; imageData: string }) => ({
+        panelId: fi.panelId,
+        imageData: await base64ToImageData(fi.imageData),
+      }))
+    );
+
+    let uploadedImg: HTMLImageElement | null = null;
+    if (canvasData.uploadedImageBase64) {
+      uploadedImg = new Image();
+      uploadedImg.src = canvasData.uploadedImageBase64;
+      await uploadedImg.decode();
+    }
+
+    setShapes(shapesWithImages);
+    setDrawings(canvasData.drawings || []);
+    setFilledImages(loadedFilledImages);
+    setCanvasBackground(canvasData.backgroundColor || { default: "#fff" });
+    setSplitMode(canvasData.splitMode || "none");
+
+    setUploadedImageUrl(canvasData.uploadedImageBase64 || null);
+    setLoadedImage(uploadedImg);
+  }, [saveState]);
+
+  const loadDesignFromId = useCallback(async (id: string) => {
+    if (!token) return;
+
+    const res = await fetch(`/api/designs/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return;
+    const design = await res.json();
+    await handleLoadCanvas(design.data);
+  }, [token, handleLoadCanvas]);
+
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.replace('/login');
+    }
+  }, [loading, isAuthenticated, router]);
+
+  useEffect(() => {
+    const loadDesign = async () => {
+      if (designId && isAuthenticated && !loading) {
+        await loadDesignFromId(designId);
+      }
+    };
+
+    loadDesign();
+  }, [designId, isAuthenticated, loading, loadDesignFromId]);
+
+  const handleImageUpload = (base64: string) => {
+    const selected = shapes.find(s => s.selected);
+    if (!selected) {
+      alert("Select a shape first");
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      setUploadedImageUrl(base64);
+      setLoadedImage(img);
+      setShapes(prev =>
+        prev.map(s =>
+          s.selected ? { ...s, imageElement: img, imageBase64: base64 } : s
+        )
+      );
+      saveState();
+    };
+    img.src = base64;
+  };
+
+  const handleClearImage = () => {
+    setShapes(prev =>
+      prev.map(s =>
+        s.selected
+          ? { ...s, imageElement: undefined, imageBase64: undefined }
+          : s
+      )
+    );
+    setUploadedImageUrl(null);
+    setLoadedImage(null);
+    saveState();
+  };
+
+  // Undo
   const handleUndo = async () => {
-    if (historyIndex > 0) {
-      const prevState = history[historyIndex - 1];
-      setShapes(prevState.shapes);
-      setDrawings(prevState.drawings);
-      setFilledImages(prevState.filledImages);
-      setCanvasBackground(prevState.backgroundColor);
-      setSplitMode(prevState.splitMode);
-      setUploadedImageUrl(prevState.uploadedImageUrl ?? null);
+    if (historyIndex <= 0) return;
+    const prev = history[historyIndex - 1];
 
-      // reload image element from URL/data URI if provided
-      if (prevState.loadedImageUrl) {
-        const img = new Image();
-        img.onload = () => {
-          setLoadedImage(img);
-        };
-        img.onerror = () => {
-          setLoadedImage(null);
-        };
-        img.src = prevState.loadedImageUrl;
-      } else {
-        setLoadedImage(null);
-      }
+    // Convert base64 strings back to ImageData objects
+    const filledImagesWithImageData = await Promise.all(
+      (prev.filledImages || []).map(async (fi: { panelId: string; imageData: string }) => ({
+        panelId: fi.panelId,
+        imageData: await base64ToImageData(fi.imageData),
+      }))
+    );
 
-      setHistoryIndex(historyIndex - 1);
-    }
+    setShapes(prev.shapes);
+    setDrawings(prev.drawings);
+    setFilledImages(filledImagesWithImageData);
+    setCanvasBackground(prev.backgroundColor);
+    setSplitMode(prev.splitMode);
+    setUploadedImageUrl(prev.uploadedImageBase64 || null);
+    setHistoryIndex(i => i - 1);
   };
 
+  // Redo
   const handleRedo = async () => {
-    if (historyIndex < history.length - 1) {
-      const nextState = history[historyIndex + 1];
+    if (historyIndex >= history.length - 1) return;
+    const next = history[historyIndex + 1];
 
-      setShapes(nextState.shapes);
-      setDrawings(nextState.drawings);
-      setFilledImages(nextState.filledImages);
-      setCanvasBackground(nextState.backgroundColor);
-      setSplitMode(nextState.splitMode);
-      setUploadedImageUrl(nextState.uploadedImageUrl ?? null);
+    // Convert base64 strings back to ImageData objects
+    const filledImagesWithImageData = await Promise.all(
+      (next.filledImages || []).map(async (fi: { panelId: string; imageData: string }) => ({
+        panelId: fi.panelId,
+        imageData: await base64ToImageData(fi.imageData),
+      }))
+    );
 
-      if (nextState.loadedImageUrl) {
-        const img = new Image();
-        img.onload = () => {
-          setLoadedImage(img);
-        };
-        img.onerror = () => {
-          setLoadedImage(null);
-        };
-        img.src = nextState.loadedImageUrl;
-      } else {
-        setLoadedImage(null);
-      }
-
-      setHistoryIndex(historyIndex + 1);
-    }
+    setShapes(next.shapes);
+    setDrawings(next.drawings);
+    setFilledImages(filledImagesWithImageData);
+    setCanvasBackground(next.backgroundColor);
+    setSplitMode(next.splitMode);
+    setUploadedImageUrl(next.uploadedImageBase64 || null);
+    setHistoryIndex(i => i + 1);
   };
 
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   // New Canvas
   const handleNewCanvas = () => {
@@ -171,13 +280,14 @@ export default function Home() {
   };
 
   // Apply image to selected shape
-  const applyImageToSelectedShape = (img: HTMLImageElement, imageUrl?: string) => {
+  const _applyImageToSelectedShape = (img: HTMLImageElement, imageId?: string, imageUrl?: string) => {
     setShapes(prev =>
       prev.map(shape =>
         shape.selected
           ? {
             ...shape,
             imageElement: img,
+            imageId: imageId || undefined,
             imageUrl: imageUrl || undefined
           }
           : shape
@@ -186,52 +296,9 @@ export default function Home() {
     saveState();
   };
 
-  const handleImageUpload = (imageUrl: string) => {
-    const selected = shapes.find(s => s.selected);
-    if (!selected) {
-      window.alert("Please select a shape first.");
-      return;
-    }
-
-    const img = new Image();
-    img.onload = () => {
-      setUploadedImageUrl(imageUrl);
-      setLoadedImage(img);
-
-      applyImageToSelectedShape(img, imageUrl);
-    };
-    img.onerror = () => {
-      console.error("Failed to load image");
-    };
-    img.src = imageUrl;
-  };
-
   const handleImageUsed = () => {
     setUploadedImageUrl(null);
     setLoadedImage(null);
-    saveState();
-  };
-
-  // Clear image from selected shape
-  const handleClearImage = () => {
-    const selected = shapes.find(s => s.selected);
-    if (!selected) {
-      window.alert("Please select a shape first.");
-      return;
-    }
-
-    setShapes(prev =>
-      prev.map(shape =>
-        shape.selected
-          ? {
-            ...shape,
-            imageElement: undefined,
-            imageUrl: undefined
-          }
-          : shape
-      )
-    );
-
     saveState();
   };
 
@@ -302,145 +369,24 @@ export default function Home() {
     return '';
   };
 
-  const handleLoadCanvas = async (canvasData: CanvasData) => {
-    saveState();
-
-    // Normalize shapes (ensure text/font props exist) BEFORE setShapes
-    let normalizedShapes: Shape[] = [];
-    if (canvasData.shapes) {
-      normalizedShapes = (canvasData.shapes as Shape[]).map((shape) => ({
-        ...shape,
-        fontFamily: shape.fontFamily ?? "Arial, sans-serif",
-        fontSize: shape.fontSize ?? 16,
-        fontStyles: shape.fontStyles ?? { bold: false, italic: false, underline: false, strikethrough: false },
-        textColor: shape.textColor ?? "#000000",
-        textAlignment: shape.textAlignment ?? "left",
-        listType: shape.listType ?? "none"
-      }));
-
-      setShapes(normalizedShapes);
-    }
-
-    if (canvasData.backgroundColor) {
-      setCanvasBackground(canvasData.backgroundColor);
-    }
-    if (canvasData.splitMode) {
-      setSplitMode(canvasData.splitMode);
-    }
-    if (canvasData.drawings) {
-      setDrawings(canvasData.drawings);
-    }
-    if (canvasData.filledImages) {
-      const convertedFilledImages = canvasData.filledImages.map((fi) => {
-        const img = new Image();
-        img.src = fi.imageData as string;
-        return new Promise<{ panelId: string; imageData: ImageData }>((resolve) => {
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.drawImage(img, 0, 0);
-              const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-              resolve({ panelId: fi.panelId, imageData });
-            } else {
-              resolve({ panelId: fi.panelId, imageData: new ImageData(1, 1) }); // Fallback
-            }
-          };
-          img.onerror = () => {
-            resolve({ panelId: fi.panelId, imageData: new ImageData(1, 1) }); // Fallback
-          };
-        });
-      });
-
-      Promise.all(convertedFilledImages).then((results) => {
-        setFilledImages(results);
-      });
-    }
-
-    // Image loading only via URL or embedded data uri
-    const imageUrlToLoad = canvasData.uploadedImageUrl || canvasData.loadedImageData;
-    if (imageUrlToLoad) {
-      setUploadedImageUrl(imageUrlToLoad);
-
-      const img = new Image();
-      img.onload = () => {
-        setLoadedImage(img);
-        console.log('Image loaded successfully from URL/data URI');
-      };
-      img.onerror = () => {
-        console.error("Failed to load image from URL/data URI");
-        setUploadedImageUrl(null);
-        setLoadedImage(null);
-      };
-      img.src = imageUrlToLoad;
-    } else {
-      setUploadedImageUrl(null);
-      setLoadedImage(null);
-    }
-
-    // Load shape (if any). Use normalizedShapes so text/font props are preserved.
-    if (normalizedShapes.length > 0) {
-      const updatedShapes = [...normalizedShapes];
-      const loadPromises: Promise<void>[] = [];
-
-      for (const shape of updatedShapes) {
-        if (shape.imageUrl && !(shape).imageElement) {
-          const loadPromise = new Promise<void>((resolve) => {
-            const shapeImg = new Image();
-            shapeImg.onload = () => {
-              const index = updatedShapes.findIndex(s => s.id === shape.id);
-              if (index !== -1) {
-                updatedShapes[index] = { ...updatedShapes[index], imageElement: shapeImg };
-              }
-              resolve();
-            };
-            shapeImg.onerror = () => {
-              console.error('Failed to load shape image:', shape.imageUrl);
-              resolve();
-            };
-            shapeImg.crossOrigin = 'anonymous';
-            shapeImg.src = shape.imageUrl!;
-          });
-          loadPromises.push(loadPromise);
-        }
-      }
-
-      Promise.all(loadPromises).then(() => {
-        setShapes(updatedShapes as Shape[]);
-        console.log('All shape images (URLs/data URIs) loaded');
-      });
-    }
-
-    console.log('Loading canvas data:', canvasData);
-  };
-
   return (
     <Box suppressHydrationWarning sx={{ bgcolor: 'grey.900', height: '100vh', color: 'white', display: 'flex', flexDirection: 'column', gap: 1 }}>
       <Menu
         onSaveCanvas={handleSaveCanvas}
         onLoadCanvas={handleLoadCanvas}
         canvasData={{
-          shapes: shapes,
+          shapes: shapes.map(s => {
+            const { imageElement: _, ...rest } = s as Shape & { imageElement?: HTMLImageElement };
+            return rest;
+          }),
           backgroundColor: canvasBackground,
-          splitMode: splitMode,
-          drawings: drawings,
+          splitMode,
+          drawings,
           filledImages: filledImages.map(fi => ({
             panelId: fi.panelId,
-            imageData: (() => {
-              const canvas = document.createElement('canvas');
-              canvas.width = fi.imageData.width;
-              canvas.height = fi.imageData.height;
-              const ctx = canvas.getContext('2d');
-              if (ctx) {
-                ctx.putImageData(fi.imageData, 0, 0);
-                return canvas.toDataURL('image/png');
-              }
-              return '';
-            })()
+            imageData: imageDataToBase64(fi.imageData),
           })),
-          uploadedImageUrl: uploadedImageUrl
+          uploadedImageBase64: uploadedImageUrl || undefined,
         }}
         onNewCanvas={handleNewCanvas}
         onSplitChange={setSplitMode}
@@ -520,5 +466,13 @@ export default function Home() {
         />
       </Box>
     </Box>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <HomeContent />
+    </Suspense>
   );
 }

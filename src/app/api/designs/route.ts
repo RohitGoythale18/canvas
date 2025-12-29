@@ -1,174 +1,73 @@
-import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import { authenticateRequest } from "@/lib/auth";
+import { CanvasData, Shape } from "@/types";
 
-/**
- * GET /api/designs
- */
-export async function GET(req: Request) {
-    try {
-        const { searchParams } = new URL(req.url);
+export async function POST(req: NextRequest) {
+  const auth = authenticateRequest(req);
 
-        const limit = Math.min(
-            parseInt(searchParams.get('limit') || '20', 10),
-            100
-        );
-        const offset = parseInt(searchParams.get('offset') || '0', 10);
-        const includeData = searchParams.get('includeData') === 'true';
-        const includeSharedRecords =
-            searchParams.get('includeSharedRecords') === 'true';
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-        const designs = await prisma.design.findMany({
-            where: {
-                deletedAt: null,
+  const userId = auth.user!.userId;
 
-                // filter deleted owners
-                owner: { deletedAt: null },
+  const {
+    title,
+    data,
+    boardId,
+    thumbnailUrl,
+  }: {
+    title: string;
+    data: CanvasData;
+    boardId: string;
+    thumbnailUrl?: string;
+  } = await req.json();
 
-                // filter deleted boards (or allow null board)
-                OR: [
-                    { boardId: null },
-                    { board: { deletedAt: null } },
-                ],
-            },
+  if (!boardId) {
+    return NextResponse.json(
+      { error: "boardId is required" },
+      { status: 400 }
+    );
+  }
 
-            take: limit,
-            skip: offset,
-            orderBy: { updatedAt: 'desc' },
+  // Extract main image
+  const image =
+    typeof data.uploadedImageBase64 === "string" &&
+    data.uploadedImageBase64.startsWith("data:image/")
+      ? data.uploadedImageBase64
+      : null;
 
-            select: {
-                id: true,
-                title: true,
-                description: true,
-                thumbnailUrl: true,
-                isPublished: true,
-                createdAt: true,
-                updatedAt: true,
-                ownerId: true,
-                boardId: true,
+  // ✅ sanitize + serialize to JSON-safe structure
+  const sanitizedData = {
+    ...data,
+    uploadedImageBase64: null,
+    shapes: (data.shapes ?? []).map((shape: Shape) => {
+      const { ...rest } = shape;
+      return {
+        ...rest,
+        imageBase64:
+          typeof shape.imageBase64 === "string" &&
+          shape.imageBase64.startsWith("data:image/")
+            ? shape.imageBase64
+            : null,
+      };
+    }),
+  };
 
-                ...(includeData ? { data: true } : {}),
+  // ✅ CRITICAL FIX: force JSON value
+  const jsonData = JSON.parse(JSON.stringify(sanitizedData));
 
-                owner: {
-                    select: {
-                        id: true,
-                        name: true,
-                    },
-                },
+  const design = await prisma.design.create({
+    data: {
+      title,
+      data: jsonData,
+      image,
+      thumbnailUrl,
+      ownerId: userId,
+      boardId,
+    },
+  });
 
-                board: {
-                    select: {
-                        id: true,
-                        name: true,
-                    },
-                },
-
-                ...(includeSharedRecords
-                    ? {
-                        sharedRecords: {
-                            take: 10,
-                            where: {
-                                sharedWith: { deletedAt: null },
-                            },
-                            select: {
-                                id: true,
-                                permission: true,
-                                message: true,
-                                expiresAt: true,
-                                createdAt: true,
-                                sharedWith: {
-                                    select: {
-                                        id: true,
-                                        email: true,
-                                        name: true,
-                                    },
-                                },
-                            },
-                        },
-                    }
-                    : {}),
-            },
-        });
-
-        return NextResponse.json(designs, { status: 200 });
-    } catch (error) {
-        console.error('GET /api/designs failed:', error);
-        return NextResponse.json(
-            { error: 'Failed to list designs' },
-            { status: 500 }
-        );
-    }
-}
-
-/**
- * POST /api/designs
- */
-export async function POST(req: Request) {
-    try {
-        const body = await req.json();
-
-        if (!body.title) {
-            return NextResponse.json(
-                { error: 'title is required' },
-                { status: 400 }
-            );
-        }
-
-        if (!body.ownerId) {
-            return NextResponse.json(
-                { error: 'ownerId is required' },
-                { status: 400 }
-            );
-        }
-
-        const owner = await prisma.user.findUnique({
-            where: { id: body.ownerId },
-            select: { id: true, deletedAt: true },
-        });
-
-        if (!owner || owner.deletedAt) {
-            return NextResponse.json(
-                { error: 'Owner not found or deleted' },
-                { status: 404 }
-            );
-        }
-
-        if (body.boardId) {
-            const board = await prisma.board.findUnique({
-                where: { id: body.boardId },
-                select: { id: true, deletedAt: true },
-            });
-
-            if (!board || board.deletedAt) {
-                return NextResponse.json(
-                    { error: 'Board not found or deleted' },
-                    { status: 404 }
-                );
-            }
-        }
-
-        const design = await prisma.design.create({
-            data: {
-                title: body.title,
-                description: body.description ?? null,
-                data: body.data ?? null,
-                thumbnailUrl: body.thumbnailUrl ?? null,
-                isPublished: body.isPublished ?? false,
-                ownerId: body.ownerId,
-                boardId: body.boardId ?? null,
-            },
-            include: {
-                owner: true,
-                board: true,
-                sharedRecords: true,
-            },
-        });
-
-        return NextResponse.json(design, { status: 201 });
-    } catch (error) {
-        console.error('POST /api/designs failed:', error);
-        return NextResponse.json(
-            { error: 'Failed to create design' },
-            { status: 500 }
-        );
-    }
+  return NextResponse.json(design, { status: 201 });
 }

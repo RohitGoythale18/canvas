@@ -29,7 +29,10 @@ export const useKeyboardShortcuts = ({
                 return;
             }
 
-            const key = typeof e.key === "string" ? e.key.toLowerCase() : "";
+            // Check if e.key exists before trying to use it
+            if (!e.key) return;
+
+            const key = e.key.toLowerCase();
             const meta = e.ctrlKey || e.metaKey;
 
             // Undo (Ctrl/Cmd + Z)

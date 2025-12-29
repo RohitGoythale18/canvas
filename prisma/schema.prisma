@@ -1,118 +1,125 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
 generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-arm64-openssl-1.1.x", "rhel-openssl-3.0.x"]
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  schemas  = ["public"]
 }
 
 model User {
-  id               String        @id @default(uuid())
-  email            String        @unique
-  name             String?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  deletedAt        DateTime?
+  id            String     @id @default(uuid())
+  name          String
+  email         String     @unique
+  password      String
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  deletedAt     DateTime?
 
-  // relations
-  boardsOwned      Board[]       @relation("BoardOwner")
-  boardMemberships BoardMember[]
-  designs          Design[]      @relation("DesignOwner")
-  sharedWithMe     SharedDesign[] @relation("SharedWith")
-  sharedByMe       SharedDesign[] @relation("SharedBy")
+  // Relations
+  boards        Board[]
+  designs       Design[]
+
+  sharedByMe    SharedDesign[] @relation("SharedByMe")
+  sharedWithMe  SharedDesign[] @relation("SharedWithMe")
+
+  notifications Notification[]
+  pushSubscription PushSubscription?
 
   @@index([email])
-  @@schema("public")
 }
 
 model Board {
-  id          String        @id @default(uuid())
+  id          String     @id @default(uuid())
   name        String
   description String?
-  isPublic    Boolean       @default(false)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  isPublic    Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
   deletedAt   DateTime?
 
-  // relations
+  // Relations
   ownerId     String
-  owner       User          @relation("BoardOwner", fields: [ownerId], references: [id])
-  members     BoardMember[]
+  owner       User       @relation(fields: [ownerId], references: [id])
   designs     Design[]
 
   @@index([ownerId])
   @@index([isPublic])
-  @@schema("public")
-}
-
-model BoardMember {
-  id        String    @id @default(uuid())
-  boardId   String
-  userId    String
-  role      BoardRole @default(VIEWER)
-  joinedAt  DateTime  @default(now())
-
-  board     Board     @relation(fields: [boardId], references: [id])
-  user      User      @relation(fields: [userId], references: [id])
-
-  @@unique([boardId, userId])
-  @@index([userId])
-  @@index([boardId])
-  @@schema("public")
 }
 
 model Design {
-  id             String     @id @default(uuid())
-  title          String
-  description    String?
-  data           Json?
-  thumbnailUrl   String?
-  isPublished    Boolean    @default(false)
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-  deletedAt      DateTime?
+  id            String     @id @default(uuid())
+  title         String
+  description   String?
+  data          Json?
+  image         String?
+  thumbnailUrl  String?
+  isPublished   Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  deletedAt     DateTime?
 
-  // relations
-  ownerId        String
-  owner          User          @relation("DesignOwner", fields: [ownerId], references: [id])
-  boardId        String?
-  board          Board?        @relation(fields: [boardId], references: [id])
-  sharedRecords  SharedDesign[]
+  // Relations
+  ownerId       String
+  owner         User       @relation(fields: [ownerId], references: [id])
+
+  boardId       String
+  board         Board      @relation(fields: [boardId], references: [id])
+
+  sharedWith    SharedDesign[]
 
   @@index([ownerId])
   @@index([boardId])
   @@index([isPublished])
-  @@schema("public")
 }
 
 model SharedDesign {
-  id           String      @id @default(uuid())
-  designId     String
-  sharedById   String
-  sharedWithId String
-  permission   Permission  @default(READ)
-  message      String?
-  expiresAt    DateTime?
-  createdAt    DateTime    @default(now())
+  id            String      @id @default(uuid())
+  designId      String
+  ownerId       String
+  sharedWithId  String
+  permission    Permission  @default(READ)
+  createdAt     DateTime    @default(now())
 
-  design       Design      @relation(fields: [designId], references: [id])
-  sharedBy     User        @relation("SharedBy", fields: [sharedById], references: [id])
-  sharedWith   User        @relation("SharedWith", fields: [sharedWithId], references: [id])
+  design        Design      @relation(fields: [designId], references: [id])
+  owner         User        @relation("SharedByMe", fields: [ownerId], references: [id])
+  sharedWith    User        @relation("SharedWithMe", fields: [sharedWithId], references: [id])
 
-  @@unique([designId, sharedWithId])
-  @@index([sharedWithId])
-  @@index([sharedById])
   @@index([designId])
-  @@schema("public")
+  @@index([ownerId])
+  @@index([sharedWithId])
 }
 
-enum BoardRole {
-  OWNER
-  EDITOR
-  VIEWER
-  @@schema("public")
+model Notification {
+  id        String            @id @default(uuid())
+  userId    String
+  message   String
+  type      NotificationType @default(INFO)
+  isRead    Boolean           @default(false)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  user      User              @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  data      Json
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 enum Permission {
@@ -120,5 +127,11 @@ enum Permission {
   COMMENT
   WRITE
   OWNER
-  @@schema("public")
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
 }

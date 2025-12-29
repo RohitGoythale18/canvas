@@ -1,4 +1,3 @@
-// src/app/components/MenuBar.tsx
 'use client';
 import Image from "next/image"
 import { Box, Divider, List, Typography } from "@mui/material";
@@ -20,6 +19,7 @@ import ClearImageButton from "./buttons/ClearImageButton";
 import ColorButton from "./buttons/ColorButton";
 import BorderButton from "./buttons/BorderButton";
 import FontFeatButton from "./buttons/FontFeatButton";
+import LogoutButton from "./buttons/LogoutButton";
 
 interface MenuBarProps {
     onSaveCanvas?: () => string;
@@ -40,8 +40,7 @@ interface MenuBarProps {
     onShapeSelect?: (shape: string) => void;
     onTextToggle?: (enabled: boolean) => void;
     textActive?: boolean;
-    // updated: imageId optional now
-    onImageUpload?: (imageUrl: string, imageId?: string) => void;
+    onImageUpload?: (imageUrl: string) => void;
     onImageUsed?: () => void;
     onClearImage?: () => void;
     onCanvasBackgroundChange?: (color: { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }, panelId?: string) => void;
@@ -66,15 +65,17 @@ interface MenuBarProps {
     onRedo?: () => void;
 }
 
-const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onPencilToggle, onFillToggle, onColorChange, fillColor, onEraserToggle, onEraserSizeChange, eraserSize, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, onImageUsed, onClearImage, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange, onUndo, onRedo }: MenuBarProps) => {
-
+const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onPencilToggle, onFillToggle, onColorChange, fillColor, onEraserToggle, onEraserSizeChange, eraserSize, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, onClearImage, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange, onUndo, onRedo }: MenuBarProps) => {
     return (
         <Box>
-            <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 2, py: 1, px: 2 }}>
-                <Image src="/canvasIcon.png" width={35} height={35} alt="SnapCanvas Logo" />
-                <Typography variant="h3" sx={{ fontSize: '1.9rem', fontWeight: 600, color: 'white' }}>
-                    SnapCanvas
-                </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', py: 1, px: 2 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                    <Image src="/canvasIcon.png" width={35} height={35} alt="SnapCanvas Logo" />
+                    <Typography variant="h3" sx={{ fontSize: '1.9rem', fontWeight: 600, color: 'white' }}>
+                        SnapCanvas
+                    </Typography>
+                </Box>
+                <LogoutButton />
             </Box>
 
             <Divider sx={{ width: '100%', borderColor: 'primary.main' }} />
@@ -119,7 +120,7 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
                     <List sx={{ p: 1, display: "flex", gap: 1 }}>
                         <ShapeButton onShapeSelect={onShapeSelect} />
                         <TextButton active={textActive} onToggle={onTextToggle} />
-                        <UploadImageButton onImageUpload={onImageUpload} onImageUsed={onImageUsed} />
+                        <UploadImageButton onImageUpload={onImageUpload} />
                         <ClearImageButton onClearImage={onClearImage} />
                     </List>
                 </Box>
@@ -154,4 +155,4 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
     )
 }
 
-export default MenuBar;
+export default MenuBar
