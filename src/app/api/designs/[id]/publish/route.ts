@@ -1,3 +1,4 @@
+// src/app/api/designs/[id]/publish/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
 import prisma from '@/lib/prisma';

@@ -63,6 +63,7 @@ interface MenuBarProps {
     onTextColorChange?: (color: string | { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }) => void;
     onUndo?: () => void;
     onRedo?: () => void;
+    permission?: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
 }
 
 const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onPencilToggle, onFillToggle, onColorChange, fillColor, onEraserToggle, onEraserSizeChange, eraserSize, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, onClearImage, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange, onUndo, onRedo }: MenuBarProps) => {

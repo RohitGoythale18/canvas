@@ -1,4 +1,6 @@
-function urlBase64ToUint8Array(base64String: string) {
+// src/lib/push.ts
+
+function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
     const base64 = (base64String + padding)
         .replace(/-/g, '+')
@@ -11,25 +13,42 @@ function urlBase64ToUint8Array(base64String: string) {
         outputArray[i] = rawData.charCodeAt(i);
     }
 
-    return outputArray;
+    return outputArray.buffer;
 }
 
 export async function subscribeToPush(token: string) {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.warn('Push not supported');
+        return;
+    }
+
+    // Ask permission (NOW this will appear)
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+        console.warn('Notification permission not granted');
         return;
     }
 
     const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-
     if (!vapidKey) {
         console.error('Missing VAPID public key');
         return;
     }
 
-    await navigator.serviceWorker.register('/sw.js');
+    // Register SW
+    const registration = await navigator.serviceWorker.register('/sw.js', {
+        scope: '/',
+    });
 
-    const registration = await navigator.serviceWorker.ready;
+    // Wait until active & controlling
+    await navigator.serviceWorker.ready;
 
+    if (!navigator.serviceWorker.controller) {
+        console.warn('Service Worker not controlling page');
+        return;
+    }
+
+    // Avoid duplicate subscription
     const existing = await registration.pushManager.getSubscription();
     if (existing) return;
 
@@ -38,6 +57,7 @@ export async function subscribeToPush(token: string) {
         applicationServerKey: urlBase64ToUint8Array(vapidKey),
     });
 
+    // Save subscription on backend
     await fetch('/api/push/subscribe', {
         method: 'POST',
         headers: {
@@ -46,4 +66,6 @@ export async function subscribeToPush(token: string) {
         },
         body: JSON.stringify(subscription),
     });
+
+    console.log('Push subscription successful');
 }

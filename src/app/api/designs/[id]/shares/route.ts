@@ -1,12 +1,52 @@
+// src/app/api/designs/[id]/shares/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { authenticateRequest } from '@/lib/auth';
 import { sendPushNotification } from '@/lib/webpush';
-import { sendEmailNotification } from '@/lib/mailer';
 import webpush from 'web-push';
+import { WebPushError } from '@/types';
 
-interface WebPushError extends Error {
-    statusCode?: number;
+export async function GET(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const authRequest = authenticateRequest(request);
+        const userId = authRequest.user!.userId;
+
+        const resolvedParams = await params;
+        const designId = resolvedParams.id;
+
+        const design = await prisma.design.findUnique({
+            where: { id: designId },
+            select: { ownerId: true },
+        });
+
+        if (!design || design.ownerId !== userId) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        const shares = await prisma.sharedDesign.findMany({
+            where: { designId },
+            select: {
+                sharedWith: { select: { email: true } },
+                permission: true,
+            },
+        });
+
+        return NextResponse.json({
+            shares: shares.map((s) => ({
+                email: s.sharedWith.email,
+                permission: s.permission,
+            })),
+        });
+    } catch (error) {
+        console.error('Fetch shares error:', error);
+        return NextResponse.json(
+            { error: 'Internal server error' },
+            { status: 500 }
+        );
+    }
 }
 
 export async function POST(
@@ -17,7 +57,8 @@ export async function POST(
         const authRequest = authenticateRequest(request);
         const ownerId = authRequest.user!.userId;
 
-        const { id: designId } = await params;
+        const resolvedParams = await params;
+        const designId = resolvedParams.id;
         const { email, permission } = await request.json();
 
         if (!designId || !email) {
@@ -78,11 +119,6 @@ export async function POST(
                 message: `A design "${design.title}" was shared with you`,
                 type: 'SUCCESS',
             },
-        });
-
-        // ================= EMAIL (NODEMAILER | NON-BLOCKING) =================
-        sendEmailNotification(receiver.email, design.title).catch((err) => {
-            console.error('Email failed:', err);
         });
 
         // ================= WEB PUSH (NON-BLOCKING) ===============

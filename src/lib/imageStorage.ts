@@ -1,13 +1,9 @@
+import { StoredImageData } from "@/types";
+
 // IndexedDB utility for storing and retrieving image blobs
 const DB_NAME = 'CanvasImagesDB';
 const STORE_NAME = 'images';
 const DB_VERSION = 1;
-
-interface ImageData {
-  id: string;
-  blob: Blob;
-  createdAt: number;
-}
 
 class ImageStorage {
   private db: IDBDatabase | null = null;
@@ -35,7 +31,7 @@ class ImageStorage {
     if (!this.db) await this.initDB();
 
     const imageId = id || `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const imageData: ImageData = {
+    const imageData: StoredImageData = {
       id: imageId,
       blob,
       createdAt: Date.now()
@@ -60,7 +56,7 @@ class ImageStorage {
       const request = store.get(id);
 
       request.onsuccess = () => {
-        const result = request.result as ImageData | undefined;
+        const result = request.result as StoredImageData | undefined;
         resolve(result ? result.blob : null);
       };
       request.onerror = () => reject(request.error);

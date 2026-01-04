@@ -1,22 +1,17 @@
+import { UseKeyboardShortcutsProps } from '@/types';
 import { useEffect } from 'react';
-import { Shape } from '../types';
-
-interface UseKeyboardShortcutsProps {
-    shapes: Shape[];
-    onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
-    onSaveState?: () => void;
-    onUndo?: () => void;
-    onRedo?: () => void;
-}
 
 export const useKeyboardShortcuts = ({
     shapes,
     onShapesChange,
     onSaveState,
     onUndo,
-    onRedo
+    onRedo,
+    permission
 }: UseKeyboardShortcutsProps) => {
     useEffect(() => {
+        const canEdit = permission === 'OWNER' || permission === 'WRITE';
+
         const handleKeyDown = (e: KeyboardEvent) => {
             // If editing a text shape, ignore global shortcuts
             const hasEditingText = shapes.some(shape => shape.isEditing && shape.type === "text");
@@ -24,6 +19,7 @@ export const useKeyboardShortcuts = ({
 
             // Delete / Backspace -> delete selected shapes
             if (e.key === "Delete" || e.key === "Backspace") {
+                if (!canEdit) return;
                 onShapesChange(prev => prev.filter(shape => !shape.selected));
                 if (onSaveState) onSaveState();
                 return;
@@ -37,6 +33,7 @@ export const useKeyboardShortcuts = ({
 
             // Undo (Ctrl/Cmd + Z)
             if (meta && key === 'z' && !e.shiftKey) {
+                if (!canEdit) return;
                 e.preventDefault();
                 if (onUndo) onUndo();
                 return;
@@ -44,6 +41,7 @@ export const useKeyboardShortcuts = ({
 
             // Redo (Ctrl/Cmd + Y) OR (Ctrl/Cmd + Shift + Z)
             if (meta && (key === 'y' || (key === 'z' && e.shiftKey))) {
+                if (!canEdit) return;
                 e.preventDefault();
                 if (onRedo) onRedo();
                 return;
@@ -52,5 +50,5 @@ export const useKeyboardShortcuts = ({
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [shapes, onShapesChange, onSaveState, onUndo, onRedo]);
+    }, [shapes, onShapesChange, onSaveState, onUndo, onRedo, permission]);
 };

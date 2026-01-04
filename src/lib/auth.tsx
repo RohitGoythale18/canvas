@@ -1,14 +1,6 @@
 import { NextRequest } from 'next/server';
 import jwt from 'jsonwebtoken';
-
-export interface AuthUser {
-    userId: string;
-    email: string;
-}
-
-export interface AuthRequest extends NextRequest {
-    user?: AuthUser;
-}
+import { AuthRequest, AuthUser } from '@/types';
 
 export function authenticateRequest(request: NextRequest): AuthRequest {
     const authHeader = request.headers.get('authorization');

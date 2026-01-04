@@ -1,17 +1,6 @@
 import { useEffect } from 'react';
 import * as Shapes from '../app/components/shapes/index';
-import { Shape } from '../types';
-
-interface UseShapeRendererProps {
-    shapes: Shape[];
-    drawings: { panelId: string; paths: Array<{ points: { x: number; y: number }[]; tool: 'pencil' | 'eraser'; color?: string; size?: number }> }[];
-    filledImages: { panelId: string; imageData: ImageData }[];
-    splitMode: string;
-    textInput: string;
-    editingShapeId: string | null;
-    loadedImage?: HTMLImageElement | null;
-    backgroundColor?: Record<string, string | { start: string; end: string }>;
-}
+import { Shape, UseShapeRendererProps } from '@/types';
 
 export const useShapeRenderer = ({
     shapes,
@@ -22,6 +11,7 @@ export const useShapeRenderer = ({
     editingShapeId,
     loadedImage,
     backgroundColor,
+    // permission
 }: UseShapeRendererProps) => {
     useEffect(() => {
         const canvases = document.querySelectorAll<HTMLCanvasElement>(".drawing-panel");
@@ -55,7 +45,6 @@ export const useShapeRenderer = ({
                 try {
                     ctx.putImageData(imageData, 0, 0);
                 } catch (err) {
-                    // Some browsers may throw if imageData dimensions mismatch — ignore to avoid crash
                     console.warn('putImageData failed', err);
                 }
             });

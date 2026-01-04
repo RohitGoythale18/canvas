@@ -1,3 +1,4 @@
+// src/app/api/notification/[id]/read/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
 import prisma from '@/lib/prisma';
