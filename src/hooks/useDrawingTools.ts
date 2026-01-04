@@ -1,28 +1,6 @@
 import { useEffect, useRef } from 'react';
 import * as Shapes from '../app/components/shapes/index';
-import type { Shape } from '../types';
-
-interface DrawingPath {
-  points: { x: number; y: number }[];
-  tool: 'pencil' | 'eraser';
-  color?: string;
-  size?: number;
-}
-
-interface UseDrawingToolsProps {
-  pencilActive: boolean;
-  eraserActive: boolean;
-  eraserSize: number;
-  splitMode: string;
-  setDrawings: React.Dispatch<
-    React.SetStateAction<{ panelId: string; paths: DrawingPath[] }[]>
-  >;
-  onSaveState?: () => void;
-
-  // NEW: to let eraser actually modify shapes
-  shapes: Shape[];
-  onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
-}
+import { DrawingPath, Shape, UseDrawingToolsProps } from '@/types';
 
 const distance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
   Math.hypot(a.x - b.x, a.y - b.y);
@@ -36,10 +14,12 @@ export const useDrawingTools = ({
   onSaveState,
   shapes,
   onShapesChange,
+  permission,
 }: UseDrawingToolsProps) => {
   const isDrawingRef = useRef(false);
   const currentPathRef = useRef<DrawingPath | null>(null);
   const currentPanelRef = useRef<string>('default');
+  const canEdit = permission === 'OWNER' || permission === 'WRITE';
 
   useEffect(() => {
     /**
@@ -297,6 +277,7 @@ export const useDrawingTools = ({
 
       const handlePointerDown = (e: MouseEvent | TouchEvent) => {
         if (!pencilActive && !eraserActive) return;
+        if (!canEdit) return;
 
         isDrawingRef.current = true;
         const panelId = canvas.getAttribute('data-panel-id') || 'default';
@@ -331,6 +312,7 @@ export const useDrawingTools = ({
 
       const handlePointerMove = (e: MouseEvent | TouchEvent) => {
         if (!isDrawingRef.current || !currentPathRef.current) return;
+        if (!canEdit) return;
 
         const pos = getPos(e);
         const last =
@@ -435,6 +417,7 @@ export const useDrawingTools = ({
       };
 
       const handlePointerUp = () => {
+        if (!canEdit) return;
         if (!isDrawingRef.current) return;
         isDrawingRef.current = false;
         void finalizePath();
@@ -467,6 +450,7 @@ export const useDrawingTools = ({
       cleanupFns.forEach((fn) => fn());
     };
   }, [
+    canEdit,
     pencilActive,
     eraserActive,
     eraserSize,

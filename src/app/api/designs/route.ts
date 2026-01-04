@@ -1,3 +1,4 @@
+// src/app/api/designs/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { authenticateRequest } from "@/lib/auth";
@@ -55,7 +56,6 @@ export async function POST(req: NextRequest) {
     }),
   };
 
-  // ✅ CRITICAL FIX: force JSON value
   const jsonData = JSON.parse(JSON.stringify(sanitizedData));
 
   const design = await prisma.design.create({

@@ -1,38 +1,8 @@
+import { Shape, UseShapeInteractionProps } from '@/types';
 import { useEffect } from 'react';
-import { Shape } from '../types';
 
 const MIN_SHAPE_WIDTH = 20;
 const MIN_SHAPE_HEIGHT = 20;
-
-interface UseShapeInteractionProps {
-    selectedShape: string | null;
-    splitMode: string;
-    onShapeSelect: (shape: string) => void;
-    shapes: Shape[];
-    pencilActive: boolean;
-    eraserActive: boolean;
-    fillActive: boolean;
-    textActive: boolean;
-    uploadedImageUrl?: string | null;
-    loadedImage?: HTMLImageElement | null;
-    currentImageId?: string | null;
-    onImageUsed?: () => void;
-    borderActive: boolean;
-    borderColor: string;
-    borderSize: number;
-    borderType: 'solid' | 'dashed' | 'dotted';
-    zoomLevel: number;
-    onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
-    setDragging: React.Dispatch<React.SetStateAction<boolean>>;
-    setResizing: React.Dispatch<React.SetStateAction<boolean>>;
-    setDragOffset: React.Dispatch<React.SetStateAction<{ x: number; y: number }>>;
-    setResizeHandle: React.Dispatch<React.SetStateAction<string | null>>;
-    dragging: boolean;
-    resizing: boolean;
-    resizeHandle: string | null;
-    dragOffset: { x: number; y: number };
-    onSaveState?: () => void;
-}
 
 export const useShapeInteraction = ({
     selectedShape,
@@ -46,7 +16,6 @@ export const useShapeInteraction = ({
     uploadedImageUrl,
     loadedImage,
     currentImageId,
-    // onImageUsed,
     borderActive,
     borderColor,
     borderSize,
@@ -61,11 +30,13 @@ export const useShapeInteraction = ({
     resizing,
     resizeHandle,
     dragOffset,
-    onSaveState
+    onSaveState,
+    permission
 }: UseShapeInteractionProps) => {
     useEffect(() => {
         const canvases = document.querySelectorAll<HTMLCanvasElement>(".drawing-panel");
         const cleanupFns: (() => void)[] = [];
+        const canEdit = permission === 'OWNER' || permission === 'WRITE';
 
         canvases.forEach((canvas) => {
             const handleMouseDown = (e: MouseEvent) => {
@@ -76,6 +47,7 @@ export const useShapeInteraction = ({
                 const y = (e.clientY - rect.top) * (canvas.height / rect.height);
 
                 if (selectedShape) {
+                    if (!canEdit) return;
                     // Create new blank shape
                     const panelId = canvas.getAttribute("data-panel-id") || "default";
 
@@ -117,6 +89,7 @@ export const useShapeInteraction = ({
                         ];
 
                         handles.forEach((handle) => {
+                            if (!canEdit) return;
                             if (x >= handle.x - handleSize / 2 && x <= handle.x + handleSize / 2 &&
                                 y >= handle.y - handleSize / 2 && y <= handle.y + handleSize / 2) {
                                 setResizing(true);
@@ -167,6 +140,7 @@ export const useShapeInteraction = ({
                 const y = (e.clientY - rect.top) * (canvas.height / rect.height);
 
                 if (dragging) {
+                    if (!canEdit) return;
                     onShapesChange(prev => prev.map(shape => {
                         if (shape.selected) {
                             return {
@@ -178,6 +152,8 @@ export const useShapeInteraction = ({
                         return shape;
                     }));
                 } else if (resizing && resizeHandle) {
+                    if (!canEdit) return;
+
                     onShapesChange(prev => prev.map(shape => {
                         if (shape.selected) {
                             let newX = shape.x;
@@ -228,7 +204,7 @@ export const useShapeInteraction = ({
                 setDragging(false);
                 setResizing(false);
                 setResizeHandle(null);
-                if (onSaveState) onSaveState();
+                if (canEdit && onSaveState) onSaveState();
             };
 
             canvas.addEventListener("mousedown", handleMouseDown);
@@ -247,13 +223,5 @@ export const useShapeInteraction = ({
         return () => {
             cleanupFns.forEach(fn => fn());
         };
-    }, [
-        selectedShape, splitMode, shapes,
-        pencilActive, eraserActive, fillActive, textActive,
-        uploadedImageUrl, loadedImage, currentImageId,
-        borderActive, borderColor, borderSize, borderType,
-        zoomLevel, dragging, resizing, resizeHandle, dragOffset,
-        onShapesChange, onShapeSelect, onSaveState,
-        setDragging, setResizing, setDragOffset, setResizeHandle
-    ]);
+    }, [selectedShape, splitMode, shapes, pencilActive, eraserActive, fillActive, textActive, uploadedImageUrl, loadedImage, currentImageId, borderActive, borderColor, borderSize, borderType, zoomLevel, dragging, resizing, resizeHandle, dragOffset, onShapesChange, onShapeSelect, onSaveState, setDragging, setResizing, setDragOffset, setResizeHandle, permission]);
 };

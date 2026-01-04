@@ -1,12 +1,7 @@
 'use client';
-
 import { useAuth } from '@/context/AuthContext';
+import { LoginData } from '@/types';
 import { useState } from 'react';
-
-interface LoginData {
-  email: string;
-  password: string;
-}
 
 export const useLogin = () => {
   const { login: authLogin } = useAuth();

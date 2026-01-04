@@ -4,11 +4,12 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Box } from "@mui/material";
 import { Shape, DrawingPath, FontFeatures, CanvasData } from "../types";
 import { useAuth } from "@/context/AuthContext";
+import dynamic from 'next/dynamic';
 
 import Menu from "./components/MenuBar";
 import Canvas from "./components/Canvas";
 
-function HomeContent() {
+function HomeContentComponent() {
   const { token, isAuthenticated, loading } = useAuth();
   const router = useRouter();
   const _params = useParams();
@@ -46,6 +47,8 @@ function HomeContent() {
   const [filledImages, setFilledImages] = useState<{ panelId: string, imageData: ImageData }[]>([]);
   const [history, setHistory] = useState<CanvasData[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+
+  const [permission, setPermission] = useState<'OWNER' | 'WRITE' | 'COMMENT' | 'READ'>('READ');
 
   const safeClone = useCallback(<T,>(obj: T): T => {
     try {
@@ -157,8 +160,11 @@ function HomeContent() {
     const res = await fetch(`/api/designs/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
+
     if (!res.ok) return;
+    
     const design = await res.json();
+    setPermission(design.permission);
     await handleLoadCanvas(design.data);
   }, [token, handleLoadCanvas]);
 
@@ -172,6 +178,9 @@ function HomeContent() {
     const loadDesign = async () => {
       if (designId && isAuthenticated && !loading) {
         await loadDesignFromId(designId);
+      } else if (!designId && isAuthenticated && !loading) {
+        // New canvas for authenticated user - set as owner
+        setPermission('OWNER');
       }
     };
 
@@ -276,6 +285,7 @@ function HomeContent() {
     setLoadedImage(null);
     setHistory([]);
     setHistoryIndex(-1);
+    setPermission('OWNER'); // Set owner permission for new canvas
     setResetKey(prev => prev + 1);
   };
 
@@ -429,6 +439,7 @@ function HomeContent() {
         onTextColorChange={(v) => setFontFeatures(prev => ({ ...prev, textColor: v }))}
         onUndo={handleUndo}
         onRedo={handleRedo}
+        permission={permission}
       />
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80vh', p: 1 }}>
         <Canvas
@@ -463,11 +474,17 @@ function HomeContent() {
           onSaveState={saveState}
           onUndo={handleUndo}
           onRedo={handleRedo}
+          permission={permission}
         />
       </Box>
     </Box>
   );
 }
+
+const HomeContent = dynamic(() => Promise.resolve(HomeContentComponent), {
+  ssr: false,
+  loading: () => <div>Loading...</div>
+});
 
 export default function Home() {
   return (

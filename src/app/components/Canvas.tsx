@@ -48,6 +48,7 @@ interface CanvasProps {
     onSaveState: () => void;
     onUndo?: () => void;
     onRedo?: () => void;
+    permission?: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
 }
 
 const Canvas = ({
@@ -82,6 +83,7 @@ const Canvas = ({
     onSaveState,
     onUndo,
     onRedo,
+    permission = 'READ',
 }: CanvasProps) => {
 
     const [dragging, setDragging] = useState(false);
@@ -103,7 +105,8 @@ const Canvas = ({
         setDrawings: onDrawingsChange,
         onSaveState,
         shapes,
-        onShapesChange
+        onShapesChange,
+        permission
     });
 
     useFillTool({
@@ -113,7 +116,8 @@ const Canvas = ({
         setFilledImages: onFilledImagesChange,
         shapes,
         onShapesChange,
-        onSaveState
+        onSaveState,
+        permission
     });
 
     useTextTools({
@@ -125,7 +129,8 @@ const Canvas = ({
         onShapesChange,
         setTextInput,
         setEditingShapeId,
-        onTextToggle // <-- pass the toggle callback into the hook
+        onTextToggle, // <-- pass the toggle callback into the hook
+        permission
     });
 
     useShapeInteraction({
@@ -155,7 +160,8 @@ const Canvas = ({
         resizing,
         resizeHandle,
         dragOffset,
-        onSaveState
+        onSaveState,
+        permission
     });
 
     useShapeProperties({
@@ -171,7 +177,8 @@ const Canvas = ({
     useKeyboardShortcuts({
         shapes,
         onShapesChange,
-        onSaveState
+        onSaveState,
+        permission
     });
 
     useCanvasCleanup({
@@ -188,7 +195,7 @@ const Canvas = ({
         textInput,
         editingShapeId,
         loadedImage,
-        backgroundColor,
+        backgroundColor
     });
 
     useKeyboardShortcuts({
@@ -196,7 +203,8 @@ const Canvas = ({
         onShapesChange,
         onSaveState,
         onUndo: onUndo,
-        onRedo: onRedo
+        onRedo: onRedo,
+        permission
     });
 
     const getBackgroundStyle = (panelId: string) => {
@@ -309,6 +317,8 @@ const Canvas = ({
         }
     };
 
+    const isReadOnly = permission === 'READ';
+
     return (
         <Box
             ref={wrapperRef}
@@ -318,7 +328,8 @@ const Canvas = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                pointerEvents: isReadOnly ? 'none' : 'auto'
             }}
         >
             <Box>{renderPanels()}</Box>

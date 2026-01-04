@@ -1,24 +1,15 @@
+// src/app/components/ShareDesignDialog.tsx
 'use client';
 import { useEffect, useState } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, MenuItem, Snackbar, Alert, } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, MenuItem, Snackbar, Alert, Divider, Typography, Box, } from '@mui/material';
 import { useAuth } from '@/context/AuthContext';
+import { ShareDesignDialogProps, SharedUser } from '@/types';
 
-interface ShareDesignDialogProps {
-    open: boolean;
-    designId: string | null;
-    onClose: () => void;
-    onShared?: () => void;
-}
-
-export default function ShareDesignDialog({
-    open,
-    designId,
-    onClose,
-    onShared,
-}: ShareDesignDialogProps) {
+export default function ShareDesignDialog({ open, designId, onClose, onShared, }: ShareDesignDialogProps) {
     const { token } = useAuth();
     const [email, setEmail] = useState('');
     const [permission, setPermission] = useState<'READ' | 'COMMENT' | 'WRITE'>('READ');
+    const [sharedWith, setSharedWith] = useState<SharedUser[]>([]);
     const [loading, setLoading] = useState(false);
     const [snackbar, setSnackbar] = useState<{
         open: boolean;
@@ -35,8 +26,34 @@ export default function ShareDesignDialog({
             setEmail('');
             setPermission('READ');
             setLoading(false);
+            setSharedWith([]);
         }
+
     }, [open]);
+
+    // Load shared users
+    useEffect(() => {
+        if (!open || !designId || !token) return;
+
+        const loadSharedUsers = async () => {
+            try {
+                const res = await fetch(`/api/designs/${designId}/shares`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+
+                if (!res.ok) return;
+
+                const data = await res.json();
+                setSharedWith(data.shares || []);
+            } catch (err) {
+                console.error('Failed to load shared users', err);
+            }
+        };
+
+        loadSharedUsers();
+    }, [open, designId, token]);
 
     const handleShare = async () => {
         if (!email.trim()) {
@@ -84,6 +101,14 @@ export default function ShareDesignDialog({
                 severity: 'success',
             });
 
+            setSharedWith((prev) => [
+                ...prev,
+                { email, permission },
+            ]);
+
+            setEmail('');
+            setPermission('READ');
+
             onShared?.();
 
             setTimeout(() => {
@@ -105,12 +130,7 @@ export default function ShareDesignDialog({
 
     return (
         <>
-            <Dialog
-                open={open}
-                onClose={onClose}
-                maxWidth="sm"
-                fullWidth
-            >
+            <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
                 <DialogTitle>Share Design</DialogTitle>
 
                 <DialogContent>
@@ -132,7 +152,10 @@ export default function ShareDesignDialog({
                         value={permission}
                         onChange={(e) =>
                             setPermission(
-                                e.target.value as 'READ' | 'COMMENT' | 'WRITE'
+                                e.target.value as
+                                | 'READ'
+                                | 'COMMENT'
+                                | 'WRITE'
                             )
                         }
                     >
@@ -140,6 +163,37 @@ export default function ShareDesignDialog({
                         <MenuItem value="COMMENT">Comment</MenuItem>
                         <MenuItem value="WRITE">Write</MenuItem>
                     </TextField>
+
+                    {/* ---------- SHARED WITH LIST ---------- */}
+                    {sharedWith.length > 0 && (
+                        <>
+                            <Divider sx={{ my: 2 }} />
+
+                            <Typography
+                                variant="subtitle2"
+                                sx={{ mb: 1 }}
+                            >
+                                Shared with
+                            </Typography>
+
+                            {sharedWith.map((user) => (
+                                <Box
+                                    key={user.email}
+                                    sx={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        py: 0.5,
+                                        fontSize: 14,
+                                    }}
+                                >
+                                    <span>{user.email}</span>
+                                    <span style={{ opacity: 0.7 }}>
+                                        {user.permission}
+                                    </span>
+                                </Box>
+                            ))}
+                        </>
+                    )}
                 </DialogContent>
 
                 <DialogActions>
@@ -160,7 +214,10 @@ export default function ShareDesignDialog({
                 open={snackbar.open}
                 autoHideDuration={3000}
                 onClose={() =>
-                    setSnackbar((prev) => ({ ...prev, open: false }))
+                    setSnackbar((prev) => ({
+                        ...prev,
+                        open: false,
+                    }))
                 }
             >
                 <Alert severity={snackbar.severity}>

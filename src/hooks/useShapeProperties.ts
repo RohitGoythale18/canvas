@@ -7,7 +7,10 @@ interface FontFeatureType {
     fontStyles: FontStyles;
     alignment: 'left' | 'center' | 'right' | 'justify';
     listType: 'bullet' | 'number' | 'none';
-    textColor: string | { type: 'solid' | 'gradient'; value: string | { start: string; end: string } };
+    textColor: string | {
+        type: 'solid' | 'gradient';
+        value: string | { start: string; end: string }
+    };
 }
 
 interface UseShapePropertiesProps {
@@ -39,7 +42,6 @@ export const useShapeProperties = ({
     borderType,
     borderSize,
     borderColor,
-    shapes,
     onShapesChange,
     currentFontFeatures
 }: UseShapePropertiesProps) => {
@@ -75,5 +77,5 @@ export const useShapeProperties = ({
                 return shape;
             }));
         });
-    }, [fontFeatures, shapes, onShapesChange]);
+    }, [fontFeatures, onShapesChange]);
 };

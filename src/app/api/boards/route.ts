@@ -18,6 +18,14 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    console.log('Fetched boards for user', userId, ':', boards.map(b => ({ id: b.id, name: b.name, designsCount: b.designs.length })));
+
+    // Also log total designs for this user
+    const totalDesigns = await prisma.design.count({
+      where: { ownerId: userId },
+    });
+    console.log('Total designs for user', userId, ':', totalDesigns);
+
     return NextResponse.json(boards);
   } catch (error) {
     console.error('Get boards error:', error);

@@ -3,27 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { subscribeToPush } from '@/lib/push';
-
-interface User {
-    id: string;
-    name: string;
-    email: string;
-}
-
-interface DecodedToken {
-    exp: number;
-    userId: string;
-    email: string;
-}
-
-interface AuthContextType {
-    user: User | null;
-    token: string | null;
-    login: (token: string, user: User) => void;
-    logout: () => void;
-    isAuthenticated: boolean;
-    loading: boolean;
-}
+import { AuthContextType, DecodedToken, User } from '@/types';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -100,9 +80,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [token]);
 
     useEffect(() => {
-        if (token) {
+        if (!token) return;
+
+        const timer = setTimeout(() => {
             subscribeToPush(token);
-        }
+        }, 1000);
+
+        return () => clearTimeout(timer);
     }, [token]);
 
     return (

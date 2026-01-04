@@ -1,28 +1,9 @@
 'use client';
+import { FontStyles, Shape, UseTextToolsProps } from '@/types';
 import { useEffect, useCallback } from 'react';
-import { Shape, FontStyles } from '../types';
 
 const MIN_SHAPE_WIDTH = 20;
 const MIN_SHAPE_HEIGHT = 20;
-
-interface UseTextToolsProps {
-    textActive: boolean;
-    shapes: Shape[];
-    textInput: string;
-    editingShapeId: string | null;
-    currentFontFeatures?: {
-        fontFamily: string;
-        fontSize: number;
-        fontStyles: FontStyles;
-        alignment: 'left' | 'center' | 'right' | 'justify';
-        listType: 'bullet' | 'number' | 'none';
-        textColor: string | { type: 'solid' | 'gradient'; value: string | { start: string; end: string } };
-    };
-    onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
-    setTextInput: React.Dispatch<React.SetStateAction<string>>;
-    setEditingShapeId: React.Dispatch<React.SetStateAction<string | null>>;
-    onTextToggle?: (enabled: boolean) => void;
-}
 
 const DEFAULT_FONT_FEATURES = {
     fontFamily: "Arial, sans-serif",
@@ -47,12 +28,14 @@ export const useTextTools = ({
     onShapesChange,
     setTextInput,
     setEditingShapeId,
-    onTextToggle
+    onTextToggle,
+    permission
 }: UseTextToolsProps) => {
     const fontFeatures = currentFontFeatures ?? DEFAULT_FONT_FEATURES;
+    const canEdit = permission === 'OWNER' || permission === 'WRITE';
 
     const commitEditing = useCallback((id: string | null) => {
-        if (!id) return;
+        if (!id || !canEdit) return;
         onShapesChange(prev => prev.map(shape =>
             shape.id === id
                 ? {
@@ -72,7 +55,7 @@ export const useTextTools = ({
                 : shape
         ));
         setEditingShapeId(null);
-    }, [textInput, fontFeatures.fontSize, fontFeatures.fontFamily, fontFeatures.fontStyles, fontFeatures.alignment, fontFeatures.listType, fontFeatures.textColor, onShapesChange, setEditingShapeId]);
+    }, [textInput, fontFeatures.fontSize, fontFeatures.fontFamily, fontFeatures.fontStyles, fontFeatures.alignment, fontFeatures.listType, fontFeatures.textColor, onShapesChange, setEditingShapeId, canEdit]);
 
     useEffect(() => {
         if (typeof document === 'undefined') return;
@@ -91,6 +74,8 @@ export const useTextTools = ({
                 let clickedOnText = false;
                 for (const shape of shapes) {
                     if (shape.type === "text") {
+                        if (!canEdit) return;
+
                         if (mouseX >= shape.x && mouseX <= shape.x + shape.width &&
                             mouseY >= shape.y && mouseY <= shape.y + shape.height) {
                             clickedOnText = true;
@@ -110,13 +95,13 @@ export const useTextTools = ({
                             setTextInput(shape.text || "");
                             setEditingShapeId(shape.id);
 
-                            break; 
+                            break;
                         }
                     }
                 }
 
                 if (!clickedOnText) {
-                    if (!textActive) {
+                    if (!textActive || !canEdit) {
                         return;
                     }
 
@@ -161,16 +146,14 @@ export const useTextTools = ({
         });
 
         return () => cleanupFunctions.forEach(fn => fn());
-    }, [textActive, shapes, onShapesChange, setTextInput, setEditingShapeId,
-        fontFeatures.fontSize, fontFeatures.fontFamily, fontFeatures.fontStyles,
-        fontFeatures.alignment, fontFeatures.listType, fontFeatures.textColor, onTextToggle]);
+    }, [textActive, shapes, onShapesChange, setTextInput, setEditingShapeId, fontFeatures.fontSize, fontFeatures.fontFamily, fontFeatures.fontStyles, fontFeatures.alignment, fontFeatures.listType, fontFeatures.textColor, onTextToggle, canEdit, permission]);
 
     useEffect(() => {
         if (typeof document === 'undefined') return;
 
         const handleOutsideMouseDown = (e: MouseEvent) => {
             const editingShape = shapes.find(s => s.isEditing && s.type === 'text' && s.id === editingShapeId);
-            if (!editingShape) return;
+            if (!editingShape || !canEdit) return;
 
             const canvas = document.querySelector<HTMLCanvasElement>(`.drawing-panel[data-panel-id="${editingShape.panelId || 'default'}"]`);
             if (!canvas) {
@@ -189,14 +172,14 @@ export const useTextTools = ({
                 clickY >= editingShape.y && clickY <= editingShape.y + editingShape.height &&
                 e.target && (e.target as HTMLElement).closest('.drawing-panel');
 
-            if (!clickedInsideShape) {
+            if (!clickedInsideShape && canEdit) {
                 commitEditing(editingShape.id);
             }
         };
 
         window.addEventListener('mousedown', handleOutsideMouseDown);
         return () => window.removeEventListener('mousedown', handleOutsideMouseDown);
-    }, [shapes, editingShapeId, commitEditing]);
+    }, [shapes, editingShapeId, commitEditing, canEdit, permission]);
 
     useEffect(() => {
         if (!editingShapeId) return;
@@ -211,7 +194,7 @@ export const useTextTools = ({
         const handleKeyDown = (e: KeyboardEvent) => {
             const editingShape = shapes.find(shape => shape.isEditing && shape.type === "text" && shape.selected && shape.id === editingShapeId);
 
-            if (!editingShape) return;
+            if (!editingShape || !canEdit) return;
 
             if (e.key === "Escape" || e.key === "Enter") {
                 e.preventDefault();
@@ -227,7 +210,7 @@ export const useTextTools = ({
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [shapes, textInput, setTextInput, editingShapeId, commitEditing]);
+    }, [shapes, textInput, setTextInput, editingShapeId, commitEditing, canEdit, permission]);
 
     useEffect(() => {
         if (!editingShapeId) return;
@@ -244,7 +227,7 @@ export const useTextTools = ({
         if (canvasToFocus) {
             canvasToFocus.focus();
         }
-    }, [editingShapeId, shapes]);
+    }, [editingShapeId, shapes, canEdit, permission]);
 
     useEffect(() => {
         if (!editingShapeId) return;

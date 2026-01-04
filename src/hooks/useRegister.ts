@@ -1,20 +1,6 @@
+import { RegisterData, RegisterResponse } from '@/types';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-
-interface RegisterData {
-  name: string;
-  email: string;
-  password: string;
-}
-
-interface RegisterResponse {
-  message: string;
-  user: {
-    id: string;
-    name: string;
-    email: string;
-  };
-}
 
 export const useRegister = () => {
   const router = useRouter();

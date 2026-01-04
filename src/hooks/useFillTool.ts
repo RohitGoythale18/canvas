@@ -1,15 +1,5 @@
+import { Shape, UseFillToolProps } from '@/types';
 import { useEffect } from 'react';
-import { Shape } from '../types';
-
-interface UseFillToolProps {
-    splitMode: string;
-    fillActive: boolean;
-    fillColor: string;
-    setFilledImages: React.Dispatch<React.SetStateAction<{ panelId: string; imageData: ImageData }[]>>;
-    shapes: Shape[];
-    onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
-    onSaveState?: () => void;
-}
 
 export const useFillTool = ({
     splitMode,
@@ -18,11 +8,13 @@ export const useFillTool = ({
     setFilledImages,
     shapes,
     onShapesChange,
-    onSaveState
+    onSaveState,
+    permission
 }: UseFillToolProps) => {
     useEffect(() => {
         const canvases = document.querySelectorAll<HTMLCanvasElement>(".drawing-panel");
         const cleanupFunctions: (() => void)[] = [];
+        const canEdit = permission === 'OWNER' || permission === 'WRITE';
 
         canvases.forEach((canvas) => {
             const ctx = canvas.getContext("2d");
@@ -111,7 +103,7 @@ export const useFillTool = ({
             };
 
             const handleFillClick = (e: MouseEvent) => {
-                if (!fillActive) return;
+                if (!fillActive || !canEdit) return;
                 const rect = canvas.getBoundingClientRect();
                 const x = Math.floor((e.clientX - rect.left) * (canvas.width / rect.width));
                 const y = Math.floor((e.clientY - rect.top) * (canvas.height / rect.height));
@@ -161,5 +153,5 @@ export const useFillTool = ({
         return () => {
             cleanupFunctions.forEach(cleanup => cleanup());
         };
-    }, [splitMode, fillActive, fillColor, setFilledImages, shapes, onShapesChange, onSaveState]);
+    }, [splitMode, fillActive, fillColor, setFilledImages, shapes, onShapesChange, onSaveState, permission]);
 };
