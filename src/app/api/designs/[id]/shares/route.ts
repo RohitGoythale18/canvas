@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { authenticateRequest } from '@/lib/auth';
 import { sendPushNotification } from '@/lib/webpush';
-import { sendEmailNotification } from '@/lib/mailer';
 import webpush from 'web-push';
 
 interface WebPushError extends Error {
@@ -78,11 +77,6 @@ export async function POST(
                 message: `A design "${design.title}" was shared with you`,
                 type: 'SUCCESS',
             },
-        });
-
-        // ================= EMAIL (NODEMAILER | NON-BLOCKING) =================
-        sendEmailNotification(receiver.email, design.title).catch((err) => {
-            console.error('Email failed:', err);
         });
 
         // ================= WEB PUSH (NON-BLOCKING) ===============
