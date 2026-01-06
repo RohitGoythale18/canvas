@@ -104,69 +104,69 @@ const shapeCategories: ShapeCategory[] = [
 ];
 
 const ICON_MAP: Record<string, string> = {
-    rectangle: "/shapeIcons/rectangle.png",
-    square: "/shapeIcons/square.png",
-    circle: "/shapeIcons/circle.png",
-    ellipseoval: "/shapeIcons/ellipse.png",
-    line: "/shapeIcons/line.png",
-    triangle: "/shapeIcons/triangle.png",
-    righttriangle: "/shapeIcons/rightTriangle.png",
-    polygon: "/shapeIcons/polygon.png",
-    diamond: "/shapeIcons/rhombus.png",
-    trapezoid: "/shapeIcons/trapezoid.png",
-    parallelogram: "/shapeIcons/parallelogram.png",
-    pentagon: "/shapeIcons/pentagon.png",
-    hexagon: "/shapeIcons/hexagon.png",
-    octagon: "/shapeIcons/octagon.png",
-    star: "/shapeIcons/star.png",
+    rectangle: "/shapeIcons/rectangle.svg",
+    square: "/shapeIcons/square.svg",
+    circle: "/shapeIcons/circle.svg",
+    ellipseoval: "/shapeIcons/ellipse.svg",
+    line: "/shapeIcons/line.svg",
+    triangle: "/shapeIcons/triangle.svg",
+    righttriangle: "/shapeIcons/rightTriangle.svg",
+    polygon: "/shapeIcons/polygon.svg",
+    diamond: "/shapeIcons/diamond.svg",
+    trapezoid: "/shapeIcons/trapezoid.svg",
+    parallelogram: "/shapeIcons/parallelogram.svg",
+    pentagon: "/shapeIcons/pentagon.svg",
+    hexagon: "/shapeIcons/hexagon.svg",
+    octagon: "/shapeIcons/octagon.svg",
+    star: "/shapeIcons/star.svg",
 
-    terminator: "/shapeIcons/startend.png",
-    process: "/shapeIcons/process.png",
-    decision: "/shapeIcons/decision.png",
-    inputoutput: "/shapeIcons/inputOutput.png",
-    preparation: "/shapeIcons/preparation.png",
-    connector: "/shapeIcons/circle.png",
-    document: "/shapeIcons/document.png",
-    delay: "/shapeIcons/delay.png",
-    manualinput: "/shapeIcons/manualInput.png",
-    database: "/shapeIcons/database.png",
+    terminator: "/shapeIcons/terminator.svg",
+    process: "/shapeIcons/process.svg",
+    decision: "/shapeIcons/decision.svg",
+    inputoutput: "/shapeIcons/inputOutput.svg",
+    preparation: "/shapeIcons/preparation.svg",
+    connector: "/shapeIcons/circle.svg",
+    document: "/shapeIcons/document.svg",
+    delay: "/shapeIcons/delay.svg",
+    manualinput: "/shapeIcons/manualInput.svg",
+    database: "/shapeIcons/database.svg",
 
-    arrow: "/shapeIcons/arrow.png",
-    doublearrow: "/shapeIcons/doubleArrow.png",
-    curvedarrow: "/shapeIcons/curvedArrow.png",
-    splitarrow: "/shapeIcons/splitArrow.png",
-    dashedconnector: "/shapeIcons/dashedLine.png",
-    dashedline: "/shapeIcons/dashedLine.png",
+    arrow: "/shapeIcons/arrow.svg",
+    doublearrow: "/shapeIcons/doubleArrow.svg",
+    curvedarrow: "/shapeIcons/curvedArrow.svg",
+    splitarrow: "/shapeIcons/splitArrow.svg",
+    dashedconnector: "/shapeIcons/dashedconnector.svg",
+    dashedline: "/shapeIcons/dashedLine.svg",
 
-    star5point: "/shapeIcons/star.png",
-    star6point: "/shapeIcons/star6.png",
-    burstexplosion: "/shapeIcons/burst.png",
-    heart: "/shapeIcons/heart.png",
-    cloud: "/shapeIcons/cloud.png",
-    banner: "/shapeIcons/banner.png",
-    badge: "/shapeIcons/badge.png",
-    speechbubble: "/shapeIcons/speechBubble.png",
-    callout: "/shapeIcons/callout.png",
+    star5point: "/shapeIcons/star.svg",
+    star6point: "/shapeIcons/star6.svg",
+    burstexplosion: "/shapeIcons/burst.svg",
+    heart: "/shapeIcons/heart.svg",
+    cloud: "/shapeIcons/cloud.svg",
+    banner: "/shapeIcons/banner.svg",
+    badge: "/shapeIcons/badge.svg",
+    speechbubble: "/shapeIcons/speechBubble.svg",
+    callout: "/shapeIcons/callout.svg",
 
-    arc: "/shapeIcons/arc.png",
-    sector: "/shapeIcons/sector.png",
-    chord: "/shapeIcons/chord.png",
-    crescent: "/shapeIcons/crescent.png",
-    ringdonut: "/shapeIcons/ring.png",
-    cube3d: "/shapeIcons/cube.png",
-    cylinder: "/shapeIcons/cylinder.png",
-    cone: "/shapeIcons/cone.png",
-    pyramid: "/shapeIcons/pyramid.png",
-    sphere: "/shapeIcons/sphere.png",
+    arc: "/shapeIcons/arc.svg",
+    sector: "/shapeIcons/sector.svg",
+    chord: "/shapeIcons/chord.svg",
+    crescent: "/shapeIcons/crescent.svg",
+    ringdonut: "/shapeIcons/ring.svg",
+    cube3d: "/shapeIcons/cube.svg",
+    cylinder: "/shapeIcons/cylinder.svg",
+    cone: "/shapeIcons/cone.svg",
+    pyramid: "/shapeIcons/pyramid.svg",
+    sphere: "/shapeIcons/sphere.svg",
 
-    frame: "/shapeIcons/frame.png",
-    dividerline: "/shapeIcons/dividerLine.png",
-    checkbox: "/shapeIcons/checkbox.png",
-    radiobutton: "/shapeIcons/radioButton.png",
-    buttonshape: "/shapeIcons/buttonShape.png",
-    tabshape: "/shapeIcons/tabShape.png",
-    card: "/shapeIcons/card.png",
-    timelinenode: "/shapeIcons/timelineNode.png",
+    frame: "/shapeIcons/frame.svg",
+    dividerline: "/shapeIcons/dividerLine.svg",
+    checkbox: "/shapeIcons/checkbox.svg",
+    radiobutton: "/shapeIcons/radioButton.svg",
+    buttonshape: "/shapeIcons/buttonShape.svg",
+    tabshape: "/shapeIcons/tabShape.svg",
+    card: "/shapeIcons/card.svg",
+    timelinenode: "/shapeIcons/timelineNode.svg",
 };
 
 /* normalize helper */
@@ -188,7 +188,7 @@ function iconPathFromFile(fileName: string): string {
 
     // fallback to computed path inside /public/shapeIcons
     const lowerFirst = base.charAt(0).toLowerCase() + base.slice(1);
-    return `/shapeIcons/${lowerFirst}.png`;
+    return `/shapeIcons/${lowerFirst}.svg`;
 }
 
 export default function ShapeButton({ onShapeSelect }: ShapeButtonProps) {
@@ -221,14 +221,14 @@ export default function ShapeButton({ onShapeSelect }: ShapeButtonProps) {
                     sx: {
                         color: "white",
                         borderRadius: 1,
-                        width: { xs: "95vw", sm: 700, md: 270 },
+                        width: { xs: 320, sm: 320, md: 320 },
                         maxHeight: "70vh",
                         overflow: "hidden",
                         p: 0,
                     },
                 }}
                 anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-                transformOrigin={{ vertical: "top", horizontal: "left" }}
+                transformOrigin={{ vertical: "top", horizontal: "center" }}
             >
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 1, color: "black", borderBottom: 1, borderColor: "divider", p: 0 }}>
                     <Tabs
@@ -251,57 +251,52 @@ export default function ShapeButton({ onShapeSelect }: ShapeButtonProps) {
                             <Tab
                                 key={index}
                                 label={cat.category}
-                                sx={{ color: "black", textTransform: "none", minWidth: "auto", fontSize: "0.8rem", p: 0 }}
+                                sx={{ color: "black", textTransform: "none", minWidth: "auto", fontSize: "0.9rem", p: 0 }}
                             />
                         ))}
                     </Tabs>
                 </Box>
 
-                <Box sx={{ p: 1, overflowY: "auto", maxHeight: "60vh" }}>
-                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "center" }}>
-                        {shapeCategories[selectedCategory].shapes.map((shape, idx) => {
-                            const iconPath = iconPathFromFile(shape.file);
+                <Box sx={{ p: 1, overflowY: "auto", maxHeight: "60vh", display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "start" }}>
+                    {shapeCategories[selectedCategory].shapes.map((shape, idx) => {
+                        const iconPath = iconPathFromFile(shape.file);
 
-                            return (
-                                <Tooltip key={idx} title={shape.name} arrow>
+                        return (
+                            <Tooltip key={idx} title={shape.name} arrow>
+                                <Box
+                                    onClick={() => handleShapeSelect(shape.name)}
+                                    sx={{
+                                        cursor: "pointer",
+                                        borderRadius: 1,
+                                        textAlign: "center",
+                                        px: 0.5,
+                                    }}
+                                >
                                     <Box
-                                        onClick={() => handleShapeSelect(shape.name)}
                                         sx={{
-                                            flex: "0 0 50%",
-                                            "@media (min-width:600px)": { flex: "0 0 33.33%" },
-                                            "@media (min-width:900px)": { flex: "0 0 25%" },
-                                            "@media (min-width:1200px)": { flex: "0 0 16.67%" },
-                                            cursor: "pointer",
+                                            width: 35,
+                                            height: 35,
+                                            border: "1px solid #555",
                                             borderRadius: 1,
-                                            textAlign: "center",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            mb: 1,
+                                            px: "5px",
                                         }}
                                     >
-                                        <Box
-                                            sx={{
-                                                width: 30,
-                                                height: 30,
-                                                border: "1px solid #555",
-                                                borderRadius: 1,
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "center",
-                                                mb: 1,
-                                                px: 1,
-                                            }}
-                                        >
-                                            <Image
-                                                src={iconPath}
-                                                alt={shape.name}
-                                                width={20}
-                                                height={20}
-                                                style={{ objectFit: "contain", display: "block" }}
-                                            />
-                                        </Box>
+                                        <Image
+                                            src={iconPath}
+                                            alt={shape.name}
+                                            width={200}
+                                            height={200}
+                                            style={{ objectFit: "contain", display: "block" }}
+                                        />
                                     </Box>
-                                </Tooltip>
-                            );
-                        })}
-                    </Box>
+                                </Box>
+                            </Tooltip>
+                        );
+                    })}
                 </Box>
             </Menu>
         </>
