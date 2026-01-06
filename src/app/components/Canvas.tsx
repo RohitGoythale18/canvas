@@ -1,3 +1,4 @@
+// src/app/components/Canvas.tsx
 'use client';
 import { useState, useRef } from "react";
 import { Box } from "@mui/material";

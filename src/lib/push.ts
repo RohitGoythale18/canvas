@@ -1,5 +1,4 @@
 // src/lib/push.ts
-
 function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
     const base64 = (base64String + padding)
@@ -43,11 +42,6 @@ export async function subscribeToPush(token: string) {
     // Wait until active & controlling
     await navigator.serviceWorker.ready;
 
-    if (!navigator.serviceWorker.controller) {
-        console.warn('Service Worker not controlling page');
-        return;
-    }
-
     // Avoid duplicate subscription
     const existing = await registration.pushManager.getSubscription();
     if (existing) return;
@@ -64,7 +58,7 @@ export async function subscribeToPush(token: string) {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(subscription),
+        body: JSON.stringify(subscription.toJSON()),
     });
 
     console.log('Push subscription successful');

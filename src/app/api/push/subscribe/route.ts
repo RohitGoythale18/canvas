@@ -19,7 +19,12 @@ export async function POST(request: NextRequest) {
 
         const subscription = await request.json();
 
-        if (!subscription || !subscription.endpoint) {
+        if (
+            !subscription ||
+            !subscription.endpoint ||
+            !subscription.keys?.p256dh ||
+            !subscription.keys?.auth
+        ) {
             return NextResponse.json(
                 { error: 'Invalid subscription' },
                 { status: 400 }

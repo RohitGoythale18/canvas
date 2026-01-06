@@ -1,3 +1,4 @@
+// src/app/page.tsx
 'use client';
 import { useState, useCallback, useEffect, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";

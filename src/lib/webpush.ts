@@ -24,8 +24,12 @@ export async function sendPushNotification(
 ) {
     initVapid();
 
-    await webpush.sendNotification(
-        subscription,
-        JSON.stringify(payload)
-    );
+    try {
+        await webpush.sendNotification(
+            subscription,
+            JSON.stringify(payload)
+        );
+    } catch {
+        throw new Error('Failed to send push notification');
+    }
 }
