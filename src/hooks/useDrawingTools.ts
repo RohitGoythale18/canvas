@@ -19,7 +19,18 @@ export const useDrawingTools = ({
   const isDrawingRef = useRef(false);
   const currentPathRef = useRef<DrawingPath | null>(null);
   const currentPanelRef = useRef<string>('default');
+  const shapesRef = useRef(shapes);
+  const onShapesChangeRef = useRef(onShapesChange);
   const canEdit = permission === 'OWNER' || permission === 'WRITE';
+
+  useEffect(() => {
+    shapesRef.current = shapes;
+  }, [shapes]);
+
+  useEffect(() => {
+    onShapesChangeRef.current = onShapesChange;
+  }, [onShapesChange]);
+
 
   useEffect(() => {
     /**
@@ -36,7 +47,7 @@ export const useDrawingTools = ({
       const maxY = Math.max(...path.points.map((p) => p.y));
 
       // shapes whose bbox intersects eraser bbox
-      const touched = shapes.filter((s) => {
+      const touched = shapesRef.current.filter((s) => {
         const sMinX = s.x;
         const sMinY = s.y;
         const sMaxX = s.x + s.width;
@@ -46,7 +57,7 @@ export const useDrawingTools = ({
 
       if (touched.length === 0) return;
 
-      const updatedShapes = shapes.map((s) => ({ ...s }));
+      const updatedShapes = shapesRef.current.map((s) => ({ ...s }));
 
       await Promise.all(
         touched.map(async (shape) => {
@@ -245,13 +256,13 @@ export const useDrawingTools = ({
               imageElement: img,
               imageUrl: dataUrl,
               rasterized: true,
-            } as Shape;
+            } as Shape; 
           }
         })
       );
 
       // commit shape updates
-      onShapesChange(() => updatedShapes);
+      onShapesChangeRef.current?.(() => updatedShapes);
     };
 
     const canvases = Array.from(
@@ -357,21 +368,21 @@ export const useDrawingTools = ({
         ctx.restore();
 
         // update drawings state too
-        setDrawings((prev) =>
-          prev.map((d) => {
-            if (d.panelId !== currentPanelRef.current) return d;
-            if (d.paths.length === 0) return d;
-            const lastPath = d.paths[d.paths.length - 1];
-            const updatedLast = {
-              ...lastPath,
-              points: [...lastPath.points, pos],
-            };
-            return {
-              ...d,
-              paths: [...d.paths.slice(0, -1), updatedLast],
-            };
-          })
-        );
+        // setDrawings((prev) =>
+        //   prev.map((d) => {
+        //     if (d.panelId !== currentPanelRef.current) return d;
+        //     if (d.paths.length === 0) return d;
+        //     const lastPath = d.paths[d.paths.length - 1];
+        //     const updatedLast = {
+        //       ...lastPath,
+        //       points: [...lastPath.points, pos],
+        //     };
+        //     return {
+        //       ...d,
+        //       paths: [...d.paths.slice(0, -1), updatedLast],
+        //     };
+        //   })
+        // );
       };
 
       const finalizePath = async () => {
@@ -457,7 +468,7 @@ export const useDrawingTools = ({
     splitMode,
     setDrawings,
     onSaveState,
-    shapes,
-    onShapesChange,
+    // shapes,
+    // onShapesChange,
   ]);
 };

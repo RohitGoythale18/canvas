@@ -1,3 +1,4 @@
+// src/hooks/useShapeProperties.ts
 import { useEffect } from 'react';
 import { Shape, FontStyles } from '../types';
 

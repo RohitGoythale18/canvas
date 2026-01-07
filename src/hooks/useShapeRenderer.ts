@@ -1,3 +1,4 @@
+// src/hooks/useShapeRenderer.ts
 import { useEffect } from 'react';
 import * as Shapes from '../app/components/shapes/index';
 import { Shape, UseShapeRendererProps } from '@/types';
@@ -11,7 +12,6 @@ export const useShapeRenderer = ({
     editingShapeId,
     loadedImage,
     backgroundColor,
-    // permission
 }: UseShapeRendererProps) => {
     useEffect(() => {
         const canvases = document.querySelectorAll<HTMLCanvasElement>(".drawing-panel");

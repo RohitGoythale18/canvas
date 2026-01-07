@@ -2,11 +2,11 @@
 'use client';
 import { useState, useCallback, useEffect, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import dynamic from 'next/dynamic';
+
 import { Box } from "@mui/material";
 import { Shape, DrawingPath, FontFeatures, CanvasData } from "../types";
 import { useAuth } from "@/context/AuthContext";
-import dynamic from 'next/dynamic';
-
 import Menu from "./components/MenuBar";
 import Canvas from "./components/Canvas";
 

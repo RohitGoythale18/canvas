@@ -1,18 +1,19 @@
 // src/app/components/Canvas.tsx
 'use client';
 import { useState, useRef } from "react";
-import { Box } from "@mui/material";
-import { Shape, DrawingPath, FontFeatures } from "../../types";
+import { DrawingPath, FontFeatures, Shape } from "@/types";
 
-import { useCanvasResize } from "../../hooks/useCanvasResize";
-import { useDrawingTools } from "../../hooks/useDrawingTools";
-import { useFillTool } from "../../hooks/useFillTool";
-import { useTextTools } from "../../hooks/useTextTools";
-import { useShapeInteraction } from "../../hooks/useShapeInteraction";
-import { useShapeProperties } from "../../hooks/useShapeProperties";
-import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
-import { useCanvasCleanup } from "../../hooks/useCanvasCleanup";
-import { useShapeRenderer } from "../../hooks/useShapeRenderer";
+import { useCanvasResize } from "@/hooks/useCanvasResize";
+import { useDrawingTools } from "@/hooks/useDrawingTools";
+import { useFillTool } from "@/hooks/useFillTool";
+import { useTextTools } from "@/hooks/useTextTools";
+import { useShapeInteraction } from "@/hooks/useShapeInteraction";
+import { useShapeProperties } from "@/hooks/useShapeProperties";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { useCanvasCleanup } from "@/hooks/useCanvasCleanup";
+import { useShapeRenderer } from "@/hooks/useShapeRenderer";
+
+import { Box } from "@mui/material";
 
 const CANVAS_WIDTH = 1920;
 const CANVAS_HEIGHT = 1080;
@@ -62,12 +63,11 @@ const Canvas = ({
     selectedShape = null,
     onShapeSelect,
     textActive = false,
-    onTextToggle, // <-- accept prop
+    onTextToggle,
     uploadedImageUrl,
     loadedImage,
     currentImageId,
     onImageUsed,
-    // onClearImage,
     backgroundColor = { default: "#ffffff" },
     onPanelSelect,
     borderActive = false,
@@ -130,7 +130,7 @@ const Canvas = ({
         onShapesChange,
         setTextInput,
         setEditingShapeId,
-        onTextToggle, // <-- pass the toggle callback into the hook
+        onTextToggle,
         permission
     });
 
@@ -173,13 +173,6 @@ const Canvas = ({
         shapes,
         onShapesChange,
         currentFontFeatures
-    });
-
-    useKeyboardShortcuts({
-        shapes,
-        onShapesChange,
-        onSaveState,
-        permission
     });
 
     useCanvasCleanup({
