@@ -235,6 +235,7 @@ export interface Shape {
   fontStyles?: FontStyles;
   textAlignment?: 'left' | 'center' | 'right' | 'justify';
   listType?: 'bullet' | 'number' | 'none';
+  zIndex: number;
 }
 
 // Types for TextBox

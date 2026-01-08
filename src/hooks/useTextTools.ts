@@ -105,8 +105,14 @@ export const useTextTools = ({
                         return;
                     }
 
-                    // Create new text shape 
+                    // Create new text shape
                     const panelId = canvas.getAttribute("data-panel-id") || "default";
+                    const maxZ = Math.max(
+                        0,
+                        ...shapes
+                            .filter(s => s.panelId === panelId)
+                            .map(s => s.zIndex ?? 0)
+                    );
                     const newShape: Shape = {
                         id: `text-${Date.now()}-${Math.random()}`,
                         type: "text",
@@ -126,7 +132,8 @@ export const useTextTools = ({
                         isEditing: true,
                         borderType: 'solid',
                         borderSize: 1,
-                        borderColor: '#000000'
+                        borderColor: '#000000',
+                        zIndex: maxZ + 1
                     };
 
                     onShapesChange(prev => [...prev.map(s => ({ ...s, selected: false })), newShape]);

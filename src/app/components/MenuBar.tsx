@@ -9,6 +9,7 @@ import SplitButton from "./buttons/SplitButton";
 import ExportButton from "./buttons/ExportButton";
 import UndoButton from "./buttons/UndoButton";
 import RedoButton from "./buttons/RedoButton";
+import LayerButton from "./buttons/LayerButton";
 import PencilButton from "./buttons/PencilButton";
 import FillButton from "./buttons/FillButton";
 import EraserButton from "./buttons/EraserButton";
@@ -64,9 +65,14 @@ interface MenuBarProps {
     onUndo?: () => void;
     onRedo?: () => void;
     permission?: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
+    onBringForward: () => void;
+    onBringToFront: () => void;
+    onSendBackward: () => void;
+    onSendToBack: () => void;
+    hasSelectedShape?: boolean;
 }
 
-const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onPencilToggle, onFillToggle, onColorChange, fillColor, onEraserToggle, onEraserSizeChange, eraserSize, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, onClearImage, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange, onUndo, onRedo }: MenuBarProps) => {
+const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onPencilToggle, onFillToggle, onColorChange, fillColor, onEraserToggle, onEraserSizeChange, eraserSize, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, onClearImage, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange, onUndo, onRedo, onBringForward, onBringToFront, onSendBackward, onSendToBack, hasSelectedShape }: MenuBarProps) => {
     return (
         <Box>
             <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', py: 1, px: 2 }}>
@@ -100,6 +106,7 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
                         <List sx={{ display: "flex", gap: 1, px: 1 }}>
                             <UndoButton onClick={onUndo} />
                             <RedoButton onClick={onRedo} />
+                            <LayerButton onBringToFront={onBringToFront} onBringForward={onBringForward} onSendBackward={onSendBackward} onSendToBack={onSendToBack} disabled={!hasSelectedShape} />
                         </List>
 
                         <Divider orientation="vertical" sx={{ borderColor: 'primary.main' }} />

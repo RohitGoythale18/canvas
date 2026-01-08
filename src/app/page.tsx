@@ -9,6 +9,7 @@ import { Shape, DrawingPath, FontFeatures, CanvasData } from "../types";
 import { useAuth } from "@/context/AuthContext";
 import Menu from "./components/MenuBar";
 import Canvas from "./components/Canvas";
+import { bringForward, bringToFront, sendBackward, sendToBack } from "@/utils/shapeLayerUtils";
 
 function HomeContentComponent() {
   const { token, isAuthenticated, loading } = useAuth();
@@ -163,7 +164,7 @@ function HomeContentComponent() {
     });
 
     if (!res.ok) return;
-    
+
     const design = await res.json();
     setPermission(design.permission);
     await handleLoadCanvas(design.data);
@@ -265,6 +266,30 @@ function HomeContentComponent() {
     setUploadedImageUrl(next.uploadedImageBase64 || null);
     setHistoryIndex(i => i + 1);
   };
+
+  // Bring to Front, Send to Back Shapes
+  const hasSelectedShape = shapes.some(s => s.selected);
+
+  const handleBringForward = () => {
+    setShapes(prev => bringForward(prev));
+    saveState();
+  };
+
+  const handleSendBackward = () => {
+    setShapes(prev => sendBackward(prev));
+    saveState();
+  };
+
+  const handleBringToFront = () => {
+    setShapes(prev => bringToFront(prev));
+    saveState();
+  };
+
+  const handleSendToBack = () => {
+    setShapes(prev => sendToBack(prev));
+    saveState();
+  };
+
 
   if (loading) {
     return <div>Loading...</div>;
@@ -441,6 +466,11 @@ function HomeContentComponent() {
         onUndo={handleUndo}
         onRedo={handleRedo}
         permission={permission}
+        onBringForward={handleBringForward}
+        onBringToFront={handleBringToFront}
+        onSendBackward={handleSendBackward}
+        onSendToBack={handleSendToBack}
+        hasSelectedShape={hasSelectedShape}
       />
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80vh', p: 1 }}>
         <Canvas

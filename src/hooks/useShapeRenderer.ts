@@ -81,9 +81,12 @@ export const useShapeRenderer = ({
 
 
             // Draw shapes for this panel only
-            shapes.filter(shape => shape.panelId === panelId).forEach((shape) => {
-                renderShape(ctx, shape, textInput, editingShapeId);
-            });
+            shapes
+                .filter(shape => shape.panelId === panelId)
+                .sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))
+                .forEach(shape => {
+                    renderShape(ctx, shape, textInput, editingShapeId);
+                });
         });
     }, [shapes, drawings, filledImages, splitMode, textInput, editingShapeId, loadedImage, backgroundColor]);
 };

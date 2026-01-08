@@ -1,6 +1,6 @@
 // src/hooks/useShapeInteraction.ts
 import { Shape, UseShapeInteractionProps } from '@/types';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 const MIN_SHAPE_WIDTH = 20;
 const MIN_SHAPE_HEIGHT = 20;
@@ -34,23 +34,54 @@ export const useShapeInteraction = ({
     onSaveState,
     permission
 }: UseShapeInteractionProps) => {
+    const shapesRef = useRef(shapes);
+    const draggingRef = useRef(dragging);
+    const resizingRef = useRef(resizing);
+    const resizeHandleRef = useRef(resizeHandle);
+    const dragOffsetRef = useRef(dragOffset);
+    const onShapesChangeRef = useRef(onShapesChange);
+    const canEditRef = useRef(false);
+
+    // const canEdit = permission === 'OWNER' || permission === 'WRITE';
+
+    useEffect(() => {
+        shapesRef.current = shapes;
+    }, [shapes]);
+
+    useEffect(() => {
+        draggingRef.current = dragging;
+        resizingRef.current = resizing;
+        resizeHandleRef.current = resizeHandle;
+        dragOffsetRef.current = dragOffset;
+        onShapesChangeRef.current = onShapesChange;
+    }, [dragging, resizing, resizeHandle, dragOffset, onShapesChange]);
+
+    useEffect(() => {
+        canEditRef.current =
+            permission === 'OWNER' || permission === 'WRITE';
+    }, [permission]);
+
     useEffect(() => {
         const canvases = document.querySelectorAll<HTMLCanvasElement>(".drawing-panel");
         const cleanupFns: (() => void)[] = [];
-        const canEdit = permission === 'OWNER' || permission === 'WRITE';
 
         canvases.forEach((canvas) => {
             const panelId = canvas.getAttribute("data-panel-id") || "default";
 
             const handleMouseDown = (e: MouseEvent) => {
-                if (pencilActive || eraserActive || fillActive || textActive) return;
+                if (pencilActive || eraserActive || fillActive || textActive || !canEditRef.current) return;
 
                 const rect = canvas.getBoundingClientRect();
                 const x = (e.clientX - rect.left) * (canvas.width / rect.width);
                 const y = (e.clientY - rect.top) * (canvas.height / rect.height);
 
                 if (selectedShape) {
-                    if (!canEdit) return;
+                    const maxZ = Math.max(
+                        0,
+                        ...shapesRef.current
+                            .filter(s => s.panelId === panelId)
+                            .map(s => s.zIndex ?? 0)
+                    );
 
                     // Create new blank shape
                     const newShape: Shape = {
@@ -69,29 +100,39 @@ export const useShapeInteraction = ({
                         borderType: undefined,
                         borderSize: undefined,
                         borderColor: undefined,
+                        zIndex: maxZ + 1,
                     };
-                    onShapesChange(prev => [...prev, newShape]);
+                    onShapesChangeRef.current(prev => [...prev, newShape]);
                     onShapeSelect(null as never);
                     return;
                 }
 
                 // Resize handles
-                let foundHandle = false;
+                const handleSize = 8;
 
-                shapes.forEach((shape) => {
-                    if (!shape.selected || shape.panelId !== panelId) return;
+                for (const shape of shapesRef.current) {
+                    if (!shape.selected || shape.panelId !== panelId) continue;
 
-                    const handleSize = 8;
                     const handles = [
                         { name: 'top-left', x: shape.x, y: shape.y },
-                        { name: 'top-right', x: shape.x + shape.width, y: shape.y },
-                        { name: 'bottom-left', x: shape.x, y: shape.y + shape.height },
-                        { name: 'bottom-right', x: shape.x + shape.width, y: shape.y + shape.height },
+                        {
+                            name: 'top-right',
+                            x: shape.x + shape.width,
+                            y: shape.y,
+                        },
+                        {
+                            name: 'bottom-left',
+                            x: shape.x,
+                            y: shape.y + shape.height,
+                        },
+                        {
+                            name: 'bottom-right',
+                            x: shape.x + shape.width,
+                            y: shape.y + shape.height,
+                        },
                     ];
 
-                    handles.forEach((handle) => {
-                        if (!canEdit) return;
-
+                    for (const handle of handles) {
                         if (
                             x >= handle.x - handleSize / 2 &&
                             x <= handle.x + handleSize / 2 &&
@@ -100,19 +141,20 @@ export const useShapeInteraction = ({
                         ) {
                             setResizing(true);
                             setResizeHandle(handle.name);
-                            setDragOffset({ x: x - handle.x, y: y - handle.y });
-                            foundHandle = true;
+                            setDragOffset({
+                                x: x - handle.x,
+                                y: y - handle.y,
+                            });
+                            return;
                         }
-                    });
-                });
-
-                if (foundHandle) return;
+                    }
+                }
 
                 // Select shape
-                let selectedShapeId: string | null = null;
+                let selectedId: string | null = null;
 
-                shapes.forEach((shape) => {
-                    if (shape.panelId !== panelId) return;
+                for (const shape of shapesRef.current) {
+                    if (shape.panelId !== panelId) continue;
 
                     if (
                         x >= shape.x &&
@@ -120,46 +162,57 @@ export const useShapeInteraction = ({
                         y >= shape.y &&
                         y <= shape.y + shape.height
                     ) {
-                        selectedShapeId = shape.id;
+                        selectedId = shape.id;
                     }
-                });
+                }
 
-                onShapesChange(prev =>
+                onShapesChangeRef.current(prev =>
                     prev.map(shape => ({
                         ...shape,
-                        selected: shape.panelId === panelId && shape.id === selectedShapeId
+                        selected:
+                            shape.panelId === panelId &&
+                            shape.id === selectedId,
                     }))
                 );
 
-                if (selectedShapeId) {
-                    const selected = shapes.find(
-                        s => s.id === selectedShapeId && s.panelId === panelId
+                if (selectedId) {
+                    const selected = shapesRef.current.find(
+                        s => s.id === selectedId
                     );
-
                     if (selected) {
                         setDragging(true);
-                        setDragOffset({ x: x - selected.x, y: y - selected.y });
+                        setDragOffset({
+                            x: x - selected.x,
+                            y: y - selected.y,
+                        });
                     }
                 }
             };
 
             // Mouse move and up handlers
             const handleMouseMove = (e: MouseEvent) => {
-                if (pencilActive || eraserActive || fillActive || textActive) return;
-                if (!canEdit) return;
+                if (pencilActive || eraserActive || fillActive || textActive || !canEditRef.current) return;
 
                 const rect = canvas.getBoundingClientRect();
-                const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-                const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+                const x =
+                    (e.clientX - rect.left) *
+                    (canvas.width / rect.width);
+                const y =
+                    (e.clientY - rect.top) *
+                    (canvas.height / rect.height);
 
-                if (dragging) {
-                    onShapesChange(prev =>
+                /* ---- DRAG ---- */
+                if (draggingRef.current) {
+                    onShapesChangeRef.current(prev =>
                         prev.map(shape => {
-                            if (shape.selected && shape.panelId === panelId) {
+                            if (
+                                shape.selected &&
+                                shape.panelId === panelId
+                            ) {
                                 return {
                                     ...shape,
-                                    x: x - dragOffset.x,
-                                    y: y - dragOffset.y,
+                                    x: x - dragOffsetRef.current.x,
+                                    y: y - dragOffsetRef.current.y,
                                 };
                             }
                             return shape;
@@ -167,36 +220,68 @@ export const useShapeInteraction = ({
                     );
                 }
 
-                if (resizing && resizeHandle) {
-                    onShapesChange(prev =>
+                /* ---- RESIZE ---- */
+                if (
+                    resizingRef.current &&
+                    resizeHandleRef.current
+                ) {
+                    onShapesChangeRef.current(prev =>
                         prev.map(shape => {
-                            if (!shape.selected || shape.panelId !== panelId) return shape;
+                            if (
+                                !shape.selected ||
+                                shape.panelId !== panelId
+                            )
+                                return shape;
 
                             let newX = shape.x;
                             let newY = shape.y;
                             let newWidth = shape.width;
                             let newHeight = shape.height;
 
-                            switch (resizeHandle) {
+                            switch (resizeHandleRef.current) {
                                 case 'top-left':
-                                    newX = x - dragOffset.x;
-                                    newY = y - dragOffset.y;
-                                    newWidth = shape.x + shape.width - newX;
-                                    newHeight = shape.y + shape.height - newY;
+                                    newX = x - dragOffsetRef.current.x;
+                                    newY = y - dragOffsetRef.current.y;
+                                    newWidth =
+                                        shape.x +
+                                        shape.width -
+                                        newX;
+                                    newHeight =
+                                        shape.y +
+                                        shape.height -
+                                        newY;
                                     break;
                                 case 'top-right':
-                                    newY = y - dragOffset.y;
-                                    newWidth = x - dragOffset.x - shape.x;
-                                    newHeight = shape.y + shape.height - newY;
+                                    newY = y - dragOffsetRef.current.y;
+                                    newWidth =
+                                        x -
+                                        dragOffsetRef.current.x -
+                                        shape.x;
+                                    newHeight =
+                                        shape.y +
+                                        shape.height -
+                                        newY;
                                     break;
                                 case 'bottom-left':
-                                    newX = x - dragOffset.x;
-                                    newWidth = shape.x + shape.width - newX;
-                                    newHeight = y - dragOffset.y - shape.y;
+                                    newX = x - dragOffsetRef.current.x;
+                                    newWidth =
+                                        shape.x +
+                                        shape.width -
+                                        newX;
+                                    newHeight =
+                                        y -
+                                        dragOffsetRef.current.y -
+                                        shape.y;
                                     break;
                                 case 'bottom-right':
-                                    newWidth = x - dragOffset.x - shape.x;
-                                    newHeight = y - dragOffset.y - shape.y;
+                                    newWidth =
+                                        x -
+                                        dragOffsetRef.current.x -
+                                        shape.x;
+                                    newHeight =
+                                        y -
+                                        dragOffsetRef.current.y -
+                                        shape.y;
                                     break;
                             }
 
@@ -204,8 +289,14 @@ export const useShapeInteraction = ({
                                 ...shape,
                                 x: newX,
                                 y: newY,
-                                width: Math.max(MIN_SHAPE_WIDTH, newWidth),
-                                height: Math.max(MIN_SHAPE_HEIGHT, newHeight),
+                                width: Math.max(
+                                    MIN_SHAPE_WIDTH,
+                                    newWidth
+                                ),
+                                height: Math.max(
+                                    MIN_SHAPE_HEIGHT,
+                                    newHeight
+                                ),
                             };
                         })
                     );
@@ -216,7 +307,7 @@ export const useShapeInteraction = ({
                 setDragging(false);
                 setResizing(false);
                 setResizeHandle(null);
-                if (canEdit && onSaveState) onSaveState();
+                if (canEditRef.current && onSaveState) onSaveState();
             };
 
             canvas.addEventListener("mousedown", handleMouseDown);
@@ -235,5 +326,5 @@ export const useShapeInteraction = ({
         return () => {
             cleanupFns.forEach(fn => fn());
         };
-    }, [selectedShape, splitMode, shapes, pencilActive, eraserActive, fillActive, textActive, uploadedImageUrl, loadedImage, currentImageId, borderActive, borderColor, borderSize, borderType, zoomLevel, dragging, resizing, resizeHandle, dragOffset, onShapesChange, onShapeSelect, onSaveState, setDragging, setResizing, setDragOffset, setResizeHandle, permission]);
-};
+    }, [selectedShape, splitMode, pencilActive, eraserActive, fillActive, textActive, uploadedImageUrl, loadedImage, currentImageId, borderActive, borderColor, borderSize, borderType, zoomLevel, onShapeSelect, onSaveState, setDragging, setResizing, setDragOffset, setResizeHandle, permission]);
+}; 
