@@ -1,11 +1,9 @@
 'use client';
 import { useState, useRef } from "react";
+import { UploadImageButtonProps } from "@/types";
+
 import { Tooltip, Button, Menu, MenuItem, Divider } from "@mui/material";
 import ImageIcon from '@mui/icons-material/Image';
-
-interface UploadImageButtonProps {
-    onImageUpload?: (base64: string) => void;
-}
 
 const UploadImageButton = ({ onImageUpload }: UploadImageButtonProps) => {
     const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);

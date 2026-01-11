@@ -1,18 +1,14 @@
 'use client';
 import { Tooltip, Button } from "@mui/material";
 import UndoIcon from '@mui/icons-material/Undo';
+import { UndoButtonProps } from "@/types";
 
-interface UndoButtonProps {
-    onClick?: () => void;
-    active?: boolean;
-}
-
-const UndoButton = ({ onClick = () => {}, active = false }: UndoButtonProps) => {
+const UndoButton = ({ onUndo, onClick = () => {}, active = false }: UndoButtonProps) => {
     return (
         <Tooltip title="Undo" arrow>
             <Button
                 variant={active ? "contained" : "outlined"}
-                onClick={onClick}
+                onClick={onUndo ?? onClick}
                 size="small"
             >
                 <UndoIcon sx={{ fontSize: 20 }} />

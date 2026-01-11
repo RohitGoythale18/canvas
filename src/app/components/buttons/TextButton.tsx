@@ -1,11 +1,8 @@
 'use client';
+import { TextButtonProps } from "@/types";
+
 import { Tooltip, Button } from "@mui/material";
 import RttIcon from '@mui/icons-material/Rtt';
-
-interface TextButtonProps {
-    active?: boolean;
-    onToggle?: (enabled: boolean) => void;
-}
 
 const TextButton = ({ active = false, onToggle }: TextButtonProps) => {
     const handleClick = () => {
@@ -14,7 +11,7 @@ const TextButton = ({ active = false, onToggle }: TextButtonProps) => {
     };
 
     return (
-        <Tooltip title="Text Tool" arrow>
+        <Tooltip title="Textbox" arrow>
             <Button
                 variant={active ? "contained" : "outlined"}
                 onClick={handleClick}

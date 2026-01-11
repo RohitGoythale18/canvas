@@ -1,8 +1,7 @@
 'use client';
-
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Button, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Snackbar, Alert, Divider, List, ListItemButton, ListItemText, ListItemIcon, Collapse, ListItemAvatar, Avatar, IconButton, Menu, MenuItem, ListItemSecondaryAction, } from '@mui/material';
 
+import { Box, Typography, Button, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Snackbar, Alert, Divider, List, ListItemButton, ListItemText, ListItemIcon, Collapse, ListItemAvatar, Avatar, IconButton, Menu, MenuItem, ListItemSecondaryAction, } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import AddIcon from '@mui/icons-material/Add';
 import FolderIcon from '@mui/icons-material/Folder';
@@ -12,68 +11,25 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import ShareIcon from '@mui/icons-material/Share';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-import { CanvasData } from '../../types';
+import { BoardAPI, DesignAPI } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import ShareDesignDialog from '../components/ShareDesignDialog';
 
-interface BoardAPI {
-  id: string;
-  name: string;
-  description: string;
-  createdAt: string;
-  designs?: DesignAPI[];
-}
-
-interface DesignAPI {
-  id: string;
-  title: string;
-  thumbnailUrl: string;
-  data: CanvasData;
-  createdAt: string;
-  ownerId: string;
-  owner?: {
-    id: string;
-    name: string;
-    email: string;
-  };
-}
-
-interface Board {
-  id: string;
-  name: string;
-  description: string;
-  createdAt: string;
-  pins: Pin[] | undefined;
-}
-
-interface Pin {
-  id: string;
-  title: string;
-  imageUrl: string;
-  canvasData: CanvasData;
-  createdAt: string;
-  ownerId: string;
-  owner?: {
-    id: string;
-    name: string;
-    email: string;
-  };
-}
 
 export default function BoardsPage() {
   const { token, isAuthenticated, user } = useAuth();
   const router = useRouter();
   const authUserId = user?.id;
 
-  const [boards, setBoards] = useState<Board[]>([]);
-  const [sharedDesigns, setSharedDesigns] = useState<Pin[]>([]);
+  const [boards, setBoards] = useState<BoardAPI[]>([]);
+  const [sharedDesigns, setSharedDesigns] = useState<DesignAPI[]>([]);
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newBoardName, setNewBoardName] = useState('');
   const [newBoardDescription, setNewBoardDescription] = useState('');
   const [openBoards, setOpenBoards] = useState<Record<string, boolean>>({});
   const [designMenuAnchor, setDesignMenuAnchor] = useState<null | HTMLElement>(null);
-  const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
+  const [selectedPin, setSelectedPin] = useState<DesignAPI | null>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -95,16 +51,16 @@ export default function BoardsPage() {
 
       const data = await res.json();
 
-      const normalized: Board[] = (data as BoardAPI[]).map((b) => ({
+      const normalized: BoardAPI[] = (data as BoardAPI[]).map((b) => ({
         id: b.id,
         name: b.name,
         description: b.description,
         createdAt: b.createdAt,
-        pins: (b.designs ?? []).map((d) => ({
+        designs: (b.designs ?? []).map((d) => ({
           id: d.id,
           title: d.title,
-          imageUrl: d.thumbnailUrl,
-          canvasData: d.data,
+          thumbnailUrl: d.thumbnailUrl,
+          data: d.data,
           createdAt: d.createdAt,
           ownerId: d.ownerId,
           owner: d.owner,
@@ -206,11 +162,11 @@ export default function BoardsPage() {
     }
   };
 
-  const handlePinClick = (pin: Pin) => {
+  const handlePinClick = (pin: DesignAPI) => {
     router.push(`/?designId=${pin.id}`);
   };
 
-  const openDesignMenu = (e: React.MouseEvent<HTMLElement>, pin: Pin) => {
+  const openDesignMenu = (e: React.MouseEvent<HTMLElement>, pin: DesignAPI) => {
     e.stopPropagation();
     setDesignMenuAnchor(e.currentTarget);
     setSelectedPin(pin);
@@ -319,7 +275,7 @@ export default function BoardsPage() {
                   secondary={
                     <Typography component="span" sx={{ display: 'inline-flex', mt: 0.5 }}>
                       <Chip
-                        label={`${(board.pins || []).length} designs`}
+                        label={`${(board.designs || []).length} designs`}
                         size="small"
                         color="secondary"
                       />
@@ -332,31 +288,31 @@ export default function BoardsPage() {
 
               <Collapse in={isOpen} timeout="auto" unmountOnExit>
                 <List component="div" disablePadding>
-                  {(board.pins || []).map((pin) => (
+                  {(board.designs || []).map((design) => (
                     <ListItemButton
-                      key={pin.id}
+                      key={design.id}
                       sx={{ px: 9, gap: 2 }}
-                      onClick={() => handlePinClick(pin)}
+                      onClick={() => handlePinClick(design)}
                     >
                       <ListItemAvatar>
                         <Avatar
                           variant="rounded"
-                          src={pin.imageUrl}
-                          alt={pin.title}
+                          src={design.thumbnailUrl}
+                          alt={design.title}
                           sx={{ width: 100, height: 60 }}
                         />
                       </ListItemAvatar>
 
                       <ListItemText
-                        primary={pin.title}
+                        primary={design.title}
                         secondary={
                           <Box component="span">
                             <Typography variant="body2" component="span" sx={{ color: 'grey.300' }}>
-                              by {pin.owner?.name || pin.owner?.email || 'Unknown'}
+                              by {design.owner?.name || design.owner?.email || 'Unknown'}
                             </Typography>
                             <br />
                             <Typography variant="body2" component="span" sx={{ color: 'grey.400' }}>
-                              {new Date(pin.createdAt).toLocaleString()}
+                              {new Date(design.createdAt).toLocaleString()}
                             </Typography>
                           </Box>
                         }
@@ -364,7 +320,7 @@ export default function BoardsPage() {
                       />
 
                       <ListItemSecondaryAction onClick={(e) => e.stopPropagation()}>
-                        <IconButton onClick={(e) => openDesignMenu(e, pin)}>
+                        <IconButton onClick={(e) => openDesignMenu(e, design)}>
                           <MoreVertIcon sx={{ color: 'white' }} />
                         </IconButton>
                       </ListItemSecondaryAction>
@@ -400,7 +356,7 @@ export default function BoardsPage() {
                 <ListItemAvatar>
                   <Avatar
                     variant="rounded"
-                    src={pin.imageUrl}
+                    src={pin.thumbnailUrl}
                     alt={pin.title}
                     sx={{ width: 100, height: 60 }}
                   />

@@ -1,6 +1,6 @@
 'use client';
-import { FontStyles, Shape, UseTextToolsProps } from '@/types';
-import { useEffect, useCallback } from 'react';
+import { Command, FontStyles, Shape, UseTextToolsProps } from '@/types';
+import { useEffect, useCallback, useRef } from 'react';
 
 const MIN_SHAPE_WIDTH = 20;
 const MIN_SHAPE_HEIGHT = 20;
@@ -19,28 +19,62 @@ const DEFAULT_FONT_FEATURES = {
     textColor: "#000000"
 };
 
-export const useTextTools = ({
-    textActive,
-    shapes,
-    textInput,
-    editingShapeId,
-    currentFontFeatures,
-    onShapesChange,
-    setTextInput,
-    setEditingShapeId,
-    onTextToggle,
-    permission
-}: UseTextToolsProps) => {
+class AddTextShapeCommand implements Command {
+    constructor(
+        private shape: Shape,
+        private setShapes: React.Dispatch<React.SetStateAction<Shape[]>>
+    ) { }
+
+    execute() {
+        this.setShapes(prev => [...prev.map(s => ({ ...s, selected: false })), this.shape]);
+    }
+
+    undo() {
+        this.setShapes(prev => prev.filter(s => s.id !== this.shape.id));
+    }
+}
+
+class EditTextCommand implements Command {
+    constructor(
+        private shapeId: string,
+        private before: Shape,
+        private after: Shape,
+        private setShapes: React.Dispatch<React.SetStateAction<Shape[]>>
+    ) { }
+
+    execute() {
+        this.setShapes(prev =>
+            prev.map(s => (s.id === this.shapeId ? this.after : s))
+        );
+    }
+
+    undo() {
+        this.setShapes(prev =>
+            prev.map(s => (s.id === this.shapeId ? this.before : s))
+        );
+    }
+}
+
+export const useTextTools = ({ executeCommand, textActive, shapes, textInput, editingShapeId, currentFontFeatures, onShapesChange, setTextInput, setEditingShapeId, onTextToggle, permission }: UseTextToolsProps) => {
     const fontFeatures = currentFontFeatures ?? DEFAULT_FONT_FEATURES;
     const canEdit = permission === 'OWNER' || permission === 'WRITE';
+    const beforeEditRef = useRef<Shape | null>(null);
 
     const commitEditing = useCallback((id: string | null) => {
         if (!id || !canEdit) return;
-        onShapesChange(prev => prev.map(shape =>
-            shape.id === id
-                ? {
-                    ...shape,
+
+        const before = beforeEditRef.current;
+        const after = shapes.find(s => s.id === id);
+        if (!before || !after) return;
+
+        executeCommand(
+            new EditTextCommand(
+                id,
+                before,
+                {
+                    ...after,
                     isEditing: false,
+                    selected: true,
                     text: textInput,
                     fontSize: fontFeatures.fontSize,
                     fontFamily: fontFeatures.fontFamily,
@@ -48,14 +82,14 @@ export const useTextTools = ({
                     fontStyles: fontFeatures.fontStyles,
                     textAlignment: fontFeatures.alignment,
                     listType: fontFeatures.listType,
-                    borderType: shape.borderType ?? 'solid',
-                    borderSize: shape.borderSize ?? 1,
-                    borderColor: shape.borderColor ?? '#000000'
-                }
-                : shape
-        ));
+                },
+                onShapesChange
+            )
+        );
+
         setEditingShapeId(null);
-    }, [textInput, fontFeatures.fontSize, fontFeatures.fontFamily, fontFeatures.fontStyles, fontFeatures.alignment, fontFeatures.listType, fontFeatures.textColor, onShapesChange, setEditingShapeId, canEdit]);
+        beforeEditRef.current = null;
+    }, [executeCommand, textInput, shapes, fontFeatures.fontSize, fontFeatures.fontFamily, fontFeatures.fontStyles, fontFeatures.alignment, fontFeatures.listType, fontFeatures.textColor, onShapesChange, setEditingShapeId, canEdit]);
 
     useEffect(() => {
         if (typeof document === 'undefined') return;
@@ -68,75 +102,69 @@ export const useTextTools = ({
                 const rect = canvas.getBoundingClientRect();
                 const scaleX = canvas.width / rect.width;
                 const scaleY = canvas.height / rect.height;
-                const mouseX = (e.clientX - rect.left) * scaleX;
-                const mouseY = (e.clientY - rect.top) * scaleY;
+                const x = (e.clientX - rect.left) * scaleX;
+                const y = (e.clientY - rect.top) * scaleY;
 
-                let clickedOnText = false;
-                for (const shape of shapes) {
-                    if (shape.type === "text") {
-                        if (!canEdit) return;
+                const clickedText = shapes.find(
+                    s =>
+                        s.type === 'text' &&
+                        x >= s.x &&
+                        x <= s.x + s.width &&
+                        y >= s.y &&
+                        y <= s.y + s.height
+                );
 
-                        if (mouseX >= shape.x && mouseX <= shape.x + shape.width &&
-                            mouseY >= shape.y && mouseY <= shape.y + shape.height) {
-                            clickedOnText = true;
+                if (clickedText && canEdit) {
+                    beforeEditRef.current = { ...clickedText };
 
-                            onShapesChange(prev => prev.map(s =>
-                                s.id === shape.id
-                                    ? {
-                                        ...s,
-                                        isEditing: true,
-                                        selected: true,
-                                        borderType: s.borderType ?? 'solid',
-                                        borderSize: s.borderSize ?? 1,
-                                        borderColor: s.borderColor ?? '#000000'
-                                    }
-                                    : { ...s, isEditing: false, selected: false }
-                            ));
-                            setTextInput(shape.text || "");
-                            setEditingShapeId(shape.id);
+                    onShapesChange(prev =>
+                        prev.map(s =>
+                            s.id === clickedText.id
+                                ? { ...s, isEditing: true, selected: true }
+                                : { ...s, isEditing: false, selected: false }
+                        )
+                    );
 
-                            break;
-                        }
-                    }
+                    setTextInput(clickedText.text || '');
+                    setEditingShapeId(clickedText.id);
+                    return;
                 }
 
-                if (!clickedOnText) {
-                    if (!textActive || !canEdit) {
-                        return;
-                    }
+                if (!textActive || !canEdit) return;
 
-                    // Create new text shape 
-                    const panelId = canvas.getAttribute("data-panel-id") || "default";
-                    const newShape: Shape = {
-                        id: `text-${Date.now()}-${Math.random()}`,
-                        type: "text",
-                        x: mouseX,
-                        y: mouseY,
-                        width: Math.max(200, MIN_SHAPE_WIDTH),
-                        height: Math.max(60, MIN_SHAPE_HEIGHT),
-                        selected: true,
-                        panelId: panelId,
-                        text: "",
-                        fontSize: fontFeatures.fontSize,
-                        fontFamily: fontFeatures.fontFamily,
-                        textColor: fontFeatures.textColor,
-                        fontStyles: fontFeatures.fontStyles,
-                        textAlignment: fontFeatures.alignment,
-                        listType: fontFeatures.listType,
-                        isEditing: true,
-                        borderType: 'solid',
-                        borderSize: 1,
-                        borderColor: '#000000'
-                    };
+                const panelId = canvas.getAttribute('data-panel-id') || 'default';
+                const maxZ = Math.max(0, ...shapes.filter(s => s.panelId === panelId).map(s => s.zIndex ?? 0));
 
-                    onShapesChange(prev => [...prev.map(s => ({ ...s, selected: false })), newShape]);
-                    setTextInput("");
-                    setEditingShapeId(newShape.id);
+                const newShape: Shape = {
+                    id: `text-${Date.now()}-${Math.random()}`,
+                    type: 'text',
+                    x,
+                    y,
+                    width: Math.max(200, MIN_SHAPE_WIDTH),
+                    height: Math.max(60, MIN_SHAPE_HEIGHT),
+                    selected: true,
+                    panelId,
+                    text: '',
+                    fontSize: fontFeatures.fontSize,
+                    fontFamily: fontFeatures.fontFamily,
+                    textColor: fontFeatures.textColor,
+                    fontStyles: fontFeatures.fontStyles,
+                    textAlignment: fontFeatures.alignment,
+                    listType: fontFeatures.listType,
+                    isEditing: true,
+                    borderType: 'solid',
+                    borderSize: 1,
+                    borderColor: '#000000',
+                    zIndex: maxZ + 1,
+                };
 
-                    if (typeof onTextToggle === 'function') {
-                        onTextToggle(false);
-                    }
-                }
+                executeCommand(
+                    new AddTextShapeCommand(newShape, onShapesChange)
+                );
+
+                setTextInput('');
+                setEditingShapeId(newShape.id);
+                onTextToggle?.(false);
             };
 
             canvas.addEventListener("mousedown", handleMouseDown);
@@ -146,7 +174,7 @@ export const useTextTools = ({
         });
 
         return () => cleanupFunctions.forEach(fn => fn());
-    }, [textActive, shapes, onShapesChange, setTextInput, setEditingShapeId, fontFeatures.fontSize, fontFeatures.fontFamily, fontFeatures.fontStyles, fontFeatures.alignment, fontFeatures.listType, fontFeatures.textColor, onTextToggle, canEdit, permission]);
+    }, [executeCommand, textActive, shapes, onShapesChange, setTextInput, setEditingShapeId, fontFeatures.fontSize, fontFeatures.fontFamily, fontFeatures.fontStyles, fontFeatures.alignment, fontFeatures.listType, fontFeatures.textColor, onTextToggle, canEdit, permission]);
 
     useEffect(() => {
         if (typeof document === 'undefined') return;

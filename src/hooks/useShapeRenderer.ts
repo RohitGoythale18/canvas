@@ -1,3 +1,4 @@
+// src/hooks/useShapeRenderer.ts
 import { useEffect } from 'react';
 import * as Shapes from '../app/components/shapes/index';
 import { Shape, UseShapeRendererProps } from '@/types';
@@ -11,7 +12,6 @@ export const useShapeRenderer = ({
     editingShapeId,
     loadedImage,
     backgroundColor,
-    // permission
 }: UseShapeRendererProps) => {
     useEffect(() => {
         const canvases = document.querySelectorAll<HTMLCanvasElement>(".drawing-panel");
@@ -81,9 +81,12 @@ export const useShapeRenderer = ({
 
 
             // Draw shapes for this panel only
-            shapes.filter(shape => shape.panelId === panelId).forEach((shape) => {
-                renderShape(ctx, shape, textInput, editingShapeId);
-            });
+            shapes
+                .filter(shape => shape.panelId === panelId)
+                .sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))
+                .forEach(shape => {
+                    renderShape(ctx, shape, textInput, editingShapeId);
+                });
         });
     }, [shapes, drawings, filledImages, splitMode, textInput, editingShapeId, loadedImage, backgroundColor]);
 };

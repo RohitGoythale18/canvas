@@ -1,61 +1,15 @@
 'use client';
 import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Button,
-  Tooltip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  ListItemText,
-  Snackbar,
-  Alert
-} from "@mui/material";
+import { useAuth } from "@/context/AuthContext";
 
+import { Button, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Menu, MenuItem, ListItemIcon, ListItemText, Snackbar, Alert } from "@mui/material";
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import SaveIcon from '@mui/icons-material/Save';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import { BoardAPI, BoardButtonProps, Shape } from "@/types";
 
-import { CanvasData, Shape } from "../../../types";
-import { useAuth } from "@/context/AuthContext";
-
-interface BoardAPI {
-  id: string;
-  name: string;
-  description: string;
-  createdAt: string;
-  designs?: DesignAPI[];
-}
-
-interface DesignAPI {
-  id: string;
-  title: string;
-  thumbnailUrl: string;
-  data: CanvasData;
-  createdAt: string;
-  ownerId: string;
-  owner?: {
-    id: string;
-    name: string;
-    email: string;
-  };
-}
-
-interface BoardButtonProps {
-  canvasData?: CanvasData;
-  onLoadCanvas?: (canvasData: CanvasData) => void;
-  getCurrentCanvasImage?: () => string;
-}
-
-const BoardButton = ({
-  canvasData,
-  getCurrentCanvasImage
-}: BoardButtonProps) => {
+const BoardButton = ({ canvasData, getCurrentCanvasImage }: BoardButtonProps) => {
   const router = useRouter();
   const { token, isAuthenticated } = useAuth();
 
@@ -95,11 +49,11 @@ const BoardButton = ({
         name: b.name,
         description: b.description,
         createdAt: b.createdAt,
-        pins: (b.designs ?? []).map((d) => ({
+        designs: (b.designs ?? []).map((d) => ({
           id: d.id,
           title: d.title,
-          imageUrl: d.thumbnailUrl,
-          canvasData: d.data,
+          thumbnailUrl: d.thumbnailUrl,
+          data: d.data,
           createdAt: d.createdAt,
           ownerId: d.ownerId,
           owner: d.owner,

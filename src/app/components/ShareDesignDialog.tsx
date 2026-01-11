@@ -186,10 +186,10 @@ export default function ShareDesignDialog({ open, designId, onClose, onShared, }
                                         fontSize: 14,
                                     }}
                                 >
-                                    <span>{user.email}</span>
-                                    <span style={{ opacity: 0.7 }}>
+                                    <Typography component="span">{user.email}</Typography>
+                                    <Typography component="span" style={{ opacity: 0.7 }}>
                                         {user.permission}
-                                    </span>
+                                    </Typography>
                                 </Box>
                             ))}
                         </>

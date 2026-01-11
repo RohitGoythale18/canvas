@@ -1,29 +1,7 @@
 import { useEffect } from 'react';
-import { Shape, FontStyles } from '../types';
+import { FontFeatures, FontStyles, UseShapePropertiesProps } from '@/types';
 
-interface FontFeatureType {
-    fontFamily: string;
-    fontSize: number;
-    fontStyles: FontStyles;
-    alignment: 'left' | 'center' | 'right' | 'justify';
-    listType: 'bullet' | 'number' | 'none';
-    textColor: string | {
-        type: 'solid' | 'gradient';
-        value: string | { start: string; end: string }
-    };
-}
-
-interface UseShapePropertiesProps {
-    borderActive: boolean;
-    borderType: 'solid' | 'dashed' | 'dotted';
-    borderSize: number;
-    borderColor: string;
-    shapes: Shape[];
-    onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
-    currentFontFeatures?: FontFeatureType;
-}
-
-const DEFAULT_FONT_FEATURES: FontFeatureType = {
+const DEFAULT_FONT_FEATURES: FontFeatures = {
     fontFamily: "Arial, sans-serif",
     fontSize: 16,
     fontStyles: {
@@ -37,17 +15,9 @@ const DEFAULT_FONT_FEATURES: FontFeatureType = {
     textColor: "#000000"
 };
 
-export const useShapeProperties = ({
-    borderActive,
-    borderType,
-    borderSize,
-    borderColor,
-    onShapesChange,
-    currentFontFeatures
-}: UseShapePropertiesProps) => {
+export const useShapeProperties = ({ borderActive, borderType, borderSize, borderColor, onShapesChange, currentFontFeatures }: UseShapePropertiesProps) => {
     const fontFeatures = currentFontFeatures ?? DEFAULT_FONT_FEATURES;
 
-    // Update border properties on selected shapes when border settings change
     useEffect(() => {
         requestAnimationFrame(() => {
             onShapesChange(prev => prev.map(shape => ({
@@ -59,7 +29,6 @@ export const useShapeProperties = ({
         });
     }, [borderActive, borderType, borderSize, borderColor, onShapesChange]);
 
-    // Update font features on selected text shapes when font features change
     useEffect(() => {
         requestAnimationFrame(() => {
             onShapesChange(prev => prev.map(shape => {

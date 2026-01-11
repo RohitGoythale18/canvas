@@ -1,27 +1,17 @@
 'use client';
 import { useState } from "react";
+import { BorderButtonProps } from "@/types";
+
 import { Tooltip, Button, Menu, MenuItem, Divider, Slider, TextField, Box } from "@mui/material";
 import BorderAllIcon from "@mui/icons-material/BorderAll";
 
-interface BorderButtonProps {
-    active?: boolean;
-    onBorderToggle?: (enabled: boolean) => void;
-    onBorderChange?: (border: { type: 'solid' | 'dashed' | 'dotted'; size: number; color: string }) => void;
-}
-
-const BorderButton = ({ active = false, onBorderToggle, onBorderChange }: BorderButtonProps) => {
+const BorderButton = ({ active = false, onBorderChange }: BorderButtonProps) => {
     const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
     const [borderType, setBorderType] = useState<'solid' | 'dashed' | 'dotted'>('solid');
     const [borderSize, setBorderSize] = useState(2);
     const [borderColor, setBorderColor] = useState('#000000');
 
-    const handleClick = () => {
-        onBorderToggle?.(!active);
-        setMenuAnchor(null);
-    };
-
-    const openMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
-        event.preventDefault();
+    const handleButtonClick = (event: React.MouseEvent<HTMLButtonElement>) => {
         setMenuAnchor(event.currentTarget);
     };
 
@@ -53,18 +43,21 @@ const BorderButton = ({ active = false, onBorderToggle, onBorderChange }: Border
 
     return (
         <>
-            <Tooltip title="Border (Click to toggle, Right-click for options)" arrow>
+            <Tooltip title="Border Options" arrow>
                 <Button
                     variant={active ? "contained" : "outlined"}
-                    onClick={handleClick}
-                    onContextMenu={openMenu}
+                    onClick={handleButtonClick}   // new update
                     size="small"
                 >
                     <BorderAllIcon sx={{ fontSize: 20 }} />
                 </Button>
             </Tooltip>
 
-            <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={closeMenu}>
+            <Menu
+                anchorEl={menuAnchor}
+                open={Boolean(menuAnchor)}
+                onClose={closeMenu}
+            >
                 <MenuItem>
                     <Button
                         variant={borderType === 'solid' ? 'contained' : 'outlined'}
@@ -90,10 +83,12 @@ const BorderButton = ({ active = false, onBorderToggle, onBorderChange }: Border
                         Dotted
                     </Button>
                 </MenuItem>
+
                 <Divider />
+
                 <MenuItem>
                     <Box display="flex" alignItems="center" width="100%">
-                        <span style={{ marginRight: 8 }}>Size:</span>
+                        <Box style={{ marginRight: 8 }}>Size:</Box>
                         <Slider
                             value={borderSize}
                             onChange={handleBorderSizeChange}
@@ -105,21 +100,28 @@ const BorderButton = ({ active = false, onBorderToggle, onBorderChange }: Border
                         <TextField
                             type="number"
                             value={borderSize}
-                        onChange={handleTextFieldChange}
+                            onChange={handleTextFieldChange}
                             size="small"
                             sx={{ width: 60 }}
-                            inputProps={{ min: 1, max: 20 }}
                         />
                     </Box>
                 </MenuItem>
+
                 <Divider />
+
                 <MenuItem>
                     <Box display="flex" alignItems="center">
                         <input
                             type="color"
                             value={borderColor}
                             onChange={(e) => handleBorderColorChange(e.target.value)}
-                            style={{ width: 40, height: 40, border: "none", cursor: "pointer", marginRight: 8 }}
+                            style={{
+                                width: 40,
+                                height: 40,
+                                border: "none",
+                                cursor: "pointer",
+                                marginRight: 8
+                            }}
                         />
                         <TextField
                             label="Border Color"

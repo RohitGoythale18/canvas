@@ -1,62 +1,10 @@
 'use client';
 import { useState } from "react";
-import {
-    Box,
-    Button,
-    Tooltip,
-    Menu,
-    MenuItem,
-    Select,
-    ToggleButton,
-    ToggleButtonGroup,
-    Divider,
-    ListItemText,
-    Popover,
-    Typography,
-    Slider,
-    Chip,
-} from "@mui/material";
-
-import {
-    FormatBold,
-    FormatItalic,
-    FormatUnderlined,
-    FormatStrikethrough,
-    FormatListBulleted,
-    FormatListNumbered,
-    FormatAlignLeft,
-    FormatAlignCenter,
-    FormatAlignRight,
-    FormatAlignJustify,
-    ArrowDropDown,
-    TextFields,
-} from "@mui/icons-material";
 import { HexColorPicker } from "react-colorful";
+import { FontFeatureProps } from "@/types";
 
-interface FontFeatureProps {
-    onFontFamilyChange?: (fontFamily: string) => void;
-    onFontSizeChange?: (fontSize: number) => void;
-    onFontStyleChange?: (styles: {
-        bold?: boolean;
-        italic?: boolean;
-        underline?: boolean;
-        strikethrough?: boolean;
-    }) => void;
-    onTextAlignmentChange?: (alignment: 'left' | 'center' | 'right' | 'justify') => void;
-    onListTypeChange?: (listType: 'bullet' | 'number' | 'none') => void;
-    onTextColorChange?: (color: string | { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }) => void;
-    currentFontFamily?: string;
-    currentFontSize?: number;
-    currentFontStyles?: {
-        bold?: boolean;
-        italic?: boolean;
-        underline?: boolean;
-        strikethrough?: boolean;
-    };
-    currentAlignment?: 'left' | 'center' | 'right' | 'justify';
-    currentListType?: 'bullet' | 'number' | 'none';
-    currentTextColor?: string | { type: 'solid' | 'gradient'; value: string | { start: string; end: string } };
-}
+import { Box, Button, Tooltip, Menu, MenuItem, Select, ToggleButton, ToggleButtonGroup, Divider, ListItemText, Popover, Typography, Slider, Chip, } from "@mui/material";
+import { FormatBold, FormatItalic, FormatUnderlined, FormatStrikethrough, FormatListBulleted, FormatListNumbered, FormatAlignLeft, FormatAlignCenter, FormatAlignRight, FormatAlignJustify, ArrowDropDown, TextFields, } from "@mui/icons-material";
 
 const FontFeatButton = ({
     onFontFamilyChange,
@@ -192,7 +140,7 @@ const FontFeatButton = ({
                     >
                         {fontFamilies.map((font) => (
                             <MenuItem key={font.value} value={font.value}>
-                                <span style={{ fontFamily: font.value }}>{font.label}</span>
+                                <Typography component="span" style={{ fontFamily: font.value }}>{font.label}</Typography>
                             </MenuItem>
                         ))}
                     </Select>
@@ -382,9 +330,9 @@ const FontFeatButton = ({
                                     />
                                 ))}
                             </Box>
-                            <Button 
-                                variant="contained" 
-                                fullWidth 
+                            <Button
+                                variant="contained"
+                                fullWidth
                                 sx={{ mt: 2 }}
                                 onClick={() => handleSolidColorChange(solidColor)}
                             >

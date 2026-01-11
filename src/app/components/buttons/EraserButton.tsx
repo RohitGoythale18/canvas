@@ -1,23 +1,14 @@
 'use client';
 import { useState } from "react";
+import { EraserButtonProps } from "@/types";
+
 import { Tooltip, Button, Menu, MenuItem, Divider, Slider, Typography, Box } from "@mui/material";
 import { IconEraser } from "@tabler/icons-react";
 
-interface EraserButtonProps {
-    active?: boolean;
-    onEraserToggle?: (enabled: boolean) => void;
-    onSizeChange?: (size: number) => void;
-    eraserSize?: number;
-}
-
-const EraserButton = ({ active = false, onEraserToggle, onSizeChange, eraserSize = 10 }: EraserButtonProps) => {
+const EraserButton = ({ active = false, onSizeChange, eraserSize = 10 }: EraserButtonProps) => {
     const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
 
-    const toggleEraser = () => {
-        onEraserToggle?.(!active);
-    };
-
-    const openMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
         setMenuAnchor(event.currentTarget);
     };
 
@@ -34,11 +25,7 @@ const EraserButton = ({ active = false, onEraserToggle, onSizeChange, eraserSize
             <Tooltip title="Eraser" arrow>
                 <Button
                     variant={active ? "contained" : "outlined"}
-                    onClick={toggleEraser}
-                    onContextMenu={(e) => {
-                        e.preventDefault();
-                        openMenu(e as never);
-                    }}
+                    onClick={handleClick}
                     size="small"
                 >
                     <IconEraser stroke={2} color={active ? "white" : "white"} className="size-5" />

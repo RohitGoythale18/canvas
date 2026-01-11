@@ -3,10 +3,7 @@ import { useState } from "react";
 import { Button, Menu as MuiMenu, MenuItem, Tooltip } from "@mui/material";
 import CallSplitIcon from '@mui/icons-material/CallSplit';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-
-interface SplitButtonProps {
-    onSplitSelect?: (mode: string) => void;
-}
+import { SplitButtonProps } from "@/types";
 
 const SplitButton = ({ onSplitSelect }: SplitButtonProps) => {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);

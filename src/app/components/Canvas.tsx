@@ -1,58 +1,26 @@
+// src/app/components/Canvas.tsx
 'use client';
 import { useState, useRef } from "react";
-import { Box } from "@mui/material";
-import { Shape, DrawingPath, FontFeatures } from "../../types";
 
-import { useCanvasResize } from "../../hooks/useCanvasResize";
-import { useDrawingTools } from "../../hooks/useDrawingTools";
-import { useFillTool } from "../../hooks/useFillTool";
-import { useTextTools } from "../../hooks/useTextTools";
-import { useShapeInteraction } from "../../hooks/useShapeInteraction";
-import { useShapeProperties } from "../../hooks/useShapeProperties";
-import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
-import { useCanvasCleanup } from "../../hooks/useCanvasCleanup";
-import { useShapeRenderer } from "../../hooks/useShapeRenderer";
+import { useCanvasResize } from "@/hooks/useCanvasResize";
+import { useDrawingTools } from "@/hooks/useDrawingTools";
+import { useFillTool } from "@/hooks/useFillTool";
+import { useTextTools } from "@/hooks/useTextTools";
+import { useShapeInteraction } from "@/hooks/useShapeInteraction";
+import { useShapeProperties } from "@/hooks/useShapeProperties";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { useCanvasCleanup } from "@/hooks/useCanvasCleanup";
+import { useShapeRenderer } from "@/hooks/useShapeRenderer";
+
+import { Box } from "@mui/material";
+import { CanvasProps } from "@/types";
 
 const CANVAS_WIDTH = 1920;
 const CANVAS_HEIGHT = 1080;
 
-interface CanvasProps {
-    splitMode?: string;
-    pencilActive?: boolean;
-    fillActive?: boolean;
-    fillColor?: string;
-    eraserActive?: boolean;
-    eraserSize?: number;
-    selectedShape?: string | null;
-    onShapeSelect: (shape: string) => void;
-    textActive?: boolean;
-    onTextToggle?: (enabled: boolean) => void;
-    uploadedImageUrl?: string | null;
-    loadedImage?: HTMLImageElement | null;
-    currentImageId?: string | null;
-    onImageUsed?: () => void;
-    onClearImage?: () => void;
-    backgroundColor?: Record<string, string | { start: string; end: string }>;
-    onPanelSelect?: (panelId: string) => void;
-    borderActive?: boolean;
-    borderType?: 'solid' | 'dashed' | 'dotted';
-    borderSize?: number;
-    borderColor?: string;
-    currentFontFeatures?: FontFeatures;
-    shapes: Shape[];
-    onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
-    drawings: Array<{ panelId: string; paths: DrawingPath[] }>;
-    onDrawingsChange: React.Dispatch<React.SetStateAction<Array<{ panelId: string; paths: DrawingPath[] }>>>;
-    filledImages: Array<{ panelId: string; imageData: ImageData }>;
-    onFilledImagesChange: React.Dispatch<React.SetStateAction<Array<{ panelId: string; imageData: ImageData }>>>;
-    onSaveState: () => void;
-    onUndo?: () => void;
-    onRedo?: () => void;
-    permission?: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
-}
-
 const Canvas = ({
     splitMode = "none",
+    executeCommand,
     pencilActive = false,
     fillActive = false,
     fillColor = "#ff0000",
@@ -61,12 +29,11 @@ const Canvas = ({
     selectedShape = null,
     onShapeSelect,
     textActive = false,
-    onTextToggle, // <-- accept prop
+    onTextToggle,
     uploadedImageUrl,
     loadedImage,
     currentImageId,
     onImageUsed,
-    // onClearImage,
     backgroundColor = { default: "#ffffff" },
     onPanelSelect,
     borderActive = false,
@@ -80,9 +47,6 @@ const Canvas = ({
     onDrawingsChange,
     filledImages,
     onFilledImagesChange,
-    onSaveState,
-    onUndo,
-    onRedo,
     permission = 'READ',
 }: CanvasProps) => {
 
@@ -98,29 +62,30 @@ const Canvas = ({
     const { zoomLevel } = useCanvasResize(wrapperRef);
 
     useDrawingTools({
+        executeCommand,
         pencilActive,
         eraserActive,
         eraserSize,
         splitMode,
         setDrawings: onDrawingsChange,
-        onSaveState,
         shapes,
         onShapesChange,
         permission
     });
 
     useFillTool({
+        executeCommand,
         splitMode,
         fillActive,
         fillColor,
         setFilledImages: onFilledImagesChange,
         shapes,
         onShapesChange,
-        onSaveState,
         permission
     });
 
     useTextTools({
+        executeCommand,
         textActive,
         shapes,
         textInput,
@@ -129,13 +94,14 @@ const Canvas = ({
         onShapesChange,
         setTextInput,
         setEditingShapeId,
-        onTextToggle, // <-- pass the toggle callback into the hook
+        onTextToggle,
         permission
     });
 
     useShapeInteraction({
         selectedShape,
         splitMode,
+        executeCommand,
         onShapeSelect,
         shapes,
         pencilActive,
@@ -160,7 +126,6 @@ const Canvas = ({
         resizing,
         resizeHandle,
         dragOffset,
-        onSaveState,
         permission
     });
 
@@ -172,13 +137,6 @@ const Canvas = ({
         shapes,
         onShapesChange,
         currentFontFeatures
-    });
-
-    useKeyboardShortcuts({
-        shapes,
-        onShapesChange,
-        onSaveState,
-        permission
     });
 
     useCanvasCleanup({
@@ -201,9 +159,6 @@ const Canvas = ({
     useKeyboardShortcuts({
         shapes,
         onShapesChange,
-        onSaveState,
-        onUndo: onUndo,
-        onRedo: onRedo,
         permission
     });
 
@@ -231,7 +186,6 @@ const Canvas = ({
                 data-panel-id={panelId}
                 tabIndex={0}
             />
-
         </div>
     );
 

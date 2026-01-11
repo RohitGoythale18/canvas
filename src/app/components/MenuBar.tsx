@@ -1,7 +1,7 @@
 'use client';
 import Image from "next/image"
 import { Box, Divider, List, Typography } from "@mui/material";
-import { CanvasData, FontFeatures, TextColor } from "../../types";
+import { MenuBarProps } from "@/types";
 
 import BoardButton from "./buttons/BoardButton";
 import NewCanvasButton from "./buttons/NewCanvasButton";
@@ -9,6 +9,7 @@ import SplitButton from "./buttons/SplitButton";
 import ExportButton from "./buttons/ExportButton";
 import UndoButton from "./buttons/UndoButton";
 import RedoButton from "./buttons/RedoButton";
+import LayerButton from "./buttons/LayerButton";
 import PencilButton from "./buttons/PencilButton";
 import FillButton from "./buttons/FillButton";
 import EraserButton from "./buttons/EraserButton";
@@ -21,52 +22,7 @@ import BorderButton from "./buttons/BorderButton";
 import FontFeatButton from "./buttons/FontFeatButton";
 import LogoutButton from "./buttons/LogoutButton";
 
-interface MenuBarProps {
-    onSaveCanvas?: () => string;
-    onLoadCanvas?: (canvasData: CanvasData) => void;
-    canvasData?: CanvasData;
-    onNewCanvas?: () => void;
-    onSplitChange?: (mode: string) => void;
-    onPencilToggle?: (enabled: boolean) => void;
-    onFillToggle?: (enabled: boolean) => void;
-    onColorChange?: (color: string) => void;
-    fillColor?: string;
-    onEraserToggle?: (enabled: boolean) => void;
-    onEraserSizeChange?: (size: number) => void;
-    eraserSize?: number;
-    pencilActive?: boolean;
-    fillActive?: boolean;
-    eraserActive?: boolean;
-    onShapeSelect?: (shape: string) => void;
-    onTextToggle?: (enabled: boolean) => void;
-    textActive?: boolean;
-    onImageUpload?: (imageUrl: string) => void;
-    onImageUsed?: () => void;
-    onClearImage?: () => void;
-    onCanvasBackgroundChange?: (color: { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }, panelId?: string) => void;
-    selectedPanel?: string;
-    onBorderToggle?: (enabled: boolean) => void;
-    onBorderChange?: (border: { type: 'solid' | 'dashed' | 'dotted'; size: number; color: string }) => void;
-    borderActive?: boolean;
-    currentFontFamily?: string;
-    currentFontSize?: number;
-    currentFontStyles?: { bold?: boolean; italic?: boolean; underline?: boolean; strikethrough?: boolean };
-    currentTextAlignment?: 'left' | 'center' | 'right' | 'justify';
-    currentListType?: 'bullet' | 'number' | 'none';
-    currentTextColor: TextColor;
-    currentFontFeatures?: FontFeatures;
-    onFontFamilyChange?: (fontFamily: string) => void;
-    onFontSizeChange?: (fontSize: number) => void;
-    onFontStyleChange?: (styles: { bold?: boolean; italic?: boolean; underline?: boolean; strikethrough?: boolean }) => void;
-    onTextAlignmentChange?: (alignment: 'left' | 'center' | 'right' | 'justify') => void;
-    onListTypeChange?: (listType: 'bullet' | 'number' | 'none') => void;
-    onTextColorChange?: (color: string | { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }) => void;
-    onUndo?: () => void;
-    onRedo?: () => void;
-    permission?: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
-}
-
-const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onPencilToggle, onFillToggle, onColorChange, fillColor, onEraserToggle, onEraserSizeChange, eraserSize, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, onClearImage, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange, onUndo, onRedo }: MenuBarProps) => {
+const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onUndo, onRedo, onPencilToggle, onFillToggle, onColorChange, fillColor, onEraserToggle, onEraserSizeChange, eraserSize, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, clearImage, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange, onBringForward, onBringToFront, onSendBackward, onSendToBack, hasSelectedShape }: MenuBarProps) => {
     return (
         <Box>
             <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', py: 1, px: 2 }}>
@@ -98,8 +54,9 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
                     <Typography variant="h2" sx={{ fontSize: '1rem' }}>Edit</Typography>
                     <Box sx={{ display: 'flex' }}>
                         <List sx={{ display: "flex", gap: 1, px: 1 }}>
-                            <UndoButton onClick={onUndo} />
-                            <RedoButton onClick={onRedo} />
+                            <UndoButton onUndo={onUndo} />
+                            <RedoButton onRedo={onRedo} />
+                            <LayerButton onBringToFront={onBringToFront} onBringForward={onBringForward} onSendBackward={onSendBackward} onSendToBack={onSendToBack} disabled={!hasSelectedShape} />
                         </List>
 
                         <Divider orientation="vertical" sx={{ borderColor: 'primary.main' }} />
@@ -122,7 +79,7 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
                         <ShapeButton onShapeSelect={onShapeSelect} />
                         <TextButton active={textActive} onToggle={onTextToggle} />
                         <UploadImageButton onImageUpload={onImageUpload} />
-                        <ClearImageButton onClearImage={onClearImage} />
+                        <ClearImageButton onClearImage={clearImage} />
                     </List>
                 </Box>
 
@@ -156,4 +113,4 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
     )
 }
 
-export default MenuBar
+export default MenuBar;

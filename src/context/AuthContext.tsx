@@ -80,14 +80,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [token]);
 
     useEffect(() => {
-        if (!token) return;
+        if (!token || !user) return;
 
         const timer = setTimeout(() => {
-            subscribeToPush(token);
+            subscribeToPush(token).catch(console.error);
         }, 1000);
 
         return () => clearTimeout(timer);
-    }, [token]);
+    }, [token, user]);
 
     return (
         <AuthContext.Provider
@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 login,
                 logout,
                 isAuthenticated: !!token,
-                loading: false, // always resolved immediately
+                loading: false,
             }}
         >
             {children}
