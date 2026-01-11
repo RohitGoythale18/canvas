@@ -43,7 +43,7 @@ const UploadImageButton = ({ onImageUpload }: UploadImageButtonProps) => {
 
             <Tooltip title="Upload Image">
                 <Button variant="outlined" onClick={openMenu} size="small">
-                    <ImageIcon />
+                    <ImageIcon sx={{ fontSize: 20 }} />
                 </Button>
             </Tooltip>
 
