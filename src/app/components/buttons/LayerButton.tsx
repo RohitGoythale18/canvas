@@ -36,7 +36,7 @@ export default function LayerButton({ onBringToFront, onBringForward, onSendBack
                     onClick={handleOpen}
                     disabled={disabled}
                 >
-                    <FlipToFrontIcon />
+                    <FlipToFrontIcon sx={{ fontSize: 20 }} />
                 </Button>
             </Tooltip>
 
