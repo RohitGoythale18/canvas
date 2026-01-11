@@ -1,17 +1,73 @@
 import { useEffect, useRef } from 'react';
 import * as Shapes from '../app/components/shapes/index';
-import { DrawingPath, Shape, UseDrawingToolsProps } from '@/types';
+import { Command, DrawingPath, Shape, UseDrawingToolsProps } from '@/types';
+
+class AddDrawingPathCommand implements Command {
+  constructor(
+    private panelId: string,
+    private path: DrawingPath,
+    private setDrawings: React.Dispatch<
+      React.SetStateAction<Array<{ panelId: string; paths: DrawingPath[] }>>
+    >
+  ) { }
+
+  execute() {
+    this.setDrawings(prev => {
+      const copy = [...prev];
+      const idx = copy.findIndex(p => p.panelId === this.panelId);
+      if (idx === -1) {
+        copy.push({ panelId: this.panelId, paths: [this.path] });
+      } else {
+        copy[idx] = {
+          ...copy[idx],
+          paths: [...copy[idx].paths, this.path],
+        };
+      }
+      return copy;
+    });
+  }
+
+  undo() {
+    this.setDrawings(prev => {
+      const copy = [...prev];
+      const idx = copy.findIndex(p => p.panelId === this.panelId);
+      if (idx !== -1) {
+        copy[idx] = {
+          ...copy[idx],
+          paths: copy[idx].paths.slice(0, -1),
+        };
+      }
+      return copy;
+    });
+  }
+}
+
+class EraseRasterOnShapesCommand implements Command {
+  constructor(
+    private before: Shape[],
+    private after: Shape[],
+    private setShapes: React.Dispatch<React.SetStateAction<Shape[]>>
+  ) { }
+
+  execute() {
+    this.setShapes(() => this.after);
+  }
+
+  undo() {
+    this.setShapes(() => this.before);
+  }
+}
 
 const distance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
   Math.hypot(a.x - b.x, a.y - b.y);
 
 export const useDrawingTools = ({
+  executeCommand,
   pencilActive,
   eraserActive,
   eraserSize,
   splitMode,
   setDrawings,
-  onSaveState,
   shapes,
   onShapesChange,
   permission,
@@ -33,14 +89,12 @@ export const useDrawingTools = ({
 
 
   useEffect(() => {
-    /**
-     * Rasterize touched shapes and apply eraser stroke onto their raster
-     * so erasure persists even after moving shapes.
-     */
     const processEraserPathOnShapes = async (path: DrawingPath) => {
       if (!path.points || path.points.length === 0) return;
 
-      // compute bbox of the eraser path
+      const beforeShapes = shapesRef.current.map(s => ({ ...s }));
+
+      // compute box of the eraser path
       const minX = Math.min(...path.points.map((p) => p.x));
       const minY = Math.min(...path.points.map((p) => p.y));
       const maxX = Math.max(...path.points.map((p) => p.x));
@@ -256,13 +310,18 @@ export const useDrawingTools = ({
               imageElement: img,
               imageUrl: dataUrl,
               rasterized: true,
-            } as Shape; 
+            } as Shape;
           }
         })
       );
 
-      // commit shape updates
-      onShapesChangeRef.current?.(() => updatedShapes);
+      executeCommand(
+        new EraseRasterOnShapesCommand(
+          beforeShapes,
+          updatedShapes,
+          onShapesChangeRef.current
+        )
+      );
     };
 
     const canvases = Array.from(
@@ -302,21 +361,6 @@ export const useDrawingTools = ({
           color: tool === 'pencil' ? '#000' : undefined,
           size: tool === 'eraser' ? eraserSize : 2,
         };
-
-        // push initial path into drawings
-        setDrawings((prev) => {
-          const copy = [...prev];
-          const idx = copy.findIndex((p) => p.panelId === panelId);
-          if (idx === -1) {
-            copy.push({ panelId, paths: [currentPathRef.current as DrawingPath] });
-          } else {
-            copy[idx] = {
-              ...copy[idx],
-              paths: [...copy[idx].paths, currentPathRef.current as DrawingPath],
-            };
-          }
-          return copy;
-        });
 
         (e as MouseEvent).preventDefault?.();
       };
@@ -366,72 +410,26 @@ export const useDrawingTools = ({
           ctx.stroke();
         }
         ctx.restore();
-
-        // update drawings state too
-        // setDrawings((prev) =>
-        //   prev.map((d) => {
-        //     if (d.panelId !== currentPanelRef.current) return d;
-        //     if (d.paths.length === 0) return d;
-        //     const lastPath = d.paths[d.paths.length - 1];
-        //     const updatedLast = {
-        //       ...lastPath,
-        //       points: [...lastPath.points, pos],
-        //     };
-        //     return {
-        //       ...d,
-        //       paths: [...d.paths.slice(0, -1), updatedLast],
-        //     };
-        //   })
-        // );
       };
 
-      const finalizePath = async () => {
-        if (!currentPathRef.current) return;
-
-        // Ensure final path is in state (defensive)
-        setDrawings((prev) => {
-          const copy = [...prev];
-          const idx = copy.findIndex(
-            (p) => p.panelId === currentPanelRef.current
-          );
-          if (idx === -1) {
-            copy.push({
-              panelId: currentPanelRef.current,
-              paths: [currentPathRef.current as DrawingPath],
-            });
-          } else {
-            const paths = copy[idx].paths;
-            if (
-              paths.length === 0 ||
-              paths[paths.length - 1] !== currentPathRef.current
-            ) {
-              copy[idx] = {
-                ...copy[idx],
-                paths: [...paths, currentPathRef.current as DrawingPath],
-              };
-            }
-          }
-          return copy;
-        });
-
-        // If eraser, apply to shapes
-        if (currentPathRef.current.tool === 'eraser') {
-          try {
-            await processEraserPathOnShapes(currentPathRef.current);
-          } catch (err) {
-            console.error('Eraser processing failed', err);
-          }
-        }
-
-        currentPathRef.current = null;
-        if (onSaveState) onSaveState();
-      };
-
-      const handlePointerUp = () => {
-        if (!canEdit) return;
-        if (!isDrawingRef.current) return;
+      const handlePointerUp = async () => {
+        if (!canEdit || !isDrawingRef.current || !currentPathRef.current) return;
         isDrawingRef.current = false;
-        void finalizePath();
+
+        const path = currentPathRef.current;
+        currentPathRef.current = null;
+
+        executeCommand(
+          new AddDrawingPathCommand(
+            currentPanelRef.current,
+            path,
+            setDrawings
+          )
+        );
+
+        if (path.tool === 'eraser') {
+          await processEraserPathOnShapes(path);
+        }
       };
 
       canvas.addEventListener('mousedown', handlePointerDown);
@@ -460,15 +458,5 @@ export const useDrawingTools = ({
     return () => {
       cleanupFns.forEach((fn) => fn());
     };
-  }, [
-    canEdit,
-    pencilActive,
-    eraserActive,
-    eraserSize,
-    splitMode,
-    setDrawings,
-    onSaveState,
-    // shapes,
-    // onShapesChange,
-  ]);
+  }, [canEdit, pencilActive, eraserActive, eraserSize, splitMode, setDrawings, executeCommand,]);
 };

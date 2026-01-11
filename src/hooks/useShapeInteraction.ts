@@ -1,39 +1,49 @@
 // src/hooks/useShapeInteraction.ts
-import { Shape, UseShapeInteractionProps } from '@/types';
+import { Command, Shape, UseShapeInteractionProps } from '@/types';
 import { useEffect, useRef } from 'react';
 
 const MIN_SHAPE_WIDTH = 20;
 const MIN_SHAPE_HEIGHT = 20;
 
-export const useShapeInteraction = ({
-    selectedShape,
-    splitMode,
-    onShapeSelect,
-    shapes,
-    pencilActive,
-    eraserActive,
-    fillActive,
-    textActive,
-    uploadedImageUrl,
-    loadedImage,
-    currentImageId,
-    borderActive,
-    borderColor,
-    borderSize,
-    borderType,
-    zoomLevel,
-    onShapesChange,
-    setDragging,
-    setResizing,
-    setDragOffset,
-    setResizeHandle,
-    dragging,
-    resizing,
-    resizeHandle,
-    dragOffset,
-    onSaveState,
-    permission
-}: UseShapeInteractionProps) => {
+class AddShapeCommand implements Command {
+    constructor(
+        private shape: Shape,
+        private setShapes: React.Dispatch<React.SetStateAction<Shape[]>>
+    ) { }
+
+    execute() {
+        this.setShapes(prev => [...prev, this.shape]);
+    }
+
+    undo() {
+        this.setShapes(prev => prev.filter(s => s.id !== this.shape.id));
+    }
+}
+
+class MoveResizeShapeCommand implements Command {
+    constructor(
+        private shapeId: string,
+        private before: Shape,
+        private after: Shape,
+        private setShapes: React.Dispatch<React.SetStateAction<Shape[]>>
+    ) { }
+
+    execute() {
+        this.setShapes(prev =>
+            prev.map(s => (s.id === this.shapeId ? this.after : s))
+        );
+    }
+
+    undo() {
+        this.setShapes(prev =>
+            prev.map(s => (s.id === this.shapeId ? this.before : s))
+        );
+    }
+}
+
+export const useShapeInteraction = ({ selectedShape, splitMode, executeCommand, onShapeSelect, shapes, pencilActive, eraserActive, fillActive, textActive, uploadedImageUrl, loadedImage, currentImageId, borderActive, borderColor, borderSize, borderType, zoomLevel, onShapesChange, setDragging, setResizing, setDragOffset, setResizeHandle, dragging, resizing, resizeHandle, dragOffset, permission }: UseShapeInteractionProps) => {
+    const dragStartShapeRef = useRef<Shape | null>(null);
+    const activeShapeIdRef = useRef<string | null>(null);
     const shapesRef = useRef(shapes);
     const draggingRef = useRef(dragging);
     const resizingRef = useRef(resizing);
@@ -41,8 +51,6 @@ export const useShapeInteraction = ({
     const dragOffsetRef = useRef(dragOffset);
     const onShapesChangeRef = useRef(onShapesChange);
     const canEditRef = useRef(false);
-
-    // const canEdit = permission === 'OWNER' || permission === 'WRITE';
 
     useEffect(() => {
         shapesRef.current = shapes;
@@ -102,7 +110,11 @@ export const useShapeInteraction = ({
                         borderColor: undefined,
                         zIndex: maxZ + 1,
                     };
-                    onShapesChangeRef.current(prev => [...prev, newShape]);
+
+                    executeCommand(
+                        new AddShapeCommand(newShape, onShapesChangeRef.current)
+                    );
+
                     onShapeSelect(null as never);
                     return;
                 }
@@ -145,12 +157,15 @@ export const useShapeInteraction = ({
                                 x: x - handle.x,
                                 y: y - handle.y,
                             });
+                            dragStartShapeRef.current = { ...shape };
+                            activeShapeIdRef.current = shape.id;
+
                             return;
                         }
                     }
                 }
 
-                // Select shape
+                // Select shape & drag
                 let selectedId: string | null = null;
 
                 for (const shape of shapesRef.current) {
@@ -185,6 +200,9 @@ export const useShapeInteraction = ({
                             x: x - selected.x,
                             y: y - selected.y,
                         });
+
+                        dragStartShapeRef.current = { ...selected };
+                        activeShapeIdRef.current = selected.id;
                     }
                 }
             };
@@ -221,10 +239,7 @@ export const useShapeInteraction = ({
                 }
 
                 /* ---- RESIZE ---- */
-                if (
-                    resizingRef.current &&
-                    resizeHandleRef.current
-                ) {
+                if (resizingRef.current && resizeHandleRef.current) {
                     onShapesChangeRef.current(prev =>
                         prev.map(shape => {
                             if (
@@ -307,7 +322,26 @@ export const useShapeInteraction = ({
                 setDragging(false);
                 setResizing(false);
                 setResizeHandle(null);
-                if (canEditRef.current && onSaveState) onSaveState();
+
+                if (dragStartShapeRef.current && activeShapeIdRef.current) {
+                    const after = shapesRef.current.find(
+                        s => s.id === activeShapeIdRef.current
+                    );
+
+                    if (after) {
+                        executeCommand(
+                            new MoveResizeShapeCommand(
+                                after.id,
+                                dragStartShapeRef.current,
+                                { ...after },
+                                onShapesChangeRef.current
+                            )
+                        );
+                    }
+                }
+
+                dragStartShapeRef.current = null;
+                activeShapeIdRef.current = null;
             };
 
             canvas.addEventListener("mousedown", handleMouseDown);
@@ -326,5 +360,5 @@ export const useShapeInteraction = ({
         return () => {
             cleanupFns.forEach(fn => fn());
         };
-    }, [selectedShape, splitMode, pencilActive, eraserActive, fillActive, textActive, uploadedImageUrl, loadedImage, currentImageId, borderActive, borderColor, borderSize, borderType, zoomLevel, onShapeSelect, onSaveState, setDragging, setResizing, setDragOffset, setResizeHandle, permission]);
+    }, [selectedShape, splitMode, executeCommand, pencilActive, eraserActive, fillActive, textActive, uploadedImageUrl, loadedImage, currentImageId, borderActive, borderColor, borderSize, borderType, zoomLevel, onShapeSelect, setDragging, setResizing, setDragOffset, setResizeHandle, permission]);
 }; 

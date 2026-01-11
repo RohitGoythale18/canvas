@@ -1,18 +1,10 @@
-// src/app/components/buttons/ShapeButton.tsx
 'use client';
 import { useState } from "react";
-import { Menu, Box, Tabs, Tab, Tooltip, Button } from "@mui/material";
-import ShapesIcon from "@mui/icons-material/Category";
+import { ShapeButtonProps, ShapeCategory } from "@/types";
 import Image from "next/image";
 
-interface ShapeButtonProps {
-    onShapeSelect?: (shape: string) => void;
-}
-
-interface ShapeCategory {
-    category: string;
-    shapes: { name: string; file: string }[];
-}
+import { Menu, Box, Tabs, Tab, Tooltip, Button } from "@mui/material";
+import ShapesIcon from "@mui/icons-material/Category";
 
 const shapeCategories: ShapeCategory[] = [
     {

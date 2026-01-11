@@ -1,6 +1,7 @@
 'use client';
-
 import { useState } from 'react';
+import { LayerButtonProps } from '@/types';
+
 import { Button, Menu, MenuItem, Tooltip, ListItemIcon, ListItemText } from '@mui/material';
 import FlipToFrontIcon from '@mui/icons-material/FlipToFront';
 import VerticalAlignTopIcon from '@mui/icons-material/VerticalAlignTop';
@@ -8,21 +9,7 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import VerticalAlignBottomIcon from '@mui/icons-material/VerticalAlignBottom';
 
-interface LayerButtonProps {
-    onBringToFront: () => void;
-    onBringForward: () => void;
-    onSendBackward: () => void;
-    onSendToBack: () => void;
-    disabled?: boolean;
-}
-
-export default function LayerButton({
-    onBringToFront,
-    onBringForward,
-    onSendBackward,
-    onSendToBack,
-    disabled = false,
-}: LayerButtonProps) {
+export default function LayerButton({ onBringToFront, onBringForward, onSendBackward, onSendToBack, disabled = false, }: LayerButtonProps) {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
     const open = Boolean(anchorEl);

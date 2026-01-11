@@ -8,7 +8,6 @@ export async function GET(req: NextRequest) {
     const authRequest = authenticateRequest(req);
     const userId = authRequest.user!.userId;
 
-    // Fetch designs shared with the user
     const sharedDesigns = await prisma.sharedDesign.findMany({
       where: {
         sharedWithId: userId,
@@ -23,12 +22,11 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // Normalize the data to match the Pin interface
     const normalizedSharedDesigns = sharedDesigns.map((share) => ({
       id: share.design.id,
       title: share.design.title,
-      imageUrl: share.design.thumbnailUrl,
-      canvasData: share.design.data,
+      thumbnailUrl: share.design.thumbnailUrl,
+      data: share.design.data,
       createdAt: share.design.createdAt,
       ownerId: share.design.ownerId,
       owner: share.design.owner,

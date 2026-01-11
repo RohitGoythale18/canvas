@@ -1,10 +1,8 @@
 'use client';
+import { NewCanvasButtonProps } from "@/types";
+
 import { Button, Tooltip } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
-
-interface NewCanvasButtonProps {
-    onNewCanvas?: () => void;
-}
 
 const NewCanvasButton = ({ onNewCanvas }: NewCanvasButtonProps) => {
     return (

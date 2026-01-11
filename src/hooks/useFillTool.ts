@@ -1,16 +1,84 @@
-import { Shape, UseFillToolProps } from '@/types';
-import { useEffect } from 'react';
+import { Command, Shape, UseFillToolProps } from '@/types';
+import { useEffect, useRef } from 'react';
 
-export const useFillTool = ({
-    splitMode,
-    fillActive,
-    fillColor,
-    setFilledImages,
-    shapes,
-    onShapesChange,
-    onSaveState,
-    permission
-}: UseFillToolProps) => {
+class FillShapeCommand implements Command {
+    constructor(
+        private shapeId: string,
+        private beforeColor: string | undefined,
+        private afterColor: string,
+        private setShapes: React.Dispatch<React.SetStateAction<Shape[]>>
+    ) { }
+
+    execute() {
+        this.setShapes(prev =>
+            prev.map(shape =>
+                shape.id === this.shapeId
+                    ? { ...shape, fillColor: this.afterColor }
+                    : shape
+            )
+        );
+    }
+
+    undo() {
+        this.setShapes(prev =>
+            prev.map(shape =>
+                shape.id === this.shapeId
+                    ? { ...shape, fillColor: this.beforeColor }
+                    : shape
+            )
+        );
+    }
+}
+
+class FloodFillCanvasCommand implements Command {
+    constructor(
+        private panelId: string,
+        private beforeImage: ImageData | null,
+        private afterImage: ImageData,
+        private setFilledImages: React.Dispatch<
+            React.SetStateAction<{ panelId: string; imageData: ImageData }[]>
+        >
+    ) { }
+
+    execute() {
+        this.setFilledImages(prev => {
+            const idx = prev.findIndex(p => p.panelId === this.panelId);
+            if (idx === -1) {
+                return [...prev, { panelId: this.panelId, imageData: this.afterImage }];
+            }
+            return prev.map(p =>
+                p.panelId === this.panelId
+                    ? { ...p, imageData: this.afterImage }
+                    : p
+            );
+        });
+    }
+
+    undo() {
+        this.setFilledImages(prev => {
+            if (this.beforeImage === null) {
+                return prev.filter(p => p.panelId !== this.panelId);
+            }
+
+            return prev.map(p =>
+                p.panelId === this.panelId
+                    ? { panelId: this.panelId, imageData: this.beforeImage! }
+                    : p
+            );
+        });
+    }
+}
+
+export const useFillTool = ({ executeCommand, splitMode, fillActive, fillColor, setFilledImages, shapes, onShapesChange, permission }: UseFillToolProps) => {
+    const filledImagesRef = useRef<{ panelId: string; imageData: ImageData }[]>([]);
+
+    useEffect(() => {
+        setFilledImages(prev => {
+            filledImagesRef.current = prev;
+            return prev;
+        });
+    }, [setFilledImages]);
+
     useEffect(() => {
         const canvases = document.querySelectorAll<HTMLCanvasElement>(".drawing-panel");
         const cleanupFunctions: (() => void)[] = [];
@@ -65,7 +133,7 @@ export const useFillTool = ({
                 const visited = new Uint8Array(canvas.width * canvas.height);
                 const stack: [number, number][] = [[startX, startY]];
                 let filledPixels = 0;
-                const MAX_FILL_PIXELS = 2000000; // Reasonable limit for performance
+                const MAX_FILL_PIXELS = 5000000; // Reasonable limit for performance
 
                 while (stack.length > 0 && filledPixels < MAX_FILL_PIXELS) {
                     const [x, y] = stack.pop()!;
@@ -89,16 +157,20 @@ export const useFillTool = ({
 
                 // Store the filled image data
                 const panelId = canvas.getAttribute("data-panel-id") || "default";
-                setFilledImages(prev => {
-                    const existing = prev.find(f => f.panelId === panelId);
-                    if (existing) {
-                        return prev.map(f => f.panelId === panelId ? { ...f, imageData } : f);
-                    } else {
-                        return [...prev, { panelId, imageData }];
-                    }
-                });
 
-                // Apply all changes at once for better performance
+                const beforeImage =
+                    filledImagesRef.current.find(p => p.panelId === panelId)?.imageData ??
+                    null;
+
+                executeCommand(
+                    new FloodFillCanvasCommand(
+                        panelId,
+                        beforeImage,
+                        imageData,
+                        setFilledImages
+                    )
+                );
+
                 ctx.putImageData(imageData, 0, 0);
             };
 
@@ -123,23 +195,16 @@ export const useFillTool = ({
                 }
 
                 if (clickedShape) {
-                    // Update shape's fillColor for shape filling
-                    onShapesChange(prev => prev.map(shape =>
-                        shape.id === clickedShape!.id
-                            ? { ...shape, fillColor: fillColor || "#ff0000" }
-                            : shape
-                    ));
-                    // Save state after filling shape
-                    if (onSaveState) {
-                        onSaveState();
-                    }
+                    executeCommand(
+                        new FillShapeCommand(
+                            clickedShape.id,
+                            clickedShape.fillColor,
+                            fillColor || "#ff0000",
+                            onShapesChange
+                        )
+                    );
                 } else {
-                    // Perform flood fill on canvas only when not clicking on a shape
                     floodFill(x, y, fillColor || "#ff0000");
-                    // Save state after flood fill
-                    if (onSaveState) {
-                        onSaveState();
-                    }
                 }
             };
 
@@ -153,5 +218,5 @@ export const useFillTool = ({
         return () => {
             cleanupFunctions.forEach(cleanup => cleanup());
         };
-    }, [splitMode, fillActive, fillColor, setFilledImages, shapes, onShapesChange, onSaveState, permission]);
+    }, [executeCommand, splitMode, fillActive, fillColor, setFilledImages, shapes, onShapesChange, permission]);
 };

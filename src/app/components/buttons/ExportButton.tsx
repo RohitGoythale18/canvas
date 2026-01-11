@@ -1,17 +1,16 @@
 'use client';
 import { useState } from "react";
+import { ExportButtonProps } from "@/types";
+import { useExportToPng } from "@/hooks/useExportToPng";
+
 import { Button, Menu as MuiMenu, MenuItem, Tooltip } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import { toPng } from "html-to-image";
-import { saveAs } from "file-saver";
 
-interface ExportButtonProps {
-    targetId?: string; // default to "main-canvas"
-}
 
-const ExportButton = ({ targetId = "main-canvas" }: ExportButtonProps) => {
+const ExportButton = ({ targetId = "canvas-container" }: ExportButtonProps) => {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const { exportToPng } = useExportToPng({ targetId });
 
     const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
         setAnchorEl(event.currentTarget);
@@ -22,48 +21,17 @@ const ExportButton = ({ targetId = "main-canvas" }: ExportButtonProps) => {
     };
 
     const handleExportPNG = async () => {
-        const node = document.getElementById(targetId);
-        if (!node) {
-            alert("Main canvas not found!");
-            return;
-        }
-
-        try {
-            // Temporarily remove scale to export at full size
-            const originalTransform = node.style.transform;
-            const originalOrigin = node.style.transformOrigin;
-
-            node.style.transform = "none";
-            node.style.transformOrigin = "top left";
-
-            const dataUrl = await toPng(node, {
-                width: 1920,
-                height: 1080,
-                style: {
-                    width: "1920px",
-                    height: "1080px",
-                    transform: "none",
-                    backgroundColor: "white",
-                },
-                pixelRatio: 1,
-                cacheBust: true,
-            });
-
-            // Restore transform
-            node.style.transform = originalTransform;
-            node.style.transformOrigin = originalOrigin;
-
-            saveAs(dataUrl, "snapcanvas.png");
-        } catch (error) {
-            console.error("Export failed:", error);
-            alert("Export failed. Check console for details.");
-        } finally {
-            handleMenuClose();
-        }
+        await exportToPng();
+        handleMenuClose();
     };
 
-    const handleSaveAsPin = async () => {
-        alert("Share functionality coming soon!");
+    const handleSaveAsJPG = async () => {
+        alert("Coming soon!");
+        handleMenuClose();
+    };
+
+    const handleSaveAsPDF = async () => {
+        alert("Coming soon!");
         handleMenuClose();
     };
 
@@ -85,8 +53,9 @@ const ExportButton = ({ targetId = "main-canvas" }: ExportButtonProps) => {
                 open={Boolean(anchorEl)}
                 onClose={handleMenuClose}
             >
-                <MenuItem onClick={handleExportPNG}>Export to PNG</MenuItem>
-                <MenuItem onClick={handleSaveAsPin}>Share</MenuItem>
+                <MenuItem onClick={handleExportPNG}>PNG</MenuItem>
+                <MenuItem onClick={handleSaveAsJPG}>JPG</MenuItem>
+                <MenuItem onClick={handleSaveAsPDF}>PDF</MenuItem>
             </MuiMenu>
         </>
     );

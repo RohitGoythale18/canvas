@@ -19,6 +19,7 @@ export interface CanvasData {
 // Types for Canvas
 export interface CanvasProps {
   splitMode?: string;
+  executeCommand: (command: Command) => void;
   pencilActive?: boolean;
   fillActive?: boolean;
   fillColor?: string;
@@ -46,10 +47,7 @@ export interface CanvasProps {
   onDrawingsChange: React.Dispatch<React.SetStateAction<Array<{ panelId: string; paths: DrawingPath[] }>>>;
   filledImages: Array<{ panelId: string; imageData: ImageData }>;
   onFilledImagesChange: React.Dispatch<React.SetStateAction<Array<{ panelId: string; imageData: ImageData }>>>;
-  onSaveState: () => void;
-  onUndo?: () => void;
-  onRedo?: () => void;
-  permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
+  permission?: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
 }
 
 // Types for MenuBar
@@ -59,6 +57,8 @@ export interface MenuBarProps {
   canvasData?: CanvasData;
   onNewCanvas?: () => void;
   onSplitChange?: (mode: string) => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
   onPencilToggle?: (enabled: boolean) => void;
   onFillToggle?: (enabled: boolean) => void;
   onColorChange?: (color: string) => void;
@@ -74,7 +74,7 @@ export interface MenuBarProps {
   textActive?: boolean;
   onImageUpload?: (imageUrl: string) => void;
   onImageUsed?: () => void;
-  onClearImage?: () => void;
+  clearImage?: () => void;
   onCanvasBackgroundChange?: (color: { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }, panelId?: string) => void;
   selectedPanel?: string;
   onBorderToggle?: (enabled: boolean) => void;
@@ -93,9 +93,12 @@ export interface MenuBarProps {
   onTextAlignmentChange?: (alignment: 'left' | 'center' | 'right' | 'justify') => void;
   onListTypeChange?: (listType: 'bullet' | 'number' | 'none') => void;
   onTextColorChange?: (color: string | { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }) => void;
-  onUndo?: () => void;
-  onRedo?: () => void;
   permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
+  onBringForward: () => void;
+  onBringToFront: () => void;
+  onSendBackward: () => void;
+  onSendToBack: () => void;
+  hasSelectedShape?: boolean;
 }
 
 // Types for BoardButton
@@ -149,6 +152,7 @@ export interface NewCanvasButtonProps {
 
 // Types for Split Button
 export interface SplitButtonProps {
+  executeCommand?: (command: Command) => void;
   onSplitSelect?: (mode: string) => void;
 }
 
@@ -159,21 +163,32 @@ export interface ExportButtonProps {
 
 // Types for Undo
 export interface UndoButtonProps {
+  onUndo?: () => void;
   onClick?: () => void;
   active?: boolean;
 }
 
 // Types for Redo
 export interface RedoButtonProps {
+  onRedo?: () => void;
   onClick?: () => void;
   active?: boolean;
+}
+
+// Types for Shape Layers
+export interface LayerButtonProps {
+  onBringToFront: () => void;
+  onBringForward: () => void;
+  onSendBackward: () => void;
+  onSendToBack: () => void;
+  disabled?: boolean;
 }
 
 // Types for Pencil Button
 export interface PencilButtonProps {
   active?: boolean;
   onToggle?: (enabled: boolean) => void;
-  permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
+  // permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
 }
 
 // Types for Drawing Path
@@ -267,6 +282,30 @@ export interface BorderButtonProps {
   onBorderChange?: (border: { type: 'solid' | 'dashed' | 'dotted'; size: number; color: string }) => void;
 }
 
+export interface FontStyles {
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  strikethrough?: boolean;
+}
+
+export type TextColor = | string | {
+  type: 'solid' | 'gradient';
+  value: string | { start: string; end: string };
+};
+
+export interface FontFeatures {
+  fontFamily: string;
+  fontSize: number;
+  fontStyles: FontStyles;
+  alignment: 'left' | 'center' | 'right' | 'justify';
+  listType: 'bullet' | 'number' | 'none';
+  textColor: string | {
+    type: 'solid' | 'gradient';
+    value: string | { start: string; end: string }
+  };
+}
+
 // Types for Font Features
 export interface FontFeatureProps {
   onFontFamilyChange?: (fontFamily: string) => void;
@@ -291,27 +330,6 @@ export interface FontFeatureProps {
   currentAlignment?: 'left' | 'center' | 'right' | 'justify';
   currentListType?: 'bullet' | 'number' | 'none';
   currentTextColor?: string | { type: 'solid' | 'gradient'; value: string | { start: string; end: string } };
-}
-
-export interface FontStyles {
-  bold?: boolean;
-  italic?: boolean;
-  underline?: boolean;
-  strikethrough?: boolean;
-}
-
-export type TextColor = | string | {
-  type: 'solid' | 'gradient';
-  value: string | { start: string; end: string };
-};
-
-export interface FontFeatures {
-  fontFamily: string;
-  fontSize: number;
-  fontStyles: FontStyles;
-  alignment: 'left' | 'center' | 'right' | 'justify';
-  listType: 'bullet' | 'number' | 'none';
-  textColor: TextColor;
 }
 
 // Types for Auth Context
@@ -368,60 +386,99 @@ export interface LoginData {
   password: string;
 }
 
+export interface UseNewCanvasProps {
+  setSplitMode: React.Dispatch<React.SetStateAction<string>>;
+  setCanvasBackground: React.Dispatch<React.SetStateAction<Record<string, string | { start: string; end: string }>>>;
+  setSelectedPanel: React.Dispatch<React.SetStateAction<string>>;
+  setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
+  setDrawings: React.Dispatch<React.SetStateAction<{ panelId: string; paths: DrawingPath[] }[]>>;
+  setFilledImages: React.Dispatch<React.SetStateAction<{ panelId: string; imageData: ImageData }[]>>;
+  setUploadedImageUrl: React.Dispatch<React.SetStateAction<string | null>>;
+  setLoadedImage: React.Dispatch<React.SetStateAction<HTMLImageElement | null>>;
+  setPermission: React.Dispatch<React.SetStateAction<'OWNER' | 'WRITE' | 'COMMENT' | 'READ'>>;
+  setResetKey: React.Dispatch<React.SetStateAction<number>>;
+}
+
+export interface UseCanvasCleanupProps {
+  splitMode: string;
+  setDrawings: React.Dispatch<React.SetStateAction<{ panelId: string; paths: DrawingPath[] }[]>>;
+  setFilledImages: React.Dispatch<React.SetStateAction<{ panelId: string; imageData: ImageData }[]>>;
+}
+
+export interface UseSplitCanvasProps {
+  splitMode: string;
+  setSplitMode: React.Dispatch<React.SetStateAction<string>>;
+  executeCommand: (cmd: Command) => void;
+}
+
+export interface UseLoadCanvasProps {
+  setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
+  setDrawings: React.Dispatch<React.SetStateAction<{ panelId: string; paths: DrawingPath[] }[]>>;
+  setFilledImages: React.Dispatch<React.SetStateAction<{ panelId: string; imageData: ImageData }[]>>;
+  setCanvasBackground: React.Dispatch<React.SetStateAction<Record<string, string | { start: string; end: string }>>>;
+  setSplitMode: React.Dispatch<React.SetStateAction<string>>;
+  setUploadedImageUrl: React.Dispatch<React.SetStateAction<string | null>>;
+  setLoadedImage: React.Dispatch<React.SetStateAction<HTMLImageElement | null>>;
+}
+
+export interface UseLoadDesignProps {
+  token: string | null;
+  setPermission: React.Dispatch<React.SetStateAction<'OWNER' | 'WRITE' | 'COMMENT' | 'READ'>>;
+  loadCanvas: (data: CanvasData) => Promise<void>;
+}
+
+export interface UseExportToPngProps {
+  targetId: string;
+}
+
+export interface Command {
+  execute: () => void;
+  undo: () => void;
+}
+
+export interface UseShapeLayerProps {
+  shapes: Shape[];
+  setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
+  executeCommand: (cmd: Command) => void;
+}
+
 export interface UseDrawingToolsProps {
+  executeCommand: (command: Command) => void;
   pencilActive: boolean;
   eraserActive: boolean;
   eraserSize: number;
   splitMode: string;
-  setDrawings: React.Dispatch<
-    React.SetStateAction<{ panelId: string; paths: DrawingPath[] }[]>
-  >;
-  onSaveState?: () => void;
-
-  // NEW: to let eraser actually modify shapes
+  setDrawings: React.Dispatch<React.SetStateAction<{ panelId: string; paths: DrawingPath[] }[]>>;
   shapes: Shape[];
   onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
   permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
 }
 
 export interface UseFillToolProps {
+  executeCommand: (command: Command) => void;
   splitMode: string;
   fillActive: boolean;
   fillColor: string;
   setFilledImages: React.Dispatch<React.SetStateAction<{ panelId: string; imageData: ImageData }[]>>;
   shapes: Shape[];
   onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
-  onSaveState?: () => void;
   permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
 }
 
 export interface UseKeyboardShortcutsProps {
   shapes: Shape[];
   onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
-  onSaveState?: () => void;
-  onUndo?: () => void;
-  onRedo?: () => void;
   permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
 }
 
-export interface UseTextToolsProps {
-  textActive: boolean;
+export interface UseShapePropertiesProps {
+  borderActive: boolean;
+  borderType: 'solid' | 'dashed' | 'dotted';
+  borderSize: number;
+  borderColor: string;
   shapes: Shape[];
-  textInput: string;
-  editingShapeId: string | null;
-  currentFontFeatures?: {
-    fontFamily: string;
-    fontSize: number;
-    fontStyles: FontStyles;
-    alignment: 'left' | 'center' | 'right' | 'justify';
-    listType: 'bullet' | 'number' | 'none';
-    textColor: string | { type: 'solid' | 'gradient'; value: string | { start: string; end: string } };
-  };
   onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
-  setTextInput: React.Dispatch<React.SetStateAction<string>>;
-  setEditingShapeId: React.Dispatch<React.SetStateAction<string | null>>;
-  onTextToggle?: (enabled: boolean) => void;
-  permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
+  currentFontFeatures?: FontFeatures;
 }
 
 export interface UseShapeRendererProps {
@@ -436,15 +493,6 @@ export interface UseShapeRendererProps {
   // permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
 }
 
-export interface FontFeatureType {
-  fontFamily: string;
-  fontSize: number;
-  fontStyles: FontStyles;
-  alignment: 'left' | 'center' | 'right' | 'justify';
-  listType: 'bullet' | 'number' | 'none';
-  textColor: string | { type: 'solid' | 'gradient'; value: string | { start: string; end: string } };
-}
-
 export interface UseShapeProperties {
   borderActive: boolean;
   borderType: 'solid' | 'dashed' | 'dotted';
@@ -452,13 +500,14 @@ export interface UseShapeProperties {
   borderColor: string;
   shapes: Shape[];
   onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
-  currentFontFeatures?: FontFeatureType;
+  currentFontFeatures?: FontFeatureProps;
   permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
 }
 
 export interface UseShapeInteractionProps {
   selectedShape: string | null;
   splitMode: string;
+  executeCommand: (command: Command) => void;
   onShapeSelect: (shape: string) => void;
   shapes: Shape[];
   pencilActive: boolean;
@@ -483,8 +532,64 @@ export interface UseShapeInteractionProps {
   resizing: boolean;
   resizeHandle: string | null;
   dragOffset: { x: number; y: number };
-  onSaveState?: () => void;
   permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
+}
+
+export interface UseTextToolsProps {
+  executeCommand: (command: Command) => void;
+  textActive: boolean;
+  shapes: Shape[];
+  textInput: string;
+  editingShapeId: string | null;
+  currentFontFeatures?: {
+    fontFamily: string;
+    fontSize: number;
+    fontStyles: FontStyles;
+    alignment: 'left' | 'center' | 'right' | 'justify';
+    listType: 'bullet' | 'number' | 'none';
+    textColor: string | { type: 'solid' | 'gradient'; value: string | { start: string; end: string } };
+  };
+  onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
+  setTextInput: React.Dispatch<React.SetStateAction<string>>;
+  setEditingShapeId: React.Dispatch<React.SetStateAction<string | null>>;
+  onTextToggle?: (enabled: boolean) => void;
+  permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
+}
+
+export interface UseClearImageProps {
+  shapes: Shape[];
+  setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
+  executeCommand: (command: Command) => void;
+  setUploadedImageUrl: (v: string | null) => void;
+  setLoadedImage: (v: HTMLImageElement | null) => void;
+}
+
+export interface UseUploadImageProps {
+  shapes: Shape[];
+  setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
+  executeCommand: (cmd: Command) => void;
+  setUploadedImageUrl: (v: string | null) => void;
+  setLoadedImage: (v: HTMLImageElement | null) => void;
+}
+
+export interface UseBgColorProps {
+  background: Record<string, string | { start: string; end: string }>;
+  setBackground: React.Dispatch<
+    React.SetStateAction<Record<string, string | { start: string; end: string }>>
+  >;
+  executeCommand: (cmd: Command) => void;
+}
+
+export interface UseBordersProps {
+  shapes: Shape[];
+  setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
+  executeCommand: (cmd: Command) => void;
+}
+
+export interface UseFontFeatProps {
+  shapes: Shape[];
+  setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
+  executeCommand: (cmd: Command) => void;
 }
 
 // Types for Image Storage

@@ -1,11 +1,7 @@
 'use client';
-
 import { Button, Tooltip } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-
-interface ClearImageButtonProps {
-    onClearImage?: () => void;
-}
+import { ClearImageButtonProps } from "@/types";
 
 export default function ClearImageButton({ onClearImage }: ClearImageButtonProps) {
     const handleClick = () => {

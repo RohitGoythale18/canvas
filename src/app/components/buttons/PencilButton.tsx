@@ -1,11 +1,8 @@
 'use client';
+import { PencilButtonProps } from "@/types";
+
 import { Tooltip, Button } from "@mui/material";
 import ModeIcon from "@mui/icons-material/Mode";
-
-interface PencilButtonProps {
-    active?: boolean;
-    onToggle?: (enabled: boolean) => void;
-}
 
 const PencilButton = ({ active = false, onToggle }: PencilButtonProps) => {
     const handleClick = () => {
@@ -14,7 +11,7 @@ const PencilButton = ({ active = false, onToggle }: PencilButtonProps) => {
     };
 
     return (
-        <Tooltip title="Pencil Tool" arrow>
+        <Tooltip title="Pencil" arrow>
             <Button
                 variant={active ? "contained" : "outlined"}
                 onClick={handleClick}

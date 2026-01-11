@@ -1,12 +1,9 @@
 'use client';
 import { useState } from "react";
+import { ColorButtonProps } from "@/types";
+
 import { Tooltip, Button, Menu, MenuItem, Divider, TextField, Box } from "@mui/material";
 import PaletteIcon from "@mui/icons-material/Palette";
-
-interface ColorButtonProps {
-    onColorChange?: (color: { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }, panelId?: string) => void;
-    panelId?: string;
-}
 
 const ColorButton = ({ onColorChange, panelId }: ColorButtonProps) => {
     const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
