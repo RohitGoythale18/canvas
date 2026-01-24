@@ -89,7 +89,7 @@ export async function PUT(
     const userId = authRequest.user!.userId;
 
     const { id: designId } = await context.params;
-    const { title, description, data } = await request.json();
+    const { title, description, data, thumbnailUrl, image } = await request.json();
 
     // Check permissions first
     const design = await prisma.design.findUnique({
@@ -129,6 +129,8 @@ export async function PUT(
         title,
         description,
         data,
+        thumbnailUrl,
+        image,
       },
     });
 

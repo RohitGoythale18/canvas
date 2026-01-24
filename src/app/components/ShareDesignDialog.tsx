@@ -165,6 +165,7 @@ export default function ShareDesignDialog({ open, designId, onClose, onShared, }
                     </TextField>
 
                     {/* ---------- SHARED WITH LIST ---------- */}
+                    {/* ---------- SHARED WITH LIST ---------- */}
                     {sharedWith.length > 0 && (
                         <>
                             <Divider sx={{ my: 2 }} />
@@ -182,14 +183,51 @@ export default function ShareDesignDialog({ open, designId, onClose, onShared, }
                                     sx={{
                                         display: 'flex',
                                         justifyContent: 'space-between',
+                                        alignItems: 'center',
                                         py: 0.5,
                                         fontSize: 14,
                                     }}
                                 >
                                     <Typography component="span">{user.email}</Typography>
-                                    <Typography component="span" style={{ opacity: 0.7 }}>
-                                        {user.permission}
-                                    </Typography>
+                                    <TextField
+                                        select
+                                        size="small"
+                                        variant="standard"
+                                        value={user.permission}
+                                        onChange={async (e) => {
+                                            const newPermission = e.target.value as 'READ' | 'COMMENT' | 'WRITE';
+                                            try {
+                                                const res = await fetch(`/api/designs/${designId}/shares`, {
+                                                    method: 'PUT',
+                                                    headers: {
+                                                        'Content-Type': 'application/json',
+                                                        Authorization: `Bearer ${token}`,
+                                                    },
+                                                    body: JSON.stringify({
+                                                        email: user.email,
+                                                        permission: newPermission,
+                                                    }),
+                                                });
+                                                if (!res.ok) throw new Error('Failed to update');
+
+                                                setSharedWith((prev) =>
+                                                    prev.map((u) =>
+                                                        u.email === user.email
+                                                            ? { ...u, permission: newPermission }
+                                                            : u
+                                                    )
+                                                );
+                                                setSnackbar({ open: true, message: 'Permission updated', severity: 'success' });
+                                            } catch {
+                                                setSnackbar({ open: true, message: 'Failed to update permission', severity: 'error' });
+                                            }
+                                        }}
+                                        sx={{ width: 100 }}
+                                    >
+                                        <MenuItem value="READ">Read</MenuItem>
+                                        <MenuItem value="COMMENT">Comment</MenuItem>
+                                        <MenuItem value="WRITE">Write</MenuItem>
+                                    </TextField>
                                 </Box>
                             ))}
                         </>

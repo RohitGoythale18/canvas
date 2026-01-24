@@ -7,9 +7,9 @@ import { Button, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Tex
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import SaveIcon from '@mui/icons-material/Save';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
-import { BoardAPI, BoardButtonProps, Shape } from "@/types";
+import { BoardAPI, BoardButtonProps, Shape, CanvasData } from "@/types";
 
-const BoardButton = ({ canvasData, getCurrentCanvasImage }: BoardButtonProps) => {
+const BoardButton = ({ canvasData, getCurrentCanvasImage, designId, permission }: BoardButtonProps) => {
   const router = useRouter();
   const { token, isAuthenticated } = useAuth();
 
@@ -75,7 +75,74 @@ const BoardButton = ({ canvasData, getCurrentCanvasImage }: BoardButtonProps) =>
     loadBoards();
   }, [loadBoards]);
 
-  // ================= SAVE DESIGN =================
+  // ================= CLEAN SHAPES HELPER =================
+  const getCleanedShapes = (data: CanvasData) => {
+    return (data.shapes as Shape[]).map(
+      ({ imageElement: _img, ...rest }: Shape) => ({
+        ...rest,
+        fontSize: rest.fontSize ?? 16,
+        fontFamily: rest.fontFamily ?? "Arial, sans-serif",
+        textColor: rest.textColor ?? "#000000",
+        fontStyles:
+          rest.fontStyles ?? {
+            bold: false,
+            italic: false,
+            underline: false,
+            strikethrough: false,
+          },
+        textAlignment: rest.textAlignment ?? "left",
+        listType: rest.listType ?? "none",
+      })
+    );
+  };
+
+  // ================= UPDATE DESIGN =================
+  const handleUpdateDesign = async () => {
+    if (!designId || !canvasData || !getCurrentCanvasImage) {
+      showSnackbar("Design ID or canvas missing", "error");
+      return;
+    }
+
+    const canvasImage = getCurrentCanvasImage();
+    const cleanedShapes = getCleanedShapes(canvasData);
+
+    // Try to find current title
+    let currentTitle = undefined;
+    if (boards.length > 0) {
+      // Flatten all designs to find the current one
+      const allDesigns = boards.flatMap(b => b.designs || []);
+      const currentDesign = allDesigns.find(d => d.id === designId);
+      if (currentDesign) {
+        currentTitle = currentDesign.title;
+      }
+    }
+
+    try {
+      const res = await fetch(`/api/designs/${designId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: currentTitle,
+          data: { ...canvasData, shapes: cleanedShapes },
+          thumbnailUrl: canvasImage,
+        }),
+      });
+
+      if (!res.ok) throw new Error();
+
+      handleBoardMenuClose();
+      showSnackbar("Design updated successfully", "success");
+      // Optionally reload boards
+      loadBoards();
+    } catch {
+      showSnackbar("Failed to update design", "error");
+    }
+  };
+
+  // ================= SAVE DESIGN (NEW) =================
   const handleSaveToBoard = async () => {
     if (!currentBoardId || !canvasData || !getCurrentCanvasImage) {
       showSnackbar("No board selected or canvas missing", "error");
@@ -93,23 +160,7 @@ const BoardButton = ({ canvasData, getCurrentCanvasImage }: BoardButtonProps) =>
       return;
     }
 
-    const cleanedShapes = (canvasData.shapes as Shape[]).map(
-      ({ imageElement: _img, ...rest }: Shape) => ({
-        ...rest,
-        fontSize: rest.fontSize ?? 16,
-        fontFamily: rest.fontFamily ?? "Arial, sans-serif",
-        textColor: rest.textColor ?? "#000000",
-        fontStyles:
-          rest.fontStyles ?? {
-            bold: false,
-            italic: false,
-            underline: false,
-            strikethrough: false,
-          },
-        textAlignment: rest.textAlignment ?? "left",
-        listType: rest.listType ?? "none",
-      })
-    );
+    const cleanedShapes = getCleanedShapes(canvasData);
 
     try {
       const res = await fetch("/api/designs", {
@@ -183,16 +234,32 @@ const BoardButton = ({ canvasData, getCurrentCanvasImage }: BoardButtonProps) =>
 
         <MenuItem
           onClick={() => {
+            if (!currentBoardId) {
+              showSnackbar("Please create or select a board first", "error");
+              return;
+            }
             setSaveDialogOpen(true);
             handleBoardMenuClose();
           }}
-          disabled={!currentBoardId || !getCurrentCanvasImage}
+          disabled={!getCurrentCanvasImage}
         >
           <ListItemIcon>
             <SaveIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>Save Current Design</ListItemText>
+          <ListItemText>Save as New Design</ListItemText>
         </MenuItem>
+
+        {designId && (permission === 'OWNER' || permission === 'WRITE') && (
+          <MenuItem
+            onClick={handleUpdateDesign}
+            disabled={!getCurrentCanvasImage}
+          >
+            <ListItemIcon>
+              <SaveIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Update Design</ListItemText>
+          </MenuItem>
+        )}
 
         {boards.map((board) => (
           <MenuItem
@@ -208,7 +275,7 @@ const BoardButton = ({ canvasData, getCurrentCanvasImage }: BoardButtonProps) =>
 
       {/* SAVE DIALOG */}
       <Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)}>
-        <DialogTitle>Save Current Design</DialogTitle>
+        <DialogTitle>Save Design</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus

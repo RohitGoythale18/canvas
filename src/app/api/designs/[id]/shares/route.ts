@@ -155,3 +155,75 @@ export async function POST(
         );
     }
 }
+
+export async function PUT(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const authRequest = authenticateRequest(request);
+        const ownerId = authRequest.user!.userId;
+
+        const resolvedParams = await params;
+        const designId = resolvedParams.id;
+        const { email, permission } = await request.json();
+
+        if (!designId || !email || !permission) {
+            return NextResponse.json(
+                { error: 'Design ID, email, and permission are required' },
+                { status: 400 }
+            );
+        }
+
+        const design = await prisma.design.findUnique({
+            where: { id: designId },
+            select: { id: true, ownerId: true },
+        });
+
+        if (!design || design.ownerId !== ownerId) {
+            return NextResponse.json(
+                { error: 'Forbidden' },
+                { status: 403 }
+            );
+        }
+
+        const receiver = await prisma.user.findUnique({
+            where: { email },
+            select: { id: true },
+        });
+
+        if (!receiver) {
+            return NextResponse.json(
+                { error: 'User not found' },
+                { status: 404 }
+            );
+        }
+
+        const updatedShare = await prisma.sharedDesign.updateMany({
+            where: {
+                designId,
+                sharedWithId: receiver.id,
+            },
+            data: {
+                permission,
+            },
+        });
+
+        if (updatedShare.count === 0) {
+            return NextResponse.json(
+                { error: 'Share not found' },
+                { status: 404 }
+            );
+        }
+
+        return NextResponse.json({
+            message: 'Permission updated successfully',
+        });
+    } catch (error) {
+        console.error('Update share error:', error);
+        return NextResponse.json(
+            { error: 'Internal server error' },
+            { status: 500 }
+        );
+    }
+}
