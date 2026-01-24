@@ -103,7 +103,7 @@ const BoardButton = ({ canvasData, getCurrentCanvasImage, designId, permission }
       return;
     }
 
-    const _canvasImage = getCurrentCanvasImage();
+    const canvasImage = getCurrentCanvasImage();
     const cleanedShapes = getCleanedShapes(canvasData);
 
     // Try to find current title
@@ -125,15 +125,9 @@ const BoardButton = ({ canvasData, getCurrentCanvasImage, designId, permission }
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          title: currentTitle, // If undefined, backend should ideally keep existing
+          title: currentTitle,
           data: { ...canvasData, shapes: cleanedShapes },
-          // We don't update image/thumbnailUrl via PUT body in this schema usually?
-          // The PUT handler looks for { title, description, data }. 
-          // It does NOT look for thumbnail/image updates in the provided snippet?
-          // Let's re-read api/designs/[id]/route.ts quickly if possible.
-          // Wait, the PUT handler: const { title, description, data } = await request.json();
-          // It doesn't seem to update 'image' or 'thumbnailUrl'.
-          // This might be a limitation, but for now we update the data.
+          thumbnailUrl: canvasImage,
         }),
       });
 
