@@ -52,6 +52,7 @@ export interface CanvasProps {
 
 // Types for MenuBar
 export interface MenuBarProps {
+  designId?: string | null;
   onSaveCanvas?: () => string;
   onLoadCanvas?: (canvasData: CanvasData) => void;
   canvasData?: CanvasData;
@@ -106,6 +107,8 @@ export interface BoardButtonProps {
   canvasData?: CanvasData;
   onLoadCanvas?: (canvasData: CanvasData) => void;
   getCurrentCanvasImage?: () => string;
+  designId?: string | null;
+  permission?: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
 }
 
 // Types for BoardAPI

@@ -219,7 +219,7 @@ function HomeContentComponent() {
         onTextAlignmentChange={(v) => { setFontFeatures(prev => ({ ...prev, alignment: v })); applyFontFeatures({ alignment: v }); }}
         onListTypeChange={(v) => { setFontFeatures(prev => ({ ...prev, listType: v })); applyFontFeatures({ listType: v }); }}
         onTextColorChange={(v) => { setFontFeatures(prev => ({ ...prev, textColor: v })); applyFontFeatures({ textColor: v }); }}
-
+        designId={designId}
         permission={permission}
       />
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80vh', p: 1 }}>

@@ -28,7 +28,7 @@ const TAB_EDIT = 1;
 const TAB_INSERT = 2;
 const TAB_DESIGN = 3;
 
-const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onUndo, onRedo, onPencilToggle, onFillToggle, onColorChange, fillColor, onEraserToggle, onEraserSizeChange, eraserSize, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, clearImage, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange, onBringForward, onBringToFront, onSendBackward, onSendToBack, hasSelectedShape }: MenuBarProps) => {
+const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onUndo, onRedo, onPencilToggle, onFillToggle, onColorChange, fillColor, onEraserToggle, onEraserSizeChange, eraserSize, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, clearImage, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange, onBringForward, onBringToFront, onSendBackward, onSendToBack, hasSelectedShape, designId, permission }: MenuBarProps) => {
     const theme = useTheme();
     const isMobileOrTablet = useMediaQuery(theme.breakpoints.down("md"));
     const [activeTab, setActiveTab] = useState(TAB_HOME);
@@ -52,7 +52,7 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <Typography variant="h2" sx={{ fontSize: '1rem' }}>Home</Typography>
                         <List sx={{ p: 1, display: "flex", gap: 1 }}>
-                            <BoardButton canvasData={canvasData} onLoadCanvas={onLoadCanvas} getCurrentCanvasImage={onSaveCanvas} />
+                            <BoardButton canvasData={canvasData} onLoadCanvas={onLoadCanvas} getCurrentCanvasImage={onSaveCanvas} designId={designId} permission={permission} />
                             <NewCanvasButton onNewCanvas={onNewCanvas} />
                             <SplitButton onSplitSelect={(mode) => onSplitChange?.(mode)} />
                             <ExportButton targetId="canvas-container" />
@@ -152,7 +152,7 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
             <Box sx={{ p: 1 }}>
                 {activeTab === TAB_HOME && (
                     <List sx={{ display: "flex", gap: 1 }}>
-                        <BoardButton canvasData={canvasData} onLoadCanvas={onLoadCanvas} getCurrentCanvasImage={onSaveCanvas} />
+                        <BoardButton canvasData={canvasData} onLoadCanvas={onLoadCanvas} getCurrentCanvasImage={onSaveCanvas} designId={designId} permission={permission} />
                         <NewCanvasButton onNewCanvas={onNewCanvas} />
                         <SplitButton onSplitSelect={(mode) => onSplitChange?.(mode)} />
                         <ExportButton targetId="canvas-container" />
