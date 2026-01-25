@@ -174,7 +174,10 @@ function HomeContentComponent() {
           uploadedImageBase64: uploadedImageUrl || undefined,
         }}
 
-        onNewCanvas={newCanvas}
+        onNewCanvas={() => {
+          newCanvas();
+          router.push('/');
+        }}
         onSplitChange={changeSplitMode}
 
         onUndo={undo}
