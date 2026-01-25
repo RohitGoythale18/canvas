@@ -48,6 +48,8 @@ export interface CanvasProps {
   filledImages: Array<{ panelId: string; imageData: ImageData }>;
   onFilledImagesChange: React.Dispatch<React.SetStateAction<Array<{ panelId: string; imageData: ImageData }>>>;
   permission?: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
 // Types for MenuBar
@@ -74,6 +76,7 @@ export interface MenuBarProps {
   onTextToggle?: (enabled: boolean) => void;
   textActive?: boolean;
   onImageUpload?: (imageUrl: string) => void;
+  onImageUploadByUrl?: (imageUrl: string) => void;
   onImageUsed?: () => void;
   clearImage?: () => void;
   onCanvasBackgroundChange?: (color: { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }, panelId?: string) => void;
@@ -265,11 +268,13 @@ export interface TextButtonProps {
 // Types for Upload Image Button
 export interface UploadImageButtonProps {
   onImageUpload?: (base64: string) => void;
+  onImageUploadByUrl?: (imageUrl: string) => void;
 }
 
 // Types for Clear Image Button
 export interface ClearImageButtonProps {
   onClearImage?: () => void;
+  disabled?: boolean;
 }
 
 // Types for Canvas Background Color
@@ -480,6 +485,8 @@ export interface UseKeyboardShortcutsProps {
   shapes: Shape[];
   onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
   permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
 export interface UseShapePropertiesProps {
@@ -582,6 +589,15 @@ export interface UseUploadImageProps {
   setUploadedImageUrl: (v: string | null) => void;
   setLoadedImage: (v: HTMLImageElement | null) => void;
 }
+
+export interface UseInsertImagebyUrlProps {
+  shapes: Shape[];
+  setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
+  executeCommand: (cmd: Command) => void;
+  setUploadedImageUrl: (v: string | null) => void;
+  setLoadedImage: (v: HTMLImageElement | null) => void;
+}
+
 
 export interface UseBgColorProps {
   background: Record<string, string | { start: string; end: string }>;

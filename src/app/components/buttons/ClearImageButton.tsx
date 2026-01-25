@@ -3,10 +3,10 @@ import { Button, Tooltip } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { ClearImageButtonProps } from "@/types";
 
-export default function ClearImageButton({ onClearImage }: ClearImageButtonProps) {
+export default function ClearImageButton({ onClearImage, disabled }: ClearImageButtonProps) {
     const handleClick = () => {
         const confirmDelete = window.confirm(
-            "Remove the image from the selected shape?"
+            "Remove the image or delete the selected shape?"
         );
 
         if (confirmDelete) {
@@ -15,12 +15,13 @@ export default function ClearImageButton({ onClearImage }: ClearImageButtonProps
     };
 
     return (
-        <Tooltip title="Clear Image" arrow>
+        <Tooltip title="Clear Image / Delete Shape" arrow>
             <Button
                 variant="outlined"
                 color="error"
                 size="small"
                 onClick={handleClick}
+                disabled={disabled}
             >
                 <DeleteIcon sx={{ fontSize: 20 }} />
             </Button>

@@ -4,7 +4,9 @@ import { useEffect } from 'react';
 export const useKeyboardShortcuts = ({
     shapes,
     onShapesChange,
-    permission
+    permission,
+    onUndo,
+    onRedo
 }: UseKeyboardShortcutsProps) => {
     useEffect(() => {
         const canEdit = permission === 'OWNER' || permission === 'WRITE';
@@ -14,8 +16,8 @@ export const useKeyboardShortcuts = ({
             const hasEditingText = shapes.some(shape => shape.isEditing && shape.type === "text");
             if (hasEditingText) return;
 
-            // Delete / Backspace -> delete selected shapes
-            if (e.key === "Delete" || e.key === "Backspace") {
+            // Delete -> delete selected shapes
+            if (e.key === "Delete") {
                 if (!canEdit) return;
                 onShapesChange(prev => prev.filter(shape => !shape.selected));
                 return;
@@ -31,6 +33,7 @@ export const useKeyboardShortcuts = ({
             if (meta && key === 'z' && !e.shiftKey) {
                 if (!canEdit) return;
                 e.preventDefault();
+                onUndo?.();
                 return;
             }
 
@@ -38,11 +41,12 @@ export const useKeyboardShortcuts = ({
             if (meta && (key === 'y' || (key === 'z' && e.shiftKey))) {
                 if (!canEdit) return;
                 e.preventDefault();
+                onRedo?.();
                 return;
             }
         };
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [shapes, onShapesChange, permission]);
+    }, [shapes, onShapesChange, permission, onUndo, onRedo]);
 };
