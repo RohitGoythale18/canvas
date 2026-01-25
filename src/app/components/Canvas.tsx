@@ -48,6 +48,8 @@ const Canvas = ({
     filledImages,
     onFilledImagesChange,
     permission = 'READ',
+    onUndo,
+    onRedo,
 }: CanvasProps) => {
 
     const [dragging, setDragging] = useState(false);
@@ -159,7 +161,9 @@ const Canvas = ({
     useKeyboardShortcuts({
         shapes,
         onShapesChange,
-        permission
+        permission,
+        onUndo,
+        onRedo
     });
 
     const getBackgroundStyle = (panelId: string) => {

@@ -2,11 +2,13 @@
 import { useState, useRef } from "react";
 import { UploadImageButtonProps } from "@/types";
 
-import { Tooltip, Button, Menu, MenuItem, Divider } from "@mui/material";
+import { Tooltip, Button, Menu, MenuItem, Divider, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from "@mui/material";
 import ImageIcon from '@mui/icons-material/Image';
 
-const UploadImageButton = ({ onImageUpload }: UploadImageButtonProps) => {
+const UploadImageButton = ({ onImageUpload, onImageUploadByUrl }: UploadImageButtonProps) => {
     const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+    const [urlDialogOpen, setUrlDialogOpen] = useState(false);
+    const [imageUrl, setImageUrl] = useState("");
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const openMenu = (e: React.MouseEvent<HTMLButtonElement>) => setMenuAnchor(e.currentTarget);
@@ -14,6 +16,11 @@ const UploadImageButton = ({ onImageUpload }: UploadImageButtonProps) => {
 
     const handleFileSelect = () => {
         fileInputRef.current?.click();
+        closeMenu();
+    };
+
+    const handleUrlSelect = () => {
+        setUrlDialogOpen(true);
         closeMenu();
     };
 
@@ -29,6 +36,14 @@ const UploadImageButton = ({ onImageUpload }: UploadImageButtonProps) => {
         };
         reader.readAsDataURL(file);
         e.target.value = '';
+    };
+
+    const handleUrlSubmit = () => {
+        if (imageUrl.trim()) {
+            onImageUploadByUrl?.(imageUrl.trim());
+            setImageUrl("");
+            setUrlDialogOpen(false);
+        }
     };
 
     return (
@@ -51,7 +66,29 @@ const UploadImageButton = ({ onImageUpload }: UploadImageButtonProps) => {
                 <MenuItem disabled>Upload Image</MenuItem>
                 <Divider />
                 <MenuItem onClick={handleFileSelect}>From Device</MenuItem>
+                <MenuItem onClick={handleUrlSelect}>From URL</MenuItem>
             </Menu>
+
+            <Dialog open={urlDialogOpen} onClose={() => setUrlDialogOpen(false)} fullWidth maxWidth="sm">
+                <DialogTitle>Insert Image from URL</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        autoFocus
+                        margin="dense"
+                        label="Image URL"
+                        type="url"
+                        fullWidth
+                        variant="outlined"
+                        value={imageUrl}
+                        onChange={(e) => setImageUrl(e.target.value)}
+                        placeholder="https://example.com/image.png"
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setUrlDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleUrlSubmit} variant="contained" color="primary">Insert</Button>
+                </DialogActions>
+            </Dialog>
         </>
     );
 };

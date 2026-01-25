@@ -18,6 +18,7 @@ import { useBorders } from "@/hooks/useBorders";
 import { useFontFeat } from "@/hooks/useFontFeat";
 import { useSplitCanvas } from "@/hooks/useSplitCanvas";
 import { useClearImage } from "@/hooks/useClearImage";
+import { useInsertImagebyUrl } from "@/hooks/useInsertImagebyUrl";
 import { useNewCanvas } from "@/hooks/useNewCanvas";
 import { useSaveCanvas } from "@/hooks/useSaveCanvas";
 import { useLoadCanvas } from "@/hooks/useLoadCanvas";
@@ -69,6 +70,7 @@ function HomeContentComponent() {
   const { changeSplitMode } = useSplitCanvas({ splitMode, setSplitMode, executeCommand, });
   const { bringForwardCmd, sendBackwardCmd, bringToFrontCmd, sendToBackCmd, } = useShapeLayer({ shapes, setShapes, executeCommand, });
   const { uploadImage } = useUploadImage({ shapes, setShapes, executeCommand, setUploadedImageUrl, setLoadedImage, });
+  const { insertImageByUrl } = useInsertImagebyUrl({ shapes, setShapes, executeCommand, setUploadedImageUrl, setLoadedImage, });
   const { clearImage } = useClearImage({ shapes, setShapes, executeCommand, setUploadedImageUrl, setLoadedImage, });
   const { changeBgColor } = useBgColor({ background: canvasBackground, setBackground: setCanvasBackground, executeCommand, });
   const { applyBorder } = useBorders({ shapes, setShapes, executeCommand, });
@@ -203,7 +205,9 @@ function HomeContentComponent() {
         onTextToggle={handleTextToggle}
         onColorChange={setFillColor}
         onImageUpload={handleImageUpload}
+        onImageUploadByUrl={insertImageByUrl}
         onImageUsed={handleImageUsed}
+        clearImage={clearImage}
 
         onCanvasBackgroundChange={handleCanvasBackgroundChange}
         selectedPanel={selectedPanel}
@@ -257,6 +261,8 @@ function HomeContentComponent() {
           filledImages={filledImages}
           onFilledImagesChange={setFilledImages}
           permission={permission}
+          onUndo={undo}
+          onRedo={redo}
         />
       </Box>
     </Box>

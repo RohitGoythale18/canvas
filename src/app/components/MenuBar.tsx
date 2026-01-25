@@ -28,7 +28,7 @@ const TAB_EDIT = 1;
 const TAB_INSERT = 2;
 const TAB_DESIGN = 3;
 
-const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onUndo, onRedo, onPencilToggle, onFillToggle, onColorChange, fillColor, onEraserToggle, onEraserSizeChange, eraserSize, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, clearImage, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange, onBringForward, onBringToFront, onSendBackward, onSendToBack, hasSelectedShape, designId, permission }: MenuBarProps) => {
+const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onUndo, onRedo, onPencilToggle, onFillToggle, onColorChange, fillColor, onEraserToggle, onEraserSizeChange, eraserSize, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, onImageUploadByUrl, clearImage, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange, onBringForward, onBringToFront, onSendBackward, onSendToBack, hasSelectedShape, designId, permission }: MenuBarProps) => {
     const theme = useTheme();
     const isMobileOrTablet = useMediaQuery(theme.breakpoints.down("md"));
     const [activeTab, setActiveTab] = useState(TAB_HOME);
@@ -89,8 +89,8 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
                         <List sx={{ p: 1, display: "flex", gap: 1 }}>
                             <ShapeButton onShapeSelect={onShapeSelect} />
                             <TextButton active={textActive} onToggle={onTextToggle} />
-                            <UploadImageButton onImageUpload={onImageUpload} />
-                            <ClearImageButton onClearImage={clearImage} />
+                            <UploadImageButton onImageUpload={onImageUpload} onImageUploadByUrl={onImageUploadByUrl} />
+                            <ClearImageButton onClearImage={clearImage} disabled={!hasSelectedShape} />
                         </List>
                     </Box>
 
@@ -181,8 +181,8 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
                     <List sx={{ display: "flex", gap: 1 }}>
                         <ShapeButton onShapeSelect={onShapeSelect} />
                         <TextButton active={textActive} onToggle={onTextToggle} />
-                        <UploadImageButton onImageUpload={onImageUpload} />
-                        <ClearImageButton onClearImage={clearImage} />
+                        <UploadImageButton onImageUpload={onImageUpload} onImageUploadByUrl={onImageUploadByUrl} />
+                        <ClearImageButton onClearImage={clearImage} disabled={!hasSelectedShape} />
                     </List>
                 )}
 
