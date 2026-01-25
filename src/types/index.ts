@@ -434,6 +434,14 @@ export interface UseExportToPngProps {
   targetId: string;
 }
 
+export interface UseExportToJpgProps {
+  targetId: string;
+}
+
+export interface UseExportToPdfProps {
+  targetId: string;
+}
+
 export interface Command {
   execute: () => void;
   undo: () => void;

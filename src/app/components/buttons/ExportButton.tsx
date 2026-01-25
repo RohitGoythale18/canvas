@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { ExportButtonProps } from "@/types";
 import { useExportToPng } from "@/hooks/useExportToPng";
+import { useExportToJpg } from "@/hooks/useExportToJpg";
+import { useExportToPdf } from "@/hooks/useExportToPdf";
 
 import { Button, Menu as MuiMenu, MenuItem, Tooltip } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -11,6 +13,8 @@ import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 const ExportButton = ({ targetId = "canvas-container" }: ExportButtonProps) => {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const { exportToPng } = useExportToPng({ targetId });
+    const { exportToJpg } = useExportToJpg({ targetId });
+    const { exportToPdf } = useExportToPdf({ targetId });
 
     const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
         setAnchorEl(event.currentTarget);
@@ -26,12 +30,12 @@ const ExportButton = ({ targetId = "canvas-container" }: ExportButtonProps) => {
     };
 
     const handleSaveAsJPG = async () => {
-        alert("Coming soon!");
+        await exportToJpg();
         handleMenuClose();
     };
 
     const handleSaveAsPDF = async () => {
-        alert("Coming soon!");
+        await exportToPdf();
         handleMenuClose();
     };
 
