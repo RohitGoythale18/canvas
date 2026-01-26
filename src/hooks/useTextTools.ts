@@ -290,7 +290,7 @@ export const useTextTools = ({
         if (canvasToFocus) {
             canvasToFocus.focus();
         }
-    }, [editingShapeId, shapes, canEdit, permission]);
+    }, [editingShapeId, shapes, canEdit, permission, canvasRefs]);
 
     useEffect(() => {
         if (!editingShapeId) return;
