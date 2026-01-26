@@ -69,7 +69,17 @@ class FloodFillCanvasCommand implements Command {
     }
 }
 
-export const useFillTool = ({ executeCommand, splitMode, fillActive, fillColor, setFilledImages, shapes, onShapesChange, permission }: UseFillToolProps) => {
+export const useFillTool = ({
+    executeCommand,
+    splitMode,
+    fillActive,
+    fillColor,
+    setFilledImages,
+    shapes,
+    onShapesChange,
+    permission,
+    canvasRefs
+}: UseFillToolProps) => {
     const filledImagesRef = useRef<{ panelId: string; imageData: ImageData }[]>([]);
 
     useEffect(() => {
@@ -80,11 +90,13 @@ export const useFillTool = ({ executeCommand, splitMode, fillActive, fillColor, 
     }, [setFilledImages]);
 
     useEffect(() => {
-        const canvases = document.querySelectorAll<HTMLCanvasElement>(".drawing-panel");
+        const canvases = Object.entries(canvasRefs.current).filter(
+            ([, canvas]) => canvas !== null
+        ) as [string, HTMLCanvasElement][];
         const cleanupFunctions: (() => void)[] = [];
         const canEdit = permission === 'OWNER' || permission === 'WRITE';
 
-        canvases.forEach((canvas) => {
+        canvases.forEach(([panelId, canvas]) => {
             const ctx = canvas.getContext("2d");
             if (!ctx) return;
 
@@ -156,7 +168,6 @@ export const useFillTool = ({ executeCommand, splitMode, fillActive, fillColor, 
                 }
 
                 // Store the filled image data
-                const panelId = canvas.getAttribute("data-panel-id") || "default";
 
                 const beforeImage =
                     filledImagesRef.current.find(p => p.panelId === panelId)?.imageData ??
@@ -181,7 +192,6 @@ export const useFillTool = ({ executeCommand, splitMode, fillActive, fillColor, 
                 const y = Math.floor((e.clientY - rect.top) * (canvas.height / rect.height));
                 if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) return;
 
-                const panelId = canvas.getAttribute("data-panel-id") || "default";
                 const panelShapes = shapes.filter(shape => shape.panelId === panelId);
 
                 // Check if click is inside a shape
@@ -218,5 +228,5 @@ export const useFillTool = ({ executeCommand, splitMode, fillActive, fillColor, 
         return () => {
             cleanupFunctions.forEach(cleanup => cleanup());
         };
-    }, [executeCommand, splitMode, fillActive, fillColor, setFilledImages, shapes, onShapesChange, permission]);
+    }, [executeCommand, splitMode, fillActive, fillColor, setFilledImages, shapes, onShapesChange, permission, canvasRefs]);
 };

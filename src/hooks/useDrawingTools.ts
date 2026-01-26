@@ -71,6 +71,7 @@ export const useDrawingTools = ({
   shapes,
   onShapesChange,
   permission,
+  canvasRefs,
 }: UseDrawingToolsProps) => {
   const isDrawingRef = useRef(false);
   const currentPathRef = useRef<DrawingPath | null>(null);
@@ -324,12 +325,12 @@ export const useDrawingTools = ({
       );
     };
 
-    const canvases = Array.from(
-      document.querySelectorAll<HTMLCanvasElement>('.drawing-panel')
-    );
+    const canvases = Object.entries(canvasRefs.current).filter(
+      ([, canvas]) => canvas !== null
+    ) as [string, HTMLCanvasElement][];
     const cleanupFns: (() => void)[] = [];
 
-    canvases.forEach((canvas) => {
+    canvases.forEach(([panelId, canvas]) => {
       const getPos = (e: MouseEvent | TouchEvent) => {
         const rect = canvas.getBoundingClientRect();
         const clientX =
@@ -350,7 +351,6 @@ export const useDrawingTools = ({
         if (!canEdit) return;
 
         isDrawingRef.current = true;
-        const panelId = canvas.getAttribute('data-panel-id') || 'default';
         currentPanelRef.current = panelId;
 
         const pos = getPos(e);
@@ -458,5 +458,5 @@ export const useDrawingTools = ({
     return () => {
       cleanupFns.forEach((fn) => fn());
     };
-  }, [canEdit, pencilActive, eraserActive, eraserSize, splitMode, setDrawings, executeCommand,]);
+  }, [canEdit, pencilActive, eraserActive, eraserSize, splitMode, setDrawings, executeCommand, canvasRefs]);
 };
