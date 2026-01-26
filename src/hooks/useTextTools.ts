@@ -55,7 +55,20 @@ class EditTextCommand implements Command {
     }
 }
 
-export const useTextTools = ({ executeCommand, textActive, shapes, textInput, editingShapeId, currentFontFeatures, onShapesChange, setTextInput, setEditingShapeId, onTextToggle, permission }: UseTextToolsProps) => {
+export const useTextTools = ({
+    executeCommand,
+    textActive,
+    shapes,
+    textInput,
+    editingShapeId,
+    currentFontFeatures,
+    onShapesChange,
+    setTextInput,
+    setEditingShapeId,
+    onTextToggle,
+    permission,
+    canvasRefs
+}: UseTextToolsProps) => {
     const fontFeatures = currentFontFeatures ?? DEFAULT_FONT_FEATURES;
     const canEdit = permission === 'OWNER' || permission === 'WRITE';
     const beforeEditRef = useRef<Shape | null>(null);
@@ -92,13 +105,13 @@ export const useTextTools = ({ executeCommand, textActive, shapes, textInput, ed
     }, [executeCommand, textInput, shapes, fontFeatures.fontSize, fontFeatures.fontFamily, fontFeatures.fontStyles, fontFeatures.alignment, fontFeatures.listType, fontFeatures.textColor, onShapesChange, setEditingShapeId, canEdit]);
 
     useEffect(() => {
-        if (typeof document === 'undefined') return;
-
-        const canvases = document.querySelectorAll<HTMLCanvasElement>(".drawing-panel");
+        const canvases = Object.entries(canvasRefs.current).filter(
+            ([, canvas]) => canvas !== null
+        ) as [string, HTMLCanvasElement][];
         const cleanupFunctions: (() => void)[] = [];
 
-        canvases.forEach((canvas) => {
-            const handleMouseDown = (e: MouseEvent) => {
+        canvases.forEach(([panelId, canvas]) => {
+            const handleDblClick = (e: MouseEvent) => {
                 const rect = canvas.getBoundingClientRect();
                 const scaleX = canvas.width / rect.width;
                 const scaleY = canvas.height / rect.height;
@@ -127,12 +140,32 @@ export const useTextTools = ({ executeCommand, textActive, shapes, textInput, ed
 
                     setTextInput(clickedText.text || '');
                     setEditingShapeId(clickedText.id);
-                    return;
                 }
+            };
 
+            const handleMouseDown = (e: MouseEvent) => {
                 if (!textActive || !canEdit) return;
 
-                const panelId = canvas.getAttribute('data-panel-id') || 'default';
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const x = (e.clientX - rect.left) * scaleX;
+                const y = (e.clientY - rect.top) * scaleY;
+
+                // Check if we clicked on ANY existing shape
+                const clickedShape = shapes.find(
+                    s =>
+                        s.panelId === panelId &&
+                        x >= s.x &&
+                        x <= s.x + s.width &&
+                        y >= s.y &&
+                        y <= s.y + s.height
+                );
+
+                // If we clicked an existing shape, don't create a new text box
+                // let useShapeInteraction handle selection/dragging
+                if (clickedShape) return;
+
                 const maxZ = Math.max(0, ...shapes.filter(s => s.panelId === panelId).map(s => s.zIndex ?? 0));
 
                 const newShape: Shape = {
@@ -168,13 +201,15 @@ export const useTextTools = ({ executeCommand, textActive, shapes, textInput, ed
             };
 
             canvas.addEventListener("mousedown", handleMouseDown);
+            canvas.addEventListener("dblclick", handleDblClick);
             cleanupFunctions.push(() => {
                 canvas.removeEventListener("mousedown", handleMouseDown);
+                canvas.removeEventListener("dblclick", handleDblClick);
             });
         });
 
         return () => cleanupFunctions.forEach(fn => fn());
-    }, [executeCommand, textActive, shapes, onShapesChange, setTextInput, setEditingShapeId, fontFeatures.fontSize, fontFeatures.fontFamily, fontFeatures.fontStyles, fontFeatures.alignment, fontFeatures.listType, fontFeatures.textColor, onTextToggle, canEdit, permission]);
+    }, [executeCommand, textActive, shapes, onShapesChange, setTextInput, setEditingShapeId, fontFeatures.fontSize, fontFeatures.fontFamily, fontFeatures.fontStyles, fontFeatures.alignment, fontFeatures.listType, fontFeatures.textColor, onTextToggle, canEdit, permission, canvasRefs]);
 
     useEffect(() => {
         if (typeof document === 'undefined') return;
@@ -183,7 +218,7 @@ export const useTextTools = ({ executeCommand, textActive, shapes, textInput, ed
             const editingShape = shapes.find(s => s.isEditing && s.type === 'text' && s.id === editingShapeId);
             if (!editingShape || !canEdit) return;
 
-            const canvas = document.querySelector<HTMLCanvasElement>(`.drawing-panel[data-panel-id="${editingShape.panelId || 'default'}"]`);
+            const canvas = canvasRefs.current[editingShape.panelId || 'default'];
             if (!canvas) {
                 commitEditing(editingShape.id);
                 return;
@@ -207,7 +242,7 @@ export const useTextTools = ({ executeCommand, textActive, shapes, textInput, ed
 
         window.addEventListener('mousedown', handleOutsideMouseDown);
         return () => window.removeEventListener('mousedown', handleOutsideMouseDown);
-    }, [shapes, editingShapeId, commitEditing, canEdit, permission]);
+    }, [shapes, editingShapeId, commitEditing, canEdit, permission, canvasRefs]);
 
     useEffect(() => {
         if (!editingShapeId) return;
@@ -247,15 +282,15 @@ export const useTextTools = ({ executeCommand, textActive, shapes, textInput, ed
         const editingShape = shapes.find(s => s.id === editingShapeId);
         let canvasToFocus: HTMLCanvasElement | null = null;
         if (editingShape) {
-            canvasToFocus = document.querySelector<HTMLCanvasElement>(`.drawing-panel[data-panel-id="${editingShape.panelId || 'default'}"]`);
+            canvasToFocus = canvasRefs.current[editingShape.panelId || 'default'];
         }
         if (!canvasToFocus) {
-            canvasToFocus = document.querySelector<HTMLCanvasElement>(".drawing-panel");
+            canvasToFocus = canvasRefs.current['default'] || Object.values(canvasRefs.current)[0];
         }
         if (canvasToFocus) {
             canvasToFocus.focus();
         }
-    }, [editingShapeId, shapes, canEdit, permission]);
+    }, [editingShapeId, shapes, canEdit, permission, canvasRefs]);
 
     useEffect(() => {
         if (!editingShapeId) return;

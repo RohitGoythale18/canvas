@@ -1,4 +1,5 @@
 // src/types/index.ts
+export type Tool = 'select' | 'pencil' | 'fill' | 'eraser' | 'text' | 'shape';
 
 import { NextRequest } from "next/server";
 
@@ -14,6 +15,10 @@ export interface CanvasData {
   loadedImageData?: string | null;
   currentImageId?: string | null;
   uploadedImageBase64?: string | null;
+}
+
+export interface CanvasRefs {
+  [panelId: string]: HTMLCanvasElement | null;
 }
 
 // Types for Canvas
@@ -468,6 +473,7 @@ export interface UseDrawingToolsProps {
   shapes: Shape[];
   onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
   permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
+  canvasRefs: React.RefObject<CanvasRefs>;
 }
 
 export interface UseFillToolProps {
@@ -479,6 +485,7 @@ export interface UseFillToolProps {
   shapes: Shape[];
   onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
   permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
+  canvasRefs: React.RefObject<CanvasRefs>;
 }
 
 export interface UseKeyboardShortcutsProps {
@@ -508,6 +515,7 @@ export interface UseShapeRendererProps {
   editingShapeId: string | null;
   loadedImage?: HTMLImageElement | null;
   backgroundColor?: Record<string, string | { start: string; end: string }>;
+  canvasRefs: React.RefObject<CanvasRefs>;
   // permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
 }
 
@@ -551,6 +559,8 @@ export interface UseShapeInteractionProps {
   resizeHandle: string | null;
   dragOffset: { x: number; y: number };
   permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
+  canvasRefs: React.RefObject<CanvasRefs>;
+  onPanelSelect?: (panelId: string) => void;
 }
 
 export interface UseTextToolsProps {
@@ -572,6 +582,7 @@ export interface UseTextToolsProps {
   setEditingShapeId: React.Dispatch<React.SetStateAction<string | null>>;
   onTextToggle?: (enabled: boolean) => void;
   permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
+  canvasRefs: React.RefObject<CanvasRefs>;
 }
 
 export interface UseClearImageProps {

@@ -1,5 +1,5 @@
 import { UseKeyboardShortcutsProps } from '@/types';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export const useKeyboardShortcuts = ({
     shapes,
@@ -8,13 +8,25 @@ export const useKeyboardShortcuts = ({
     onUndo,
     onRedo
 }: UseKeyboardShortcutsProps) => {
-    useEffect(() => {
-        const canEdit = permission === 'OWNER' || permission === 'WRITE';
+    const shapesRef = useRef(shapes);
+    const onUndoRef = useRef(onUndo);
+    const onRedoRef = useRef(onRedo);
+    const canEditRef = useRef(permission === 'OWNER' || permission === 'WRITE');
 
+    useEffect(() => {
+        shapesRef.current = shapes;
+        onUndoRef.current = onUndo;
+        onRedoRef.current = onRedo;
+        canEditRef.current = permission === 'OWNER' || permission === 'WRITE';
+    }, [shapes, onUndo, onRedo, permission]);
+
+    useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             // If editing a text shape, ignore global shortcuts
-            const hasEditingText = shapes.some(shape => shape.isEditing && shape.type === "text");
+            const hasEditingText = shapesRef.current.some(shape => shape.isEditing && shape.type === "text");
             if (hasEditingText) return;
+
+            const canEdit = canEditRef.current;
 
             // Delete -> delete selected shapes
             if (e.key === "Delete") {
@@ -33,7 +45,7 @@ export const useKeyboardShortcuts = ({
             if (meta && key === 'z' && !e.shiftKey) {
                 if (!canEdit) return;
                 e.preventDefault();
-                onUndo?.();
+                onUndoRef.current?.();
                 return;
             }
 
@@ -41,12 +53,12 @@ export const useKeyboardShortcuts = ({
             if (meta && (key === 'y' || (key === 'z' && e.shiftKey))) {
                 if (!canEdit) return;
                 e.preventDefault();
-                onRedo?.();
+                onRedoRef.current?.();
                 return;
             }
         };
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [shapes, onShapesChange, permission, onUndo, onRedo]);
+    }, [onShapesChange]);
 };

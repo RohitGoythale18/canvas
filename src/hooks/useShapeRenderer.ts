@@ -12,15 +12,16 @@ export const useShapeRenderer = ({
     editingShapeId,
     loadedImage,
     backgroundColor,
+    canvasRefs,
 }: UseShapeRendererProps) => {
     useEffect(() => {
-        const canvases = document.querySelectorAll<HTMLCanvasElement>(".drawing-panel");
+        const canvases = Object.entries(canvasRefs.current).filter(
+            ([, canvas]) => canvas !== null
+        ) as [string, HTMLCanvasElement][];
 
-        canvases.forEach((canvas) => {
+        canvases.forEach(([panelId, canvas]) => {
             const ctx = canvas.getContext("2d");
             if (!ctx) return;
-
-            const panelId = canvas.getAttribute("data-panel-id") || "default";
 
             // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -88,7 +89,7 @@ export const useShapeRenderer = ({
                     renderShape(ctx, shape, textInput, editingShapeId);
                 });
         });
-    }, [shapes, drawings, filledImages, splitMode, textInput, editingShapeId, loadedImage, backgroundColor]);
+    }, [shapes, drawings, filledImages, splitMode, textInput, editingShapeId, loadedImage, backgroundColor, canvasRefs]);
 };
 
 // Helper function to render individual shapes

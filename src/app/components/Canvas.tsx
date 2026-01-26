@@ -13,7 +13,7 @@ import { useCanvasCleanup } from "@/hooks/useCanvasCleanup";
 import { useShapeRenderer } from "@/hooks/useShapeRenderer";
 
 import { Box } from "@mui/material";
-import { CanvasProps } from "@/types";
+import { CanvasProps, CanvasRefs } from "@/types";
 
 const CANVAS_WIDTH = 1920;
 const CANVAS_HEIGHT = 1080;
@@ -60,6 +60,7 @@ const Canvas = ({
     const [editingShapeId, setEditingShapeId] = useState<string | null>(null);
 
     const wrapperRef = useRef<HTMLDivElement>(null);
+    const canvasRefs = useRef<CanvasRefs>({});
 
     const { zoomLevel } = useCanvasResize(wrapperRef);
 
@@ -72,7 +73,8 @@ const Canvas = ({
         setDrawings: onDrawingsChange,
         shapes,
         onShapesChange,
-        permission
+        permission,
+        canvasRefs
     });
 
     useFillTool({
@@ -83,7 +85,8 @@ const Canvas = ({
         setFilledImages: onFilledImagesChange,
         shapes,
         onShapesChange,
-        permission
+        permission,
+        canvasRefs
     });
 
     useTextTools({
@@ -97,7 +100,8 @@ const Canvas = ({
         setTextInput,
         setEditingShapeId,
         onTextToggle,
-        permission
+        permission,
+        canvasRefs
     });
 
     useShapeInteraction({
@@ -128,7 +132,9 @@ const Canvas = ({
         resizing,
         resizeHandle,
         dragOffset,
-        permission
+        permission,
+        canvasRefs,
+        onPanelSelect
     });
 
     useShapeProperties({
@@ -155,7 +161,8 @@ const Canvas = ({
         textInput,
         editingShapeId,
         loadedImage,
-        backgroundColor
+        backgroundColor,
+        canvasRefs
     });
 
     useKeyboardShortcuts({
@@ -183,6 +190,7 @@ const Canvas = ({
             onClick={() => onPanelSelect?.(panelId)}
         >
             <canvas
+                ref={(el) => { canvasRefs.current[panelId] = el; }}
                 className="drawing-panel border border-gray-400"
                 width={CANVAS_WIDTH * widthMult}
                 height={CANVAS_HEIGHT * heightMult}

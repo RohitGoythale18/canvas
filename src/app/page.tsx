@@ -8,7 +8,7 @@ import { Box } from "@mui/material";
 import Menu from "./components/MenuBar";
 import Canvas from "./components/Canvas";
 import { useAuth } from "@/context/AuthContext";
-import { DrawingPath, FontFeatures, Shape } from "@/types";
+import { DrawingPath, FontFeatures, Shape, Tool } from "@/types";
 
 import { useUndoRedo } from "@/hooks/useUndoRedo";
 import { useUploadImage } from "@/hooks/useUploadImage";
@@ -36,17 +36,14 @@ function HomeContentComponent() {
   const [splitMode, setSplitMode] = useState("none");
 
   // Edit
-  const [pencilActive, setPencilActive] = useState(false);
+  const [activeTool, setActiveTool] = useState<Tool>('select');
   const [drawings, setDrawings] = useState<{ panelId: string, paths: DrawingPath[] }[]>([]);
-  const [fillActive, setFillActive] = useState(false);
   const [fillColor, setFillColor] = useState("#ff0000");
-  const [eraserActive, setEraserActive] = useState(false);
   const [eraserSize, setEraserSize] = useState(10);
 
   // Insert
   const [shapes, setShapes] = useState<Shape[]>([]);
   const [selectedShape, setSelectedShape] = useState<string | null>(null);
-  const [textActive, setTextActive] = useState(false);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const [loadedImage, setLoadedImage] = useState<HTMLImageElement | null>(null);
 
@@ -101,51 +98,28 @@ function HomeContentComponent() {
   }, [designId, isAuthenticated, loading, loadDesignFromId]);
 
   const handlePencilToggle = (enabled: boolean) => {
-    setPencilActive(enabled);
-    if (enabled) {
-      setFillActive(false);
-      setEraserActive(false);
-      setTextActive(false);
-      setSelectedShape(null);
-    }
+    setActiveTool(enabled ? 'pencil' : 'select');
+    if (enabled) setSelectedShape(null);
   };
 
   const handleFillToggle = (enabled: boolean) => {
-    setFillActive(enabled);
-    if (enabled) {
-      setPencilActive(false);
-      setEraserActive(false);
-      setTextActive(false);
-      setSelectedShape(null);
-    }
+    setActiveTool(enabled ? 'fill' : 'select');
+    if (enabled) setSelectedShape(null);
   };
 
   const handleEraserToggle = (enabled: boolean) => {
-    setEraserActive(enabled);
-    if (enabled) {
-      setPencilActive(false);
-      setFillActive(false);
-      setTextActive(false);
-      setSelectedShape(null);
-    }
+    setActiveTool(enabled ? 'eraser' : 'select');
+    if (enabled) setSelectedShape(null);
   };
 
   const handleShapeSelect = (shape: string) => {
     setSelectedShape(shape);
-    setPencilActive(false);
-    setFillActive(false);
-    setEraserActive(false);
-    setTextActive(false);
+    setActiveTool(shape ? 'shape' : 'select');
   };
 
   const handleTextToggle = (enabled: boolean) => {
-    setTextActive(enabled);
-    if (enabled) {
-      setPencilActive(false);
-      setFillActive(false);
-      setEraserActive(false);
-      setSelectedShape(null);
-    }
+    setActiveTool(enabled ? 'text' : 'select');
+    if (enabled) setSelectedShape(null);
   };
 
   if (loading) {
@@ -191,17 +165,17 @@ function HomeContentComponent() {
         hasSelectedShape={hasSelectedShape}
 
         onPencilToggle={handlePencilToggle}
-        pencilActive={pencilActive}
-        fillActive={fillActive}
+        pencilActive={activeTool === 'pencil'}
+        fillActive={activeTool === 'fill'}
         onFillToggle={handleFillToggle}
         fillColor={fillColor}
         onEraserToggle={handleEraserToggle}
-        eraserActive={eraserActive}
+        eraserActive={activeTool === 'eraser'}
         onEraserSizeChange={setEraserSize}
         eraserSize={eraserSize}
 
         onShapeSelect={handleShapeSelect}
-        textActive={textActive}
+        textActive={activeTool === 'text'}
         onTextToggle={handleTextToggle}
         onColorChange={setFillColor}
         onImageUpload={handleImageUpload}
@@ -234,14 +208,14 @@ function HomeContentComponent() {
           key={resetKey}
           splitMode={splitMode}
           executeCommand={executeCommand}
-          pencilActive={pencilActive}
-          fillActive={fillActive}
+          pencilActive={activeTool === 'pencil'}
+          fillActive={activeTool === 'fill'}
           fillColor={fillColor}
-          eraserActive={eraserActive}
+          eraserActive={activeTool === 'eraser'}
           eraserSize={eraserSize}
-          selectedShape={selectedShape}
+          selectedShape={activeTool === 'shape' ? selectedShape : null}
           onShapeSelect={handleShapeSelect}
-          textActive={textActive}
+          textActive={activeTool === 'text'}
           onTextToggle={handleTextToggle}
           uploadedImageUrl={uploadedImageUrl}
           loadedImage={loadedImage}
