@@ -1,6 +1,6 @@
 // src/app/page.tsx
 'use client';
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from 'next/dynamic';
 import { Box } from "@mui/material";
@@ -24,9 +24,11 @@ import { useSaveCanvas } from "@/hooks/useSaveCanvas";
 import { useLoadCanvas } from "@/hooks/useLoadCanvas";
 import { imageDataToBase64 } from "@/utils/imageUtils";
 import { useLoadDesign } from "@/hooks/useLoadDesign";
+import { useCollab } from "@/hooks/useCollab";
+import { useAutoSave } from "@/hooks/useAutoSave";
 
 function HomeContentComponent() {
-  const { token, isAuthenticated, loading } = useAuth();
+  const { token, isAuthenticated, loading, user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const designId = searchParams.get('designId');
@@ -58,20 +60,58 @@ function HomeContentComponent() {
   const [filledImages, setFilledImages] = useState<{ panelId: string, imageData: ImageData }[]>([]);
 
   const [permission, setPermission] = useState<'OWNER' | 'WRITE' | 'COMMENT' | 'READ'>('READ');
+  const [isShared, setIsShared] = useState(false);
+
+  const {
+    yShapes, yDrawings, yConfig, isConnected,
+    undo: yUndo, redo: yRedo, users,
+    setLocalUser, updateCursor, setSelection,
+    clientId
+  } = useCollab(designId, isShared);
+
+  useEffect(() => {
+    if (isConnected && user) {
+      const colors = ['#f87171', '#fb923c', '#fbbf24', '#facc15', '#a3e635', '#4ade80', '#34d399', '#2dd4bf', '#22d3ee', '#38bdf8', '#60a5fa', '#818cf8', '#a78bfa', '#c084fc', '#e879f9', '#f472b6', '#fb7185'];
+      const randomColor = colors[Math.floor(Math.random() * colors.length)];
+      setLocalUser(user.name, randomColor);
+    }
+  }, [isConnected, user, setLocalUser]);
 
   const { saveCanvas } = useSaveCanvas();
   const { newCanvas } = useNewCanvas({ setSplitMode, setCanvasBackground, setSelectedPanel, setShapes, setDrawings, setFilledImages, setUploadedImageUrl, setLoadedImage, setPermission, setResetKey, });
-  const { loadCanvas } = useLoadCanvas({ setShapes, setDrawings, setFilledImages, setCanvasBackground, setSplitMode, setUploadedImageUrl, setLoadedImage, });
-  const { loadDesignFromId } = useLoadDesign({ token, setPermission, loadCanvas, });
-  const { executeCommand, undo, redo } = useUndoRedo();
-  const { changeSplitMode } = useSplitCanvas({ splitMode, setSplitMode, executeCommand, });
-  const { bringForwardCmd, sendBackwardCmd, bringToFrontCmd, sendToBackCmd, } = useShapeLayer({ shapes, setShapes, executeCommand, });
-  const { uploadImage } = useUploadImage({ shapes, setShapes, executeCommand, setUploadedImageUrl, setLoadedImage, });
-  const { insertImageByUrl } = useInsertImagebyUrl({ shapes, setShapes, executeCommand, setUploadedImageUrl, setLoadedImage, });
-  const { clearImage } = useClearImage({ shapes, setShapes, executeCommand, setUploadedImageUrl, setLoadedImage, });
-  const { changeBgColor } = useBgColor({ background: canvasBackground, setBackground: setCanvasBackground, executeCommand, });
-  const { applyBorder } = useBorders({ shapes, setShapes, executeCommand, });
-  const { applyFontFeatures } = useFontFeat({ shapes, setShapes, executeCommand, });
+  const { loadCanvas } = useLoadCanvas({ setShapes, setDrawings, setFilledImages, setCanvasBackground, setSplitMode, setUploadedImageUrl, setLoadedImage, yShapes, yDrawings, yConfig });
+  const { loadDesignFromId } = useLoadDesign({ token, setPermission, setIsShared, loadCanvas, });
+  const { executeCommand, undo, redo } = useUndoRedo(yUndo, yRedo);
+  const { changeSplitMode } = useSplitCanvas({ splitMode, setSplitMode, executeCommand, yConfig });
+  const { bringForwardCmd, sendBackwardCmd, bringToFrontCmd, sendToBackCmd, } = useShapeLayer({ shapes, setShapes, executeCommand, yShapes });
+  const { uploadImage } = useUploadImage({ shapes, setShapes, executeCommand, setUploadedImageUrl, setLoadedImage, yShapes });
+  const { insertImageByUrl } = useInsertImagebyUrl({ shapes, setShapes, executeCommand, setUploadedImageUrl, setLoadedImage, yShapes });
+  const { clearImage } = useClearImage({ shapes, setShapes, executeCommand, setUploadedImageUrl, setLoadedImage, yShapes });
+  const { changeBgColor } = useBgColor({ background: canvasBackground, setBackground: setCanvasBackground, executeCommand, yConfig });
+  const { applyBorder } = useBorders({ shapes, setShapes, executeCommand, yShapes });
+  const { applyFontFeatures } = useFontFeat({ shapes, setShapes, executeCommand, yShapes });
+
+  // Leader logic for auto-save: Only one user saves to DB to avoid redundant requests
+  const isLeader = useMemo(() => {
+    if (!isConnected || !clientId) return true; // Solo mode or not connected yet
+    const allClientIds = Array.from(users.keys());
+    if (allClientIds.length === 0) return true;
+    return clientId === Math.min(...allClientIds);
+  }, [isConnected, clientId, users]);
+
+  useAutoSave({
+    designId,
+    token,
+    canvasData: {
+      shapes,
+      drawings,
+      filledImages: [], // Not saving filled images for now to keep JSON smaller
+      backgroundColor: canvasBackground,
+      splitMode,
+    },
+    getCurrentCanvasImage: saveCanvas,
+    permission: isLeader ? permission : 'READ', // Only the leader effectively has 'WRITE' for auto-save
+  });
 
   const hasSelectedShape = shapes.some(s => s.selected);
   const handleImageUpload = uploadImage;
@@ -96,6 +136,88 @@ function HomeContentComponent() {
 
     loadDesign();
   }, [designId, isAuthenticated, loading, loadDesignFromId]);
+
+  // Architecture: Sync Yjs changes back to React state
+  useEffect(() => {
+    const syncShapes = () => {
+      const shapesArray = Array.from(yShapes.values()) as Shape[];
+      setShapes(prevShapes => {
+        // Map through new shapes from Yjs and preserve local imageElements if they exist
+        return shapesArray.map(newShape => {
+          const existingShape = prevShapes.find(s => s.id === newShape.id);
+
+          let shapeToReturn = { ...newShape };
+
+          // Default selected to false for incoming shapes to prevent remote users hijacking selection
+          // If we already have this shape, preserve our LOCAL selection state
+          if (existingShape) {
+            shapeToReturn.selected = existingShape.selected;
+            shapeToReturn.isEditing = existingShape.isEditing; // Also preserve editing state
+          } else {
+            // New shape coming in. Should not be selected for us.
+            shapeToReturn.selected = false;
+            shapeToReturn.isEditing = false;
+          }
+
+          // If we already have this shape and its image data matches, preserve the imageElement
+          if (existingShape && existingShape.imageElement &&
+            (existingShape.imageUrl === newShape.imageUrl || existingShape.imageBase64 === newShape.imageBase64)) {
+            shapeToReturn.imageElement = existingShape.imageElement;
+          }
+          return shapeToReturn;
+        });
+      });
+    };
+
+    const syncConfig = () => {
+      const remoteSplitMode = yConfig.get('splitMode');
+      const remoteBg = yConfig.get('backgroundColor');
+      if (remoteSplitMode !== undefined) setSplitMode(remoteSplitMode);
+      if (remoteBg !== undefined) setCanvasBackground(remoteBg);
+    };
+
+    const syncDrawings = () => {
+      const drawingsMap = yDrawings.toJSON();
+      const drawingsArray = Object.entries(drawingsMap).map(([panelId, paths]) => ({
+        panelId,
+        paths: paths as DrawingPath[]
+      }));
+      setDrawings(drawingsArray);
+    };
+
+    yShapes.observe(syncShapes);
+    yConfig.observe(syncConfig);
+    yDrawings.observe(syncDrawings);
+
+    // Initial sync
+    syncShapes();
+    syncConfig();
+    syncDrawings();
+
+    return () => {
+      yShapes.unobserve(syncShapes);
+      yConfig.unobserve(syncConfig);
+      yDrawings.unobserve(syncDrawings);
+    };
+  }, [yShapes, yConfig, yDrawings]);
+
+  // Effect to load missing imageElements for shapes (e.g. added by other users)
+  useEffect(() => {
+    const shapesToLoad = shapes.filter(s => (s.imageUrl || s.imageBase64) && !s.imageElement);
+    if (shapesToLoad.length === 0) return;
+
+    shapesToLoad.forEach(async (shape) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = (shape.imageBase64 || shape.imageUrl) as string;
+      try {
+        await img.decode();
+        setShapes(prev => prev.map(s => s.id === shape.id ? { ...s, imageElement: img } : s));
+      } catch (e) {
+        console.error("Failed to load image for shape", shape.id, e);
+      }
+    });
+  }, [shapes]);
 
   const handlePencilToggle = (enabled: boolean) => {
     setActiveTool(enabled ? 'pencil' : 'select');
@@ -202,6 +324,9 @@ function HomeContentComponent() {
         onTextColorChange={(v) => { setFontFeatures(prev => ({ ...prev, textColor: v })); applyFontFeatures({ textColor: v }); }}
         designId={designId}
         permission={permission}
+        isShared={isShared}
+        users={users}
+        isConnected={isConnected}
       />
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80vh', p: 1 }}>
         <Canvas
@@ -237,6 +362,13 @@ function HomeContentComponent() {
           permission={permission}
           onUndo={undo}
           onRedo={redo}
+          yShapes={yShapes}
+          yDrawings={yDrawings}
+          yConfig={yConfig}
+          users={users}
+          updateCursor={updateCursor}
+          setSelection={setSelection}
+          clientId={clientId}
         />
       </Box>
     </Box>

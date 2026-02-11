@@ -1,4 +1,5 @@
 import { Command, UseBgColorProps } from "@/types";
+import * as Y from "yjs";
 
 class BgColorCommand implements Command {
     constructor(
@@ -6,19 +7,28 @@ class BgColorCommand implements Command {
         private after: Record<string, string | { start: string; end: string }>,
         private setBg: React.Dispatch<
             React.SetStateAction<Record<string, string | { start: string; end: string }>>
-        >
+        >,
+        private yConfig?: Y.Map<any>
     ) { }
 
     execute() {
-        this.setBg(this.after);
+        if (this.yConfig) {
+            this.yConfig.set('backgroundColor', this.after);
+        } else {
+            this.setBg(this.after);
+        }
     }
 
     undo() {
-        this.setBg(this.before);
+        if (this.yConfig) {
+            this.yConfig.set('backgroundColor', this.before);
+        } else {
+            this.setBg(this.before);
+        }
     }
 }
 
-export const useBgColor = ({ background, setBackground, executeCommand, }: UseBgColorProps) => {
+export const useBgColor = ({ background, setBackground, executeCommand, yConfig }: UseBgColorProps) => {
 
     const changeBgColor = (
         color: { type: 'solid' | 'gradient'; value: string | { start: string; end: string } },
@@ -32,7 +42,7 @@ export const useBgColor = ({ background, setBackground, executeCommand, }: UseBg
         };
 
         executeCommand(
-            new BgColorCommand(before, after, setBackground)
+            new BgColorCommand(before, after, setBackground, yConfig)
         );
     };
 

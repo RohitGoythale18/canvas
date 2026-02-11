@@ -1,7 +1,7 @@
 import { UseClearImageProps } from "@/types";
 import { ClearImageCommand } from "./commands/ClearImageCommand";
 
-export const useClearImage = ({ shapes, setShapes, executeCommand, setUploadedImageUrl, setLoadedImage, }: UseClearImageProps) => {
+export const useClearImage = ({ shapes, setShapes, executeCommand, setUploadedImageUrl, setLoadedImage, yShapes }: UseClearImageProps) => {
     const clearImage = () => {
         const hasSelected = shapes.some(s => s.selected);
         if (!hasSelected) return;
@@ -25,7 +25,7 @@ export const useClearImage = ({ shapes, setShapes, executeCommand, setUploadedIm
         });
 
         executeCommand(
-            new ClearImageCommand(before, after, setShapes)
+            new ClearImageCommand(before, after, setShapes, yShapes)
         );
 
         setUploadedImageUrl(null);

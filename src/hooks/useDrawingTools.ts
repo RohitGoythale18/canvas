@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as Shapes from '../app/components/shapes/index';
 import { Command, DrawingPath, Shape, UseDrawingToolsProps } from '@/types';
+import * as Y from 'yjs';
 
 class AddDrawingPathCommand implements Command {
   constructor(
@@ -8,37 +9,50 @@ class AddDrawingPathCommand implements Command {
     private path: DrawingPath,
     private setDrawings: React.Dispatch<
       React.SetStateAction<Array<{ panelId: string; paths: DrawingPath[] }>>
-    >
+    >,
+    private yDrawings?: Y.Map<DrawingPath[]>
   ) { }
 
   execute() {
-    this.setDrawings(prev => {
-      const copy = [...prev];
-      const idx = copy.findIndex(p => p.panelId === this.panelId);
-      if (idx === -1) {
-        copy.push({ panelId: this.panelId, paths: [this.path] });
-      } else {
-        copy[idx] = {
-          ...copy[idx],
-          paths: [...copy[idx].paths, this.path],
-        };
-      }
-      return copy;
-    });
+    if (this.yDrawings) {
+      const currentPaths = this.yDrawings.get(this.panelId) || [];
+      this.yDrawings.set(this.panelId, [...currentPaths, this.path]);
+    } else {
+      this.setDrawings(prev => {
+        const copy = [...prev];
+        const idx = copy.findIndex(p => p.panelId === this.panelId);
+        if (idx === -1) {
+          copy.push({ panelId: this.panelId, paths: [this.path] });
+        } else {
+          copy[idx] = {
+            ...copy[idx],
+            paths: [...copy[idx].paths, this.path],
+          };
+        }
+        return copy;
+      });
+    }
   }
 
   undo() {
-    this.setDrawings(prev => {
-      const copy = [...prev];
-      const idx = copy.findIndex(p => p.panelId === this.panelId);
-      if (idx !== -1) {
-        copy[idx] = {
-          ...copy[idx],
-          paths: copy[idx].paths.slice(0, -1),
-        };
+    if (this.yDrawings) {
+      const currentPaths = this.yDrawings.get(this.panelId) || [];
+      if (currentPaths.length > 0) {
+        this.yDrawings.set(this.panelId, currentPaths.slice(0, -1));
       }
-      return copy;
-    });
+    } else {
+      this.setDrawings(prev => {
+        const copy = [...prev];
+        const idx = copy.findIndex(p => p.panelId === this.panelId);
+        if (idx !== -1) {
+          copy[idx] = {
+            ...copy[idx],
+            paths: copy[idx].paths.slice(0, -1),
+          };
+        }
+        return copy;
+      });
+    }
   }
 }
 
@@ -46,15 +60,28 @@ class EraseRasterOnShapesCommand implements Command {
   constructor(
     private before: Shape[],
     private after: Shape[],
-    private setShapes: React.Dispatch<React.SetStateAction<Shape[]>>
+    private setShapes: React.Dispatch<React.SetStateAction<Shape[]>>,
+    private yShapes?: Y.Map<Shape>
   ) { }
 
   execute() {
-    this.setShapes(() => this.after);
+    if (this.yShapes) {
+      this.yShapes.doc?.transact(() => {
+        this.after.forEach(s => this.yShapes?.set(s.id, s));
+      });
+    } else {
+      this.setShapes(() => this.after);
+    }
   }
 
   undo() {
-    this.setShapes(() => this.before);
+    if (this.yShapes) {
+      this.yShapes.doc?.transact(() => {
+        this.before.forEach(s => this.yShapes?.set(s.id, s));
+      });
+    } else {
+      this.setShapes(() => this.before);
+    }
   }
 }
 
@@ -72,6 +99,8 @@ export const useDrawingTools = ({
   onShapesChange,
   permission,
   canvasRefs,
+  yDrawings,
+  yShapes,
 }: UseDrawingToolsProps) => {
   const isDrawingRef = useRef(false);
   const currentPathRef = useRef<DrawingPath | null>(null);
@@ -320,7 +349,8 @@ export const useDrawingTools = ({
         new EraseRasterOnShapesCommand(
           beforeShapes,
           updatedShapes,
-          onShapesChangeRef.current
+          onShapesChangeRef.current,
+          yShapes
         )
       );
     };
@@ -423,7 +453,8 @@ export const useDrawingTools = ({
           new AddDrawingPathCommand(
             currentPanelRef.current,
             path,
-            setDrawings
+            setDrawings,
+            yDrawings
           )
         );
 

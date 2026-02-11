@@ -24,6 +24,9 @@ export async function GET(
       where: { id: designId },
       include: {
         board: true,
+        _count: {
+          select: { sharedWith: true }
+        },
         sharedWith: {
           where: { sharedWithId: userId },
           select: {
@@ -59,9 +62,12 @@ export async function GET(
       ? 'OWNER'
       : userPermission ?? 'READ';
 
+    const isShared = !isOwner || (design._count?.sharedWith || 0) > 0;
+
     const designWithImage = {
       ...design,
       permission,
+      isShared,
       data: design.image
         ? {
           ...(design.data as Record<string, unknown>),
@@ -184,6 +190,11 @@ export async function DELETE(
         { status: 403 }
       );
     }
+
+    // Delete associated SharedDesign records first to avoid foreign key constraints
+    await prisma.sharedDesign.deleteMany({
+      where: { designId: designId },
+    });
 
     await prisma.design.delete({
       where: { id: designId },

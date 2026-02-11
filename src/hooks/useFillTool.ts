@@ -1,32 +1,50 @@
 import { Command, Shape, UseFillToolProps } from '@/types';
 import { useEffect, useRef } from 'react';
+import * as Y from 'yjs';
 
 class FillShapeCommand implements Command {
     constructor(
         private shapeId: string,
         private beforeColor: string | undefined,
         private afterColor: string,
-        private setShapes: React.Dispatch<React.SetStateAction<Shape[]>>
+        private setShapes: React.Dispatch<React.SetStateAction<Shape[]>>,
+        private yShapes?: Y.Map<Shape>
     ) { }
 
     execute() {
-        this.setShapes(prev =>
-            prev.map(shape =>
-                shape.id === this.shapeId
-                    ? { ...shape, fillColor: this.afterColor }
-                    : shape
-            )
-        );
+        if (this.yShapes) {
+            const shape = this.yShapes.get(this.shapeId);
+            if (shape) {
+                const { imageElement: _, ...rest } = shape as any;
+                this.yShapes.set(this.shapeId, { ...rest, fillColor: this.afterColor, selected: false });
+            }
+        } else {
+            this.setShapes(prev =>
+                prev.map(shape =>
+                    shape.id === this.shapeId
+                        ? { ...shape, fillColor: this.afterColor }
+                        : shape
+                )
+            );
+        }
     }
 
     undo() {
-        this.setShapes(prev =>
-            prev.map(shape =>
-                shape.id === this.shapeId
-                    ? { ...shape, fillColor: this.beforeColor }
-                    : shape
-            )
-        );
+        if (this.yShapes) {
+            const shape = this.yShapes.get(this.shapeId);
+            if (shape) {
+                const { imageElement: _, ...rest } = shape as any;
+                this.yShapes.set(this.shapeId, { ...rest, fillColor: this.beforeColor });
+            }
+        } else {
+            this.setShapes(prev =>
+                prev.map(shape =>
+                    shape.id === this.shapeId
+                        ? { ...shape, fillColor: this.beforeColor }
+                        : shape
+                )
+            );
+        }
     }
 }
 
@@ -78,7 +96,8 @@ export const useFillTool = ({
     shapes,
     onShapesChange,
     permission,
-    canvasRefs
+    canvasRefs,
+    yShapes
 }: UseFillToolProps) => {
     const filledImagesRef = useRef<{ panelId: string; imageData: ImageData }[]>([]);
 
@@ -210,7 +229,8 @@ export const useFillTool = ({
                             clickedShape.id,
                             clickedShape.fillColor,
                             fillColor || "#ff0000",
-                            onShapesChange
+                            onShapesChange,
+                            yShapes
                         )
                     );
                 } else {

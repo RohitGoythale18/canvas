@@ -1,7 +1,7 @@
 import { UseUploadImageProps } from '@/types';
 import { ApplyImageCommand } from './commands/ImageCommands';
 
-export const useUploadImage = ({ shapes, setShapes, executeCommand, setUploadedImageUrl, setLoadedImage, }: UseUploadImageProps) => {
+export const useUploadImage = ({ shapes, setShapes, executeCommand, setUploadedImageUrl, setLoadedImage, yShapes }: UseUploadImageProps) => {
     const applyImageToSelectedShape = (
         img: HTMLImageElement,
         base64: string
@@ -19,7 +19,7 @@ export const useUploadImage = ({ shapes, setShapes, executeCommand, setUploadedI
         );
 
         executeCommand(
-            new ApplyImageCommand(before, after, setShapes)
+            new ApplyImageCommand(before, after, setShapes, yShapes)
         );
     };
 

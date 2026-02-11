@@ -14,6 +14,7 @@ import { useShapeRenderer } from "@/hooks/useShapeRenderer";
 
 import { Box } from "@mui/material";
 import { CanvasProps, CanvasRefs } from "@/types";
+import { RemoteCursors } from "./RemoteCursors";
 
 const CANVAS_WIDTH = 1920;
 const CANVAS_HEIGHT = 1080;
@@ -50,6 +51,13 @@ const Canvas = ({
     permission = 'READ',
     onUndo,
     onRedo,
+    yShapes,
+    yDrawings,
+    yConfig,
+    users,
+    updateCursor,
+    setSelection,
+    clientId,
 }: CanvasProps) => {
 
     const [dragging, setDragging] = useState(false);
@@ -74,7 +82,9 @@ const Canvas = ({
         shapes,
         onShapesChange,
         permission,
-        canvasRefs
+        canvasRefs,
+        yDrawings,
+        yShapes
     });
 
     useFillTool({
@@ -86,7 +96,8 @@ const Canvas = ({
         shapes,
         onShapesChange,
         permission,
-        canvasRefs
+        canvasRefs,
+        yShapes
     });
 
     useTextTools({
@@ -101,7 +112,9 @@ const Canvas = ({
         setEditingShapeId,
         onTextToggle,
         permission,
-        canvasRefs
+        canvasRefs,
+        yShapes,
+        setSelection
     });
 
     useShapeInteraction({
@@ -134,7 +147,11 @@ const Canvas = ({
         dragOffset,
         permission,
         canvasRefs,
-        onPanelSelect
+        onPanelSelect,
+        yShapes,
+        users,
+        updateCursor,
+        setSelection
     });
 
     useShapeProperties({
@@ -144,7 +161,8 @@ const Canvas = ({
         borderColor,
         shapes,
         onShapesChange,
-        currentFontFeatures
+        currentFontFeatures,
+        yShapes
     });
 
     useCanvasCleanup({
@@ -170,7 +188,8 @@ const Canvas = ({
         onShapesChange,
         permission,
         onUndo,
-        onRedo
+        onRedo,
+        yShapes
     });
 
     const getBackgroundStyle = (panelId: string) => {
@@ -189,6 +208,7 @@ const Canvas = ({
             style={{ position: 'relative', width: '100%', height: '100%', ...getBackgroundStyle(panelId) }}
             onClick={() => onPanelSelect?.(panelId)}
         >
+            <RemoteCursors users={users || new Map()} panelId={panelId} shapes={shapes} clientId={clientId} />
             <canvas
                 ref={(el) => { canvasRefs.current[panelId] = el; }}
                 className="drawing-panel border border-gray-400"

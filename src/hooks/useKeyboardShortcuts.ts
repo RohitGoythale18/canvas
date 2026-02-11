@@ -6,7 +6,8 @@ export const useKeyboardShortcuts = ({
     onShapesChange,
     permission,
     onUndo,
-    onRedo
+    onRedo,
+    yShapes
 }: UseKeyboardShortcutsProps) => {
     const shapesRef = useRef(shapes);
     const onUndoRef = useRef(onUndo);
@@ -31,7 +32,13 @@ export const useKeyboardShortcuts = ({
             // Delete -> delete selected shapes
             if (e.key === "Delete") {
                 if (!canEdit) return;
-                onShapesChange(prev => prev.filter(shape => !shape.selected));
+
+                const selectedShapes = shapesRef.current.filter(s => s.selected);
+                if (yShapes) {
+                    selectedShapes.forEach(s => yShapes.delete(s.id));
+                } else {
+                    onShapesChange(prev => prev.filter(shape => !shape.selected));
+                }
                 return;
             }
 

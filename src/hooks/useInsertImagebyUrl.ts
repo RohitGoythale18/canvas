@@ -7,6 +7,7 @@ export const useInsertImagebyUrl = ({
     executeCommand,
     setUploadedImageUrl,
     setLoadedImage,
+    yShapes
 }: UseInsertImagebyUrlProps) => {
     const insertImageByUrl = (url: string) => {
         const selected = shapes.find(s => s.selected);
@@ -39,7 +40,7 @@ export const useInsertImagebyUrl = ({
                             : shape
                     );
 
-                    executeCommand(new ApplyImageCommand(before, after, setShapes));
+                    executeCommand(new ApplyImageCommand(before, after, setShapes, yShapes));
                     setUploadedImageUrl(base64);
                     setLoadedImage(img);
                 } catch (e) {
@@ -56,7 +57,7 @@ export const useInsertImagebyUrl = ({
                             : shape
                     );
 
-                    executeCommand(new ApplyImageCommand(before, after, setShapes));
+                    executeCommand(new ApplyImageCommand(before, after, setShapes, yShapes));
                     setUploadedImageUrl(proxyUrl);
                     setLoadedImage(img);
                 }

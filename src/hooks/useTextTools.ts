@@ -1,6 +1,6 @@
-'use client';
 import { Command, FontStyles, Shape, UseTextToolsProps } from '@/types';
 import { useEffect, useCallback, useRef } from 'react';
+import * as Y from 'yjs';
 
 const MIN_SHAPE_WIDTH = 20;
 const MIN_SHAPE_HEIGHT = 20;
@@ -22,15 +22,25 @@ const DEFAULT_FONT_FEATURES = {
 class AddTextShapeCommand implements Command {
     constructor(
         private shape: Shape,
-        private setShapes: React.Dispatch<React.SetStateAction<Shape[]>>
+        private setShapes: React.Dispatch<React.SetStateAction<Shape[]>>,
+        private yShapes?: Y.Map<Shape>
     ) { }
 
     execute() {
-        this.setShapes(prev => [...prev.map(s => ({ ...s, selected: false })), this.shape]);
+        if (this.yShapes) {
+            const { imageElement: _, ...rest } = this.shape as any;
+            this.yShapes.set(this.shape.id, { ...rest, selected: false, isEditing: false });
+        } else {
+            this.setShapes(prev => [...prev.map(s => ({ ...s, selected: false })), this.shape]);
+        }
     }
 
     undo() {
-        this.setShapes(prev => prev.filter(s => s.id !== this.shape.id));
+        if (this.yShapes) {
+            this.yShapes.delete(this.shape.id);
+        } else {
+            this.setShapes(prev => prev.filter(s => s.id !== this.shape.id));
+        }
     }
 }
 
@@ -39,19 +49,30 @@ class EditTextCommand implements Command {
         private shapeId: string,
         private before: Shape,
         private after: Shape,
-        private setShapes: React.Dispatch<React.SetStateAction<Shape[]>>
+        private setShapes: React.Dispatch<React.SetStateAction<Shape[]>>,
+        private yShapes?: Y.Map<Shape>
     ) { }
 
     execute() {
-        this.setShapes(prev =>
-            prev.map(s => (s.id === this.shapeId ? this.after : s))
-        );
+        if (this.yShapes) {
+            const { imageElement: _, ...rest } = this.after as any;
+            this.yShapes.set(this.shapeId, { ...rest, selected: false, isEditing: false });
+        } else {
+            this.setShapes(prev =>
+                prev.map(s => (s.id === this.shapeId ? this.after : s))
+            );
+        }
     }
 
     undo() {
-        this.setShapes(prev =>
-            prev.map(s => (s.id === this.shapeId ? this.before : s))
-        );
+        if (this.yShapes) {
+            const { imageElement: _, ...rest } = this.before as any;
+            this.yShapes.set(this.shapeId, rest);
+        } else {
+            this.setShapes(prev =>
+                prev.map(s => (s.id === this.shapeId ? this.before : s))
+            );
+        }
     }
 }
 
@@ -67,7 +88,9 @@ export const useTextTools = ({
     setEditingShapeId,
     onTextToggle,
     permission,
-    canvasRefs
+    canvasRefs,
+    yShapes,
+    setSelection
 }: UseTextToolsProps) => {
     const fontFeatures = currentFontFeatures ?? DEFAULT_FONT_FEATURES;
     const canEdit = permission === 'OWNER' || permission === 'WRITE';
@@ -96,7 +119,8 @@ export const useTextTools = ({
                     textAlignment: fontFeatures.alignment,
                     listType: fontFeatures.listType,
                 },
-                onShapesChange
+                onShapesChange,
+                yShapes
             )
         );
 
@@ -140,6 +164,7 @@ export const useTextTools = ({
 
                     setTextInput(clickedText.text || '');
                     setEditingShapeId(clickedText.id);
+                    setSelection?.(clickedText.id);
                 }
             };
 
@@ -192,11 +217,12 @@ export const useTextTools = ({
                 };
 
                 executeCommand(
-                    new AddTextShapeCommand(newShape, onShapesChange)
+                    new AddTextShapeCommand(newShape, onShapesChange, yShapes)
                 );
 
                 setTextInput('');
                 setEditingShapeId(newShape.id);
+                setSelection?.(newShape.id);
                 onTextToggle?.(false);
             };
 

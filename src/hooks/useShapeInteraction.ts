@@ -1,6 +1,6 @@
-// src/hooks/useShapeInteraction.ts
 import { Command, Shape, UseShapeInteractionProps } from '@/types';
 import { useEffect, useRef } from 'react';
+import * as Y from 'yjs';
 
 const MIN_SHAPE_WIDTH = 20;
 const MIN_SHAPE_HEIGHT = 20;
@@ -8,15 +8,26 @@ const MIN_SHAPE_HEIGHT = 20;
 class AddShapeCommand implements Command {
     constructor(
         private shape: Shape,
-        private setShapes: React.Dispatch<React.SetStateAction<Shape[]>>
+        private setShapes: React.Dispatch<React.SetStateAction<Shape[]>>,
+        private yShapes?: Y.Map<Shape>
     ) { }
 
     execute() {
-        this.setShapes(prev => [...prev, this.shape]);
+        if (this.yShapes) {
+            const { imageElement: _, ...rest } = this.shape as any;
+            // Also strip selection
+            this.yShapes.set(this.shape.id, { ...rest, selected: false, isEditing: false });
+        } else {
+            this.setShapes(prev => [...prev, this.shape]);
+        }
     }
 
     undo() {
-        this.setShapes(prev => prev.filter(s => s.id !== this.shape.id));
+        if (this.yShapes) {
+            this.yShapes.delete(this.shape.id);
+        } else {
+            this.setShapes(prev => prev.filter(s => s.id !== this.shape.id));
+        }
     }
 }
 
@@ -25,19 +36,31 @@ class MoveResizeShapeCommand implements Command {
         private shapeId: string,
         private before: Shape,
         private after: Shape,
-        private setShapes: React.Dispatch<React.SetStateAction<Shape[]>>
+        private setShapes: React.Dispatch<React.SetStateAction<Shape[]>>,
+        private yShapes?: Y.Map<Shape>
     ) { }
 
     execute() {
-        this.setShapes(prev =>
-            prev.map(s => (s.id === this.shapeId ? this.after : s))
-        );
+        if (this.yShapes) {
+            const { imageElement: _, ...rest } = this.after as any;
+            // Strip selection for remote
+            this.yShapes.set(this.shapeId, { ...rest, selected: false });
+        } else {
+            this.setShapes(prev =>
+                prev.map(s => (s.id === this.shapeId ? this.after : s))
+            );
+        }
     }
 
     undo() {
-        this.setShapes(prev =>
-            prev.map(s => (s.id === this.shapeId ? this.before : s))
-        );
+        if (this.yShapes) {
+            const { imageElement: _, ...rest } = this.before as any;
+            this.yShapes.set(this.shapeId, rest);
+        } else {
+            this.setShapes(prev =>
+                prev.map(s => (s.id === this.shapeId ? this.before : s))
+            );
+        }
     }
 }
 
@@ -70,7 +93,11 @@ export const useShapeInteraction = ({
     dragOffset,
     permission,
     canvasRefs,
-    onPanelSelect
+    onPanelSelect,
+    yShapes,
+    users,
+    updateCursor,
+    setSelection
 }: UseShapeInteractionProps) => {
     const dragStartShapeRef = useRef<Shape | null>(null);
     const activeShapeIdRef = useRef<string | null>(null);
@@ -145,7 +172,7 @@ export const useShapeInteraction = ({
                 };
 
                 executeCommand(
-                    new AddShapeCommand(newShape, onShapesChangeRef.current)
+                    new AddShapeCommand(newShape, onShapesChangeRef.current, yShapes)
                 );
 
                 onShapeSelect(null as never);
@@ -366,7 +393,8 @@ export const useShapeInteraction = ({
                             after.id,
                             dragStartShapeRef.current,
                             { ...after },
-                            onShapesChangeRef.current
+                            onShapesChangeRef.current,
+                            yShapes
                         )
                     );
                 }
@@ -374,14 +402,31 @@ export const useShapeInteraction = ({
 
             dragStartShapeRef.current = null;
             activeShapeIdRef.current = null;
-            activePanelIdRef.current = null;
+            // setSelection(null); // Clear selection on mouse up? Or keep it? Usually keep it until clicked elsewhere.
+        };
+
+        const handleCanvasMouseMove = (e: MouseEvent, panelId: string, canvas: HTMLCanvasElement) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+            updateCursor?.(x, y, panelId);
         };
 
         canvases.forEach(([panelId, canvas]) => {
-            const mousedownHelper = (e: MouseEvent) => handleMouseDown(e, panelId, canvas);
+            const mousedownHelper = (e: MouseEvent) => {
+                handleMouseDown(e, panelId, canvas);
+                // After mouse down, check if a shape was selected
+                const selected = shapesRef.current.find(s => s.selected && s.panelId === panelId);
+                setSelection?.(selected ? selected.id : null);
+            };
+            const mousemoveHelper = (e: MouseEvent) => handleCanvasMouseMove(e, panelId, canvas);
+
             canvas.addEventListener("mousedown", mousedownHelper);
+            canvas.addEventListener("mousemove", mousemoveHelper);
+
             cleanupFns.push(() => {
                 canvas.removeEventListener("mousedown", mousedownHelper);
+                canvas.removeEventListener("mousemove", mousemoveHelper);
             });
         });
 
@@ -393,5 +438,5 @@ export const useShapeInteraction = ({
             window.removeEventListener("mousemove", handleMouseMoveGlobal);
             window.removeEventListener("mouseup", handleMouseUpGlobal);
         };
-    }, [selectedShape, splitMode, executeCommand, pencilActive, eraserActive, fillActive, textActive, uploadedImageUrl, loadedImage, currentImageId, borderActive, borderColor, borderSize, borderType, zoomLevel, onShapeSelect, setDragging, setResizing, setDragOffset, setResizeHandle, permission, canvasRefs, onPanelSelect]);
+    }, [selectedShape, splitMode, executeCommand, pencilActive, eraserActive, fillActive, textActive, uploadedImageUrl, loadedImage, currentImageId, borderActive, borderColor, borderSize, borderType, zoomLevel, onShapeSelect, setDragging, setResizing, setDragOffset, setResizeHandle, permission, canvasRefs, onPanelSelect, updateCursor, setSelection]);
 };

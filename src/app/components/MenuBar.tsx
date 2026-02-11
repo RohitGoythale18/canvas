@@ -23,12 +23,28 @@ import BorderButton from "./buttons/BorderButton";
 import FontFeatButton from "./buttons/FontFeatButton";
 import LogoutButton from "./buttons/LogoutButton";
 
+import { CollaboratorList } from "./CollaboratorList";
+import WifiIcon from '@mui/icons-material/Wifi';
+import WifiOffIcon from '@mui/icons-material/WifiOff';
+
 const TAB_HOME = 0;
 const TAB_EDIT = 1;
 const TAB_INSERT = 2;
 const TAB_DESIGN = 3;
 
-const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange, onUndo, onRedo, onPencilToggle, onFillToggle, onColorChange, fillColor, onEraserToggle, onEraserSizeChange, eraserSize, pencilActive, fillActive, eraserActive, onShapeSelect, onTextToggle, textActive, onImageUpload, onImageUploadByUrl, clearImage, onCanvasBackgroundChange, selectedPanel, onBorderToggle, onBorderChange, borderActive, currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment, currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange, onFontStyleChange, onTextAlignmentChange, onListTypeChange, onTextColorChange, onBringForward, onBringToFront, onSendBackward, onSendToBack, hasSelectedShape, designId, permission }: MenuBarProps) => {
+const MenuBar = ({
+    onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitChange,
+    onUndo, onRedo, onPencilToggle, onFillToggle, onColorChange, fillColor,
+    onEraserToggle, onEraserSizeChange, eraserSize, pencilActive,
+    fillActive, eraserActive, onShapeSelect, onTextToggle, textActive,
+    onImageUpload, onImageUploadByUrl, clearImage, onCanvasBackgroundChange,
+    selectedPanel, onBorderToggle, onBorderChange, borderActive,
+    currentFontFamily, currentFontSize, currentFontStyles, currentTextAlignment,
+    currentListType, currentTextColor, onFontFamilyChange, onFontSizeChange,
+    onFontStyleChange, onTextAlignmentChange, onListTypeChange,
+    onTextColorChange, onBringForward, onBringToFront, onSendBackward,
+    onSendToBack, hasSelectedShape, designId, permission, users, isConnected, isShared
+}: MenuBarProps) => {
     const theme = useTheme();
     const isMobileOrTablet = useMediaQuery(theme.breakpoints.down("md"));
     const [activeTab, setActiveTab] = useState(TAB_HOME);
@@ -42,8 +58,20 @@ const MenuBar = ({ onSaveCanvas, onLoadCanvas, canvasData, onNewCanvas, onSplitC
                         <Typography variant="h3" sx={{ fontSize: '1.9rem', fontWeight: 600, color: 'white' }}>
                             SnapCanvas
                         </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', ml: 2, gap: 1, bgcolor: 'rgba(255,255,255,0.05)', px: 1.5, py: 0.5, borderRadius: 2 }}>
+                            {isConnected ?
+                                <WifiIcon sx={{ fontSize: 16, color: '#4ade80' }} /> :
+                                <WifiOffIcon sx={{ fontSize: 16, color: '#f87171' }} />
+                            }
+                            <Typography variant="caption" sx={{ color: isConnected ? '#4ade80' : (isShared ? '#f87171' : '#fbbf24'), fontWeight: 'bold' }}>
+                                {isConnected ? 'LIVE' : (isShared ? 'OFFLINE' : 'SOLO')}
+                            </Typography>
+                        </Box>
                     </Box>
-                    <LogoutButton />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                        {users && <CollaboratorList users={users} />}
+                        <LogoutButton />
+                    </Box>
                 </Box>
 
                 <Divider sx={{ width: '100%', borderColor: 'primary.main' }} />

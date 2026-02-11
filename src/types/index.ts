@@ -55,6 +55,13 @@ export interface CanvasProps {
   permission?: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
   onUndo?: () => void;
   onRedo?: () => void;
+  yShapes?: any;
+  yDrawings?: any;
+  yConfig?: any;
+  users?: Map<number, any>;
+  updateCursor?: (x: number, y: number, panelId: string) => void;
+  setSelection?: (shapeId: string | null) => void;
+  clientId?: number;
 }
 
 // Types for MenuBar
@@ -103,6 +110,9 @@ export interface MenuBarProps {
   onListTypeChange?: (listType: 'bullet' | 'number' | 'none') => void;
   onTextColorChange?: (color: string | { type: 'solid' | 'gradient'; value: string | { start: string; end: string } }) => void;
   permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
+  isShared?: boolean;
+  users?: Map<number, any>;
+  isConnected?: boolean;
   onBringForward: () => void;
   onBringToFront: () => void;
   onSendBackward: () => void;
@@ -136,6 +146,7 @@ export interface DesignAPI {
   data: CanvasData;
   createdAt: string;
   ownerId: string;
+  isShared?: boolean;
   owner?: {
     id: string;
     name: string;
@@ -422,6 +433,7 @@ export interface UseSplitCanvasProps {
   splitMode: string;
   setSplitMode: React.Dispatch<React.SetStateAction<string>>;
   executeCommand: (cmd: Command) => void;
+  yConfig?: any;
 }
 
 export interface UseLoadCanvasProps {
@@ -432,11 +444,15 @@ export interface UseLoadCanvasProps {
   setSplitMode: React.Dispatch<React.SetStateAction<string>>;
   setUploadedImageUrl: React.Dispatch<React.SetStateAction<string | null>>;
   setLoadedImage: React.Dispatch<React.SetStateAction<HTMLImageElement | null>>;
+  yShapes?: any;
+  yDrawings?: any;
+  yConfig?: any;
 }
 
 export interface UseLoadDesignProps {
   token: string | null;
   setPermission: React.Dispatch<React.SetStateAction<'OWNER' | 'WRITE' | 'COMMENT' | 'READ'>>;
+  setIsShared?: React.Dispatch<React.SetStateAction<boolean>>;
   loadCanvas: (data: CanvasData) => Promise<void>;
 }
 
@@ -461,6 +477,7 @@ export interface UseShapeLayerProps {
   shapes: Shape[];
   setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
   executeCommand: (cmd: Command) => void;
+  yShapes?: any;
 }
 
 export interface UseDrawingToolsProps {
@@ -474,6 +491,8 @@ export interface UseDrawingToolsProps {
   onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
   permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
   canvasRefs: React.RefObject<CanvasRefs>;
+  yDrawings?: any;
+  yShapes?: any;
 }
 
 export interface UseFillToolProps {
@@ -486,6 +505,7 @@ export interface UseFillToolProps {
   onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
   permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
   canvasRefs: React.RefObject<CanvasRefs>;
+  yShapes?: any;
 }
 
 export interface UseKeyboardShortcutsProps {
@@ -494,6 +514,7 @@ export interface UseKeyboardShortcutsProps {
   permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
   onUndo?: () => void;
   onRedo?: () => void;
+  yShapes?: any;
 }
 
 export interface UseShapePropertiesProps {
@@ -504,6 +525,7 @@ export interface UseShapePropertiesProps {
   shapes: Shape[];
   onShapesChange: React.Dispatch<React.SetStateAction<Shape[]>>;
   currentFontFeatures?: FontFeatures;
+  yShapes?: any;
 }
 
 export interface UseShapeRendererProps {
@@ -561,6 +583,10 @@ export interface UseShapeInteractionProps {
   permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
   canvasRefs: React.RefObject<CanvasRefs>;
   onPanelSelect?: (panelId: string) => void;
+  yShapes?: any;
+  users?: Map<number, any>;
+  updateCursor?: (x: number, y: number, panelId: string) => void;
+  setSelection?: (shapeId: string | null) => void;
 }
 
 export interface UseTextToolsProps {
@@ -583,6 +609,8 @@ export interface UseTextToolsProps {
   onTextToggle?: (enabled: boolean) => void;
   permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
   canvasRefs: React.RefObject<CanvasRefs>;
+  yShapes?: any;
+  setSelection?: (shapeId: string | null) => void;
 }
 
 export interface UseClearImageProps {
@@ -591,6 +619,7 @@ export interface UseClearImageProps {
   executeCommand: (command: Command) => void;
   setUploadedImageUrl: (v: string | null) => void;
   setLoadedImage: (v: HTMLImageElement | null) => void;
+  yShapes?: any;
 }
 
 export interface UseUploadImageProps {
@@ -599,6 +628,7 @@ export interface UseUploadImageProps {
   executeCommand: (cmd: Command) => void;
   setUploadedImageUrl: (v: string | null) => void;
   setLoadedImage: (v: HTMLImageElement | null) => void;
+  yShapes?: any;
 }
 
 export interface UseInsertImagebyUrlProps {
@@ -607,6 +637,7 @@ export interface UseInsertImagebyUrlProps {
   executeCommand: (cmd: Command) => void;
   setUploadedImageUrl: (v: string | null) => void;
   setLoadedImage: (v: HTMLImageElement | null) => void;
+  yShapes?: any;
 }
 
 
@@ -616,18 +647,21 @@ export interface UseBgColorProps {
     React.SetStateAction<Record<string, string | { start: string; end: string }>>
   >;
   executeCommand: (cmd: Command) => void;
+  yConfig?: any;
 }
 
 export interface UseBordersProps {
   shapes: Shape[];
   setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
   executeCommand: (cmd: Command) => void;
+  yShapes?: any;
 }
 
 export interface UseFontFeatProps {
   shapes: Shape[];
   setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
   executeCommand: (cmd: Command) => void;
+  yShapes?: any;
 }
 
 // Types for Image Storage

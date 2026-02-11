@@ -65,14 +65,14 @@ const sendToBack = (shapes: Shape[]) => {
     );
 };
 
-export const useShapeLayer = ({ shapes, setShapes, executeCommand, }: UseShapeLayerProps) => {
+export const useShapeLayer = ({ shapes, setShapes, executeCommand, yShapes }: UseShapeLayerProps) => {
 
     const runLayerCommand = (computeNext: (s: Shape[]) => Shape[]) => {
         const before = shapes.map(s => ({ ...s }));
         const after = computeNext(before);
 
         executeCommand(
-            new LayerCommand(before, after, setShapes)
+            new LayerCommand(before, after, setShapes, yShapes)
         );
     };
 
