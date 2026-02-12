@@ -20,12 +20,13 @@ export const useCollab = (designId: string | null, enabled: boolean = true) => {
     const ydoc = useMemo(() => new Y.Doc(), []);
 
     // 2. Define Shared Types & UndoManager
-    const { yShapes, yDrawings, yConfig, undoManager } = useMemo(() => {
+    const { yShapes, yDrawings, yFilledImages, yConfig, undoManager } = useMemo(() => {
         const shapes = ydoc.getMap<Shape>('shapes');
         const drawings = ydoc.getMap<DrawingPath[]>('drawings');
+        const filledImages = ydoc.getMap<string>('filledImages');
         const config = ydoc.getMap<any>('config');
-        const um = new Y.UndoManager([shapes, drawings, config]);
-        return { yShapes: shapes, yDrawings: drawings, yConfig: config, undoManager: um };
+        const um = new Y.UndoManager([shapes, drawings, filledImages, config]);
+        return { yShapes: shapes, yDrawings: drawings, yFilledImages: filledImages, yConfig: config, undoManager: um };
     }, [ydoc]);
 
     const undo = useCallback(() => undoManager.undo(), [undoManager]);
@@ -95,10 +96,15 @@ export const useCollab = (designId: string | null, enabled: boolean = true) => {
         yConfig.set(key, value);
     }, [yConfig]);
 
+    const updateYFilledImage = useCallback((panelId: string, imageDataBase64: string) => {
+        yFilledImages.set(panelId, imageDataBase64);
+    }, [yFilledImages]);
+
     return {
         ydoc,
         yShapes,
         yDrawings,
+        yFilledImages,
         yConfig,
         isConnected,
         users,
@@ -110,6 +116,7 @@ export const useCollab = (designId: string | null, enabled: boolean = true) => {
         updateYShape,
         deleteYShape,
         updateYDrawing,
+        updateYFilledImage,
         updateYConfig,
         clientId: ydoc.clientID,
     };

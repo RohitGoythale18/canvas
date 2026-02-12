@@ -53,6 +53,7 @@ const Canvas = ({
     onRedo,
     yShapes,
     yDrawings,
+    yFilledImages,
     yConfig,
     users,
     updateCursor,
@@ -65,6 +66,7 @@ const Canvas = ({
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
     const [resizeHandle, setResizeHandle] = useState<string | null>(null);
     const [textInput, setTextInput] = useState<string>("");
+    const [cursorPosition, setCursorPosition] = useState<number>(0);
     const [editingShapeId, setEditingShapeId] = useState<string | null>(null);
 
     const wrapperRef = useRef<HTMLDivElement>(null);
@@ -97,7 +99,8 @@ const Canvas = ({
         onShapesChange,
         permission,
         canvasRefs,
-        yShapes
+        yShapes,
+        yFilledImages
     });
 
     useTextTools({
@@ -114,7 +117,10 @@ const Canvas = ({
         permission,
         canvasRefs,
         yShapes,
-        setSelection
+        setSelection,
+        cursorPosition,
+        setCursorPosition,
+        onShapeSelect
     });
 
     useShapeInteraction({
@@ -180,7 +186,8 @@ const Canvas = ({
         editingShapeId,
         loadedImage,
         backgroundColor,
-        canvasRefs
+        canvasRefs,
+        cursorPosition
     });
 
     useKeyboardShortcuts({

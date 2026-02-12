@@ -1,6 +1,7 @@
 import { Command, Shape, UseFillToolProps } from '@/types';
 import { useEffect, useRef } from 'react';
 import * as Y from 'yjs';
+import { imageDataToBase64 } from '@/utils/imageUtils';
 
 class FillShapeCommand implements Command {
     constructor(
@@ -55,10 +56,14 @@ class FloodFillCanvasCommand implements Command {
         private afterImage: ImageData,
         private setFilledImages: React.Dispatch<
             React.SetStateAction<{ panelId: string; imageData: ImageData }[]>
-        >
+        >,
+        private yFilledImages?: Y.Map<string>
     ) { }
 
     execute() {
+        if (this.yFilledImages) {
+            this.yFilledImages.set(this.panelId, imageDataToBase64(this.afterImage));
+        }
         this.setFilledImages(prev => {
             const idx = prev.findIndex(p => p.panelId === this.panelId);
             if (idx === -1) {
@@ -73,6 +78,13 @@ class FloodFillCanvasCommand implements Command {
     }
 
     undo() {
+        if (this.yFilledImages) {
+            if (this.beforeImage === null) {
+                this.yFilledImages.delete(this.panelId);
+            } else {
+                this.yFilledImages.set(this.panelId, imageDataToBase64(this.beforeImage));
+            }
+        }
         this.setFilledImages(prev => {
             if (this.beforeImage === null) {
                 return prev.filter(p => p.panelId !== this.panelId);
@@ -97,7 +109,8 @@ export const useFillTool = ({
     onShapesChange,
     permission,
     canvasRefs,
-    yShapes
+    yShapes,
+    yFilledImages
 }: UseFillToolProps) => {
     const filledImagesRef = useRef<{ panelId: string; imageData: ImageData }[]>([]);
 
@@ -197,7 +210,8 @@ export const useFillTool = ({
                         panelId,
                         beforeImage,
                         imageData,
-                        setFilledImages
+                        setFilledImages,
+                        yFilledImages
                     )
                 );
 

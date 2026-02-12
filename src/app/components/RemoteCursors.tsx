@@ -53,7 +53,7 @@ export const RemoteCursors = ({ users, panelId, shapes, clientId }: RemoteCursor
                 // Render cursor
                 const remoteCursor = cursor && cursor.panelId === panelId ? (
                     <Box
-                        key={`cursor-${currentClientId}`} // Changed key
+                        key={`cursor-${currentClientId}`}
                         sx={{
                             position: 'absolute',
                             left: cursor.x,

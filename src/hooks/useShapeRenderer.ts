@@ -13,6 +13,7 @@ export const useShapeRenderer = ({
     loadedImage,
     backgroundColor,
     canvasRefs,
+    cursorPosition = 0
 }: UseShapeRendererProps) => {
     useEffect(() => {
         const canvases = Object.entries(canvasRefs.current).filter(
@@ -86,10 +87,10 @@ export const useShapeRenderer = ({
                 .filter(shape => shape.panelId === panelId)
                 .sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))
                 .forEach(shape => {
-                    renderShape(ctx, shape, textInput, editingShapeId);
+                    renderShape(ctx, shape, textInput, editingShapeId, cursorPosition);
                 });
         });
-    }, [shapes, drawings, filledImages, splitMode, textInput, editingShapeId, loadedImage, backgroundColor, canvasRefs]);
+    }, [shapes, drawings, filledImages, splitMode, textInput, editingShapeId, loadedImage, backgroundColor, canvasRefs, cursorPosition]);
 };
 
 // Helper function to render individual shapes
@@ -97,7 +98,8 @@ const renderShape = (
     ctx: CanvasRenderingContext2D,
     shape: Shape,
     textInput: string,
-    editingShapeId: string | null
+    editingShapeId: string | null,
+    cursorPosition: number
 ) => {
     switch (shape.type) {
         case "Rectangle":
@@ -281,7 +283,7 @@ const renderShape = (
             Shapes.drawTimelineNodeShape(ctx, shape.x, shape.y, shape.width, shape.height, shape.fillColor || "#60a5fa", shape.imageElement, shape.borderType, shape.borderSize, shape.borderColor);
             break;
         case "text":
-            renderTextShape(ctx, shape, textInput, editingShapeId);
+            renderTextShape(ctx, shape, textInput, editingShapeId, cursorPosition);
             break;
         default:
             // For now, skip unsupported shapes to avoid errors
@@ -299,7 +301,8 @@ const renderTextShape = (
     ctx: CanvasRenderingContext2D,
     shape: Shape,
     textInput: string,
-    editingShapeId: string | null
+    editingShapeId: string | null,
+    cursorPosition: number
 ) => {
     const fontFamily = (shape.fontFamily && String(shape.fontFamily)) || "Arial, sans-serif";
     const fontSize = typeof shape.fontSize === 'number' ? shape.fontSize : 16;
@@ -444,8 +447,16 @@ const renderTextShape = (
     };
 
     // Choose source text
-    const sourceText = shape.isEditing && shape.id === editingShapeId ? textInput : (shape.text || "");
-    const lines = wrapText(sourceText, shape.isEditing);
+    let sourceText = shape.isEditing && shape.id === editingShapeId ? textInput : (shape.text || "");
+
+    if (shape.isEditing && shape.id === editingShapeId) {
+        const safeCursorPos = Math.max(0, Math.min(cursorPosition, sourceText.length));
+        const cursorChar = (Date.now() % 1000 < 500 ? '|' : '');
+        sourceText = sourceText.slice(0, safeCursorPos) + cursorChar + sourceText.slice(safeCursorPos);
+    }
+
+    // We pass false for isEditing to wrapText because we manually handled the cursor
+    const lines = wrapText(sourceText, false);
 
     // Set fillStyle for text
     (ctx.fillStyle as unknown) = textFillStyle as unknown;

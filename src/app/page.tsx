@@ -22,7 +22,7 @@ import { useInsertImagebyUrl } from "@/hooks/useInsertImagebyUrl";
 import { useNewCanvas } from "@/hooks/useNewCanvas";
 import { useSaveCanvas } from "@/hooks/useSaveCanvas";
 import { useLoadCanvas } from "@/hooks/useLoadCanvas";
-import { imageDataToBase64 } from "@/utils/imageUtils";
+import { imageDataToBase64, base64ToImageData } from "@/utils/imageUtils";
 import { useLoadDesign } from "@/hooks/useLoadDesign";
 import { useCollab } from "@/hooks/useCollab";
 import { useAutoSave } from "@/hooks/useAutoSave";
@@ -63,7 +63,7 @@ function HomeContentComponent() {
   const [isShared, setIsShared] = useState(false);
 
   const {
-    yShapes, yDrawings, yConfig, isConnected,
+    yShapes, yDrawings, yFilledImages, yConfig, isConnected,
     undo: yUndo, redo: yRedo, users,
     setLocalUser, updateCursor, setSelection,
     clientId
@@ -185,21 +185,35 @@ function HomeContentComponent() {
       setDrawings(drawingsArray);
     };
 
+    const syncFilledImages = async () => {
+      const filledMap = yFilledImages.toJSON();
+      const filledArray = await Promise.all(
+        Object.entries(filledMap).map(async ([panelId, base64]) => ({
+          panelId,
+          imageData: await base64ToImageData(base64 as string)
+        }))
+      );
+      setFilledImages(filledArray);
+    };
+
     yShapes.observe(syncShapes);
     yConfig.observe(syncConfig);
     yDrawings.observe(syncDrawings);
+    yFilledImages.observe(syncFilledImages);
 
     // Initial sync
     syncShapes();
     syncConfig();
     syncDrawings();
+    syncFilledImages();
 
     return () => {
       yShapes.unobserve(syncShapes);
       yConfig.unobserve(syncConfig);
       yDrawings.unobserve(syncDrawings);
+      yFilledImages.unobserve(syncFilledImages);
     };
-  }, [yShapes, yConfig, yDrawings]);
+  }, [yShapes, yConfig, yDrawings, yFilledImages]);
 
   // Effect to load missing imageElements for shapes (e.g. added by other users)
   useEffect(() => {
@@ -234,9 +248,23 @@ function HomeContentComponent() {
     if (enabled) setSelectedShape(null);
   };
 
-  const handleShapeSelect = (shape: string) => {
-    setSelectedShape(shape);
-    setActiveTool(shape ? 'shape' : 'select');
+  const handleShapeSelect = (shapeId: string) => {
+    setSelectedShape(shapeId);
+    setActiveTool(shapeId ? 'shape' : 'select');
+
+    if (shapeId) {
+      const shape = shapes.find(s => s.id === shapeId);
+      if (shape && shape.type === 'text') {
+        setFontFeatures({
+          fontFamily: shape.fontFamily || "Arial, sans-serif",
+          fontSize: shape.fontSize || 16,
+          fontStyles: shape.fontStyles || { bold: false, italic: false, underline: false, strikethrough: false },
+          alignment: shape.textAlignment || 'left',
+          listType: shape.listType || 'none',
+          textColor: shape.textColor || "#000000",
+        });
+      }
+    }
   };
 
   const handleTextToggle = (enabled: boolean) => {
@@ -364,6 +392,7 @@ function HomeContentComponent() {
           onRedo={redo}
           yShapes={yShapes}
           yDrawings={yDrawings}
+          yFilledImages={yFilledImages}
           yConfig={yConfig}
           users={users}
           updateCursor={updateCursor}

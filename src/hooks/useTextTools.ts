@@ -90,7 +90,10 @@ export const useTextTools = ({
     permission,
     canvasRefs,
     yShapes,
-    setSelection
+    setSelection,
+    cursorPosition = 0,
+    setCursorPosition,
+    onShapeSelect
 }: UseTextToolsProps) => {
     const fontFeatures = currentFontFeatures ?? DEFAULT_FONT_FEATURES;
     const canEdit = permission === 'OWNER' || permission === 'WRITE';
@@ -163,8 +166,10 @@ export const useTextTools = ({
                     );
 
                     setTextInput(clickedText.text || '');
+                    setCursorPosition?.((clickedText.text || '').length);
                     setEditingShapeId(clickedText.id);
                     setSelection?.(clickedText.id);
+                    onShapeSelect?.(clickedText.id);
                 }
             };
 
@@ -221,8 +226,10 @@ export const useTextTools = ({
                 );
 
                 setTextInput('');
+                setCursorPosition?.(0);
                 setEditingShapeId(newShape.id);
                 setSelection?.(newShape.id);
+                onShapeSelect?.(newShape.id);
                 onTextToggle?.(false);
             };
 
@@ -288,18 +295,33 @@ export const useTextTools = ({
             if (e.key === "Escape" || e.key === "Enter") {
                 e.preventDefault();
                 commitEditing(editingShape.id);
+            } else if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                setCursorPosition?.(prev => Math.max(0, prev - 1));
+            } else if (e.key === "ArrowRight") {
+                e.preventDefault();
+                setCursorPosition?.(prev => Math.min(textInput.length, prev + 1));
             } else if (e.key === "Backspace") {
                 e.preventDefault();
-                setTextInput(prev => prev.slice(0, -1));
+                if (cursorPosition > 0) {
+                    setTextInput(prev => prev.slice(0, cursorPosition - 1) + prev.slice(cursorPosition));
+                    setCursorPosition?.(prev => Math.max(0, prev - 1));
+                }
+            } else if (e.key === "Delete") {
+                e.preventDefault();
+                if (cursorPosition < textInput.length) {
+                    setTextInput(prev => prev.slice(0, cursorPosition) + prev.slice(cursorPosition + 1));
+                }
             } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
                 e.preventDefault();
-                setTextInput(prev => prev + e.key);
+                setTextInput(prev => prev.slice(0, cursorPosition) + e.key + prev.slice(cursorPosition));
+                setCursorPosition?.(prev => prev + 1);
             }
         };
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [shapes, textInput, setTextInput, editingShapeId, commitEditing, canEdit, permission]);
+    }, [shapes, textInput, setTextInput, editingShapeId, commitEditing, canEdit, permission, cursorPosition, setCursorPosition]);
 
     useEffect(() => {
         if (!editingShapeId) return;

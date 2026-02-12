@@ -57,6 +57,7 @@ export interface CanvasProps {
   onRedo?: () => void;
   yShapes?: any;
   yDrawings?: any;
+  yFilledImages?: any;
   yConfig?: any;
   users?: Map<number, any>;
   updateCursor?: (x: number, y: number, panelId: string) => void;
@@ -506,6 +507,7 @@ export interface UseFillToolProps {
   permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
   canvasRefs: React.RefObject<CanvasRefs>;
   yShapes?: any;
+  yFilledImages?: any;
 }
 
 export interface UseKeyboardShortcutsProps {
@@ -538,6 +540,7 @@ export interface UseShapeRendererProps {
   loadedImage?: HTMLImageElement | null;
   backgroundColor?: Record<string, string | { start: string; end: string }>;
   canvasRefs: React.RefObject<CanvasRefs>;
+  cursorPosition?: number;
   // permission: 'OWNER' | 'WRITE' | 'COMMENT' | 'READ';
 }
 
@@ -611,6 +614,9 @@ export interface UseTextToolsProps {
   canvasRefs: React.RefObject<CanvasRefs>;
   yShapes?: any;
   setSelection?: (shapeId: string | null) => void;
+  cursorPosition?: number;
+  setCursorPosition?: React.Dispatch<React.SetStateAction<number>>;
+  onShapeSelect?: (shapeId: string) => void;
 }
 
 export interface UseClearImageProps {

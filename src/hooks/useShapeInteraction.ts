@@ -109,10 +109,16 @@ export const useShapeInteraction = ({
     const dragOffsetRef = useRef(dragOffset);
     const onShapesChangeRef = useRef(onShapesChange);
     const canEditRef = useRef(false);
+    const selectedShapeRef = useRef(selectedShape);
+    const lastInsertionTimeRef = useRef<number>(0);
 
     useEffect(() => {
         shapesRef.current = shapes;
     }, [shapes]);
+
+    useEffect(() => {
+        selectedShapeRef.current = selectedShape;
+    }, [selectedShape]);
 
     useEffect(() => {
         draggingRef.current = dragging;
@@ -143,7 +149,20 @@ export const useShapeInteraction = ({
             activePanelIdRef.current = panelId;
             onPanelSelect?.(panelId);
 
-            if (selectedShape) {
+            if (selectedShapeRef.current) {
+                // Debounce check: Prevent multiple clicks within 300ms
+                const now = Date.now();
+                if (now - lastInsertionTimeRef.current < 300) {
+                    return;
+                }
+
+                const currentTool = selectedShapeRef.current;
+
+                // Consume the selection immediately BEFORE any other operations
+                selectedShapeRef.current = null;
+                onShapeSelect(null as never);
+                lastInsertionTimeRef.current = now;
+
                 const maxZ = Math.max(
                     0,
                     ...shapesRef.current
@@ -154,7 +173,7 @@ export const useShapeInteraction = ({
                 // Create new blank shape
                 const newShape: Shape = {
                     id: `${Date.now()}-${Math.random()}`,
-                    type: selectedShape,
+                    type: currentTool,
                     x: x - 40,
                     y: y - 40,
                     width: Math.max(80, MIN_SHAPE_WIDTH),
@@ -175,7 +194,6 @@ export const useShapeInteraction = ({
                     new AddShapeCommand(newShape, onShapesChangeRef.current, yShapes)
                 );
 
-                onShapeSelect(null as never);
                 return;
             }
 
